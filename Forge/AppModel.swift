@@ -175,7 +175,16 @@ final class AppModel {
         startLogStream()
         let resume = templateInstalled && !messages.isEmpty
         let devServerRef = devServer
+        let projectsRootPath = ProjectStore.root.path
         Task {
+            // Clear dev servers leaked by a previous session (a crash, or a
+            // watchdog that didn't fire) BEFORE starting anything — otherwise a
+            // stale one keeps holding its port and the preview can show the wrong
+            // project. Off the main thread (ps + signals); completes before any
+            // start() so it can't race-kill the server we're about to launch.
+            await Task.detached(priority: .utility) {
+                ProcessSupervisor.reclaimAllOrphans(under: URL(fileURLWithPath: projectsRootPath))
+            }.value
             await refreshModels()
             if resume { try? await devServerRef.start() }
         }
