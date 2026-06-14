@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+DerivedData/
+.build-xcode/
+build/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# xcodegen output — project.yml is the source of truth
+Forge.xcodeproj/
+
+# Runtime / generated user projects
+.forge/
+**/node_modules/
+*.log
+
+# Secrets
+.env
+*.env

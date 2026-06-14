@@ -1,0 +1,96 @@
+import SwiftUI
+import ForgeKit
+
+struct PreviewPane: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PreviewToolbar()
+            Divider().overlay(Theme.border)
+            ZStack {
+                Theme.fill
+                if let url = model.previewURL {
+                    WebView(url: url, reloadToken: model.reloadToken) { model.handleRuntimeIssue($0) }
+                        .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .full ? 0 : 12))
+                        .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
+                                radius: 16, y: 4)
+                        .padding(model.previewWidth == .full ? 0 : 24)
+                } else {
+                    BuildingView(statusText: model.statusText, lastLog: model.serverLog.last?.text)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Theme.canvas)
+    }
+}
+
+private struct PreviewToolbar: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 2) {
+                ForEach(AppModel.PreviewWidth.allCases, id: \.self) { width in
+                    Button { model.previewWidth = width } label: {
+                        Image(systemName: width.icon)
+                            .font(.system(size: 11))
+                            .foregroundStyle(model.previewWidth == width ? Theme.ink : Theme.inkFaint)
+                            .frame(width: 26, height: 22)
+                            .background(model.previewWidth == width ? Theme.surface : .clear,
+                                        in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(3)
+            .background(Theme.fill, in: RoundedRectangle(cornerRadius: 9))
+
+            HStack(spacing: 6) {
+                Circle().fill(model.previewURL != nil ? Theme.positive : Theme.inkFaint)
+                    .frame(width: 6, height: 6)
+                Text(model.previewURL?.absoluteString ?? "starting dev server…")
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 11).padding(.vertical, 6)
+            .background(Theme.fill, in: Capsule())
+
+            Button { model.reloadPreview() } label: { Image(systemName: "arrow.clockwise") }
+                .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+            Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }
+                .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(Theme.canvas)
+    }
+}
+
+private struct BuildingView: View {
+    let statusText: String
+    let lastLog: String?
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Text("Forge")
+                .font(Theme.wordmark(28))
+                .foregroundStyle(Theme.ink.opacity(0.9))
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(statusText).font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+            }
+            if let lastLog, !lastLog.isEmpty {
+                Text(lastLog)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Theme.inkFaint)
+                    .lineLimit(1).truncationMode(.middle)
+                    .frame(maxWidth: 380)
+            }
+        }
+        .padding(28)
+    }
+}

@@ -1,0 +1,53 @@
+# xcodegen spec — source of truth for Forge.xcodeproj (which is gitignored).
+# Regenerate with:  xcodegen generate
+# Build with:       DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+#                     xcodebuild -project Forge.xcodeproj -scheme Forge build
+name: Forge
+options:
+  bundleIdPrefix: pavi
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  ForgeKit:
+    path: ForgeKit
+
+schemes:
+  Forge:
+    build:
+      targets:
+        Forge: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+targets:
+  Forge:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Forge
+    dependencies:
+      - package: ForgeKit
+        product: ForgeKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pavi.Forge
+        PRODUCT_NAME: Forge
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Forge/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Forge/Forge.entitlements
+        # Ad-hoc signing so it builds/runs locally without a developer team.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        DEAD_CODE_STRIPPING: YES

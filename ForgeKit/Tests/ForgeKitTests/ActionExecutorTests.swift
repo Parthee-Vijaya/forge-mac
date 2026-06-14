@@ -1,0 +1,63 @@
+import XCTest
+@testable import ForgeKit
+
+/// Records calls so we can assert on ordering/coalescing without real processes.
+private actor MockProcessLayer: ProcessLayer {
+    var writes: [(String, String)] = []
+    var installs: [[String]] = []
+    var shells: [String] = []
+    var startCount = 0
+    private var running = false
+    private let url = URL(string: "http://localhost:5173")!
+
+    func writeFile(_ relativePath: String, contents: String) async throws {
+        writes.append((relativePath, contents))
+    }
+    func addDependencies(_ packages: [String]) async throws { installs.append(packages) }
+    func runShell(_ command: String) async throws -> Int32 { shells.append(command); return 0 }
+    func startDevServerIfNeeded() async throws -> URL { startCount += 1; running = true; return url }
+    var serverReadyURL: URL? { get async { running ? url : nil } }
+
+    func markRunning() { running = true }
+}
+
+final class ActionExecutorTests: XCTestCase {
+    func testWritesFilesCoalescesDepsAndStartsOnce() async throws {
+        let mock = MockProcessLayer()
+        let executor = ActionExecutor(process: mock)
+        let events: [ParserEvent] = [
+            .artifactOpen(id: "x", title: "X"),
+            .inlineAction(.addDependency(package: "clsx")),
+            .inlineAction(.addDependency(package: "zustand")),
+            .fileClose(path: "src/App.tsx", contents: "export default function App(){return null}"),
+            .inlineAction(.shell(command: "echo hi")),
+            .inlineAction(.start(command: "npm run dev")),
+            .artifactClose,
+        ]
+        for event in events { try await executor.handle(event) }
+
+        let writes = await mock.writes
+        XCTAssertEqual(writes.map(\.0), ["src/App.tsx"])
+        let installs = await mock.installs
+        XCTAssertEqual(installs, [["clsx", "zustand"]])   // one coalesced install
+        let shells = await mock.shells
+        XCTAssertEqual(shells, ["echo hi"])
+        let startCount = await mock.startCount
+        XCTAssertEqual(startCount, 1)
+    }
+
+    func testSecondTurnDoesNotRestartRunningServer() async throws {
+        let mock = MockProcessLayer()
+        await mock.markRunning()                 // simulate server already up
+        let executor = ActionExecutor(process: mock)
+
+        try await executor.handle(.fileClose(path: "src/App.tsx", contents: "// edit"))
+        try await executor.handle(.inlineAction(.start(command: "npm run dev")))
+        try await executor.handle(.artifactClose)
+
+        let startCount = await mock.startCount
+        XCTAssertEqual(startCount, 0)            // no (re)start for a source edit
+        let writes = await mock.writes
+        XCTAssertEqual(writes.count, 1)
+    }
+}
