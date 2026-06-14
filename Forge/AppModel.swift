@@ -282,8 +282,8 @@ final class AppModel {
             of plain explanation, then build.
             """)
         }
-        if !preferences.userName.isEmpty {
-            parts.append("The user you are helping is called \(preferences.userName). Address them by name when natural.")
+        if !greetingName.isEmpty {
+            parts.append("The user you are helping is called \(greetingName). Address them by name when natural.")
         }
         let memory = preferences.memory.trimmingCharacters(in: .whitespacesAndNewlines)
         if !memory.isEmpty {
