@@ -119,6 +119,8 @@ struct StartScreen: View {
                     onAttach: { model.attachImagesFromPicker() },
                     onRemoveImage: { model.removeAttachedImage(at: $0) },
                     onDropImages: { model.attachImages(at: $0) },
+                    isEnhancing: model.isEnhancing,
+                    onEnhance: { model.enhancePrompt() },
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 560)

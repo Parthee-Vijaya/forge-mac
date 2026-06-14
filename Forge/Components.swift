@@ -16,6 +16,8 @@ struct Composer: View {
     var onAttach: (() -> Void)? = nil               // paperclip → file picker
     var onRemoveImage: ((Int) -> Void)? = nil
     var onDropImages: (([URL]) -> Void)? = nil       // Finder drag-and-drop
+    var isEnhancing: Bool = false                    // B14: expanding the prompt
+    var onEnhance: (() -> Void)? = nil               // ✨ → expand prompt into a brief
     var onSubmit: () -> Void
     var onStop: (() -> Void)? = nil
 
@@ -107,6 +109,22 @@ struct Composer: View {
                 .buttonStyle(.plain)
                 .help("Vedhæft et billede / mockup")
                 .disabled(isBusy)
+            }
+            if let onEnhance {
+                Button(action: onEnhance) {
+                    Group {
+                        if isEnhancing {
+                            ProgressView().controlSize(.small).scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "wand.and.stars").font(.system(size: 14, weight: .medium))
+                        }
+                    }
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Forbedr prompt — udvid til en detaljeret spec")
+                .disabled(isBusy || isEnhancing || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)

@@ -16,6 +16,9 @@ public actor AgentLoop {
         public var projectContext: @Sendable () async -> String?
         public var collectErrors: @Sendable () async -> ErrorReport
         public var onTurnStart: @Sendable () async -> Void
+        /// A2b: returns a project file's current contents (nil if it doesn't
+        /// exist) when the model asks to read it mid-build.
+        public var readFile: @Sendable (String) async -> String?
         public var settleDelay: Duration
         public var maxRepairAttempts: Int
 
@@ -27,6 +30,7 @@ public actor AgentLoop {
             projectContext: @escaping @Sendable () async -> String? = { nil },
             collectErrors: @escaping @Sendable () async -> ErrorReport,
             onTurnStart: @escaping @Sendable () async -> Void = {},
+            readFile: @escaping @Sendable (String) async -> String? = { _ in nil },
             settleDelay: Duration = .seconds(2),
             maxRepairAttempts: Int = 3
         ) {
@@ -37,6 +41,7 @@ public actor AgentLoop {
             self.projectContext = projectContext
             self.collectErrors = collectErrors
             self.onTurnStart = onTurnStart
+            self.readFile = readFile
             self.settleDelay = settleDelay
             self.maxRepairAttempts = maxRepairAttempts
         }
@@ -132,12 +137,24 @@ public actor AgentLoop {
 
             var attempt = 0
             var lastSignature: String?
+            var readRounds = 0
 
             while !Task.isCancelled {
                 await deps.onTurnStart()
 
                 continuation.yield(.state(.building))
-                let rawAssistant = try await streamAndApply(messages: messages, continuation)
+                let (rawAssistant, reads) = try await streamAndApply(messages: messages, continuation)
+
+                // A2b: the model asked to see files before building. Fetch them,
+                // feed them back, and let it continue — not counted as a repair.
+                if !reads.isEmpty, readRounds < 3 {
+                    readRounds += 1
+                    var fetched: [(path: String, contents: String?)] = []
+                    for path in reads { fetched.append((path, await deps.readFile(path))) }
+                    messages.append(ChatMessage(role: .assistant, content: rawAssistant))
+                    messages.append(MessageBuilder().readResultTurn(fetched))
+                    continue
+                }
 
                 continuation.yield(.state(.awaitingHMR))
                 try? await Task.sleep(for: deps.settleDelay)
@@ -172,20 +189,38 @@ public actor AgentLoop {
     }
 
     /// Stream one model response, parse it, and apply actions as they close.
-    /// Returns the raw assistant text (for the repair history).
+    /// Returns the raw assistant text (for the repair history) and any files the
+    /// model asked to read (A2b).
     private func streamAndApply(
         messages: [ChatMessage],
         _ continuation: AsyncStream<AgentEvent>.Continuation
-    ) async throws -> String {
+    ) async throws -> (raw: String, reads: [String]) {
         let parser = StreamingArtifactParser()
         let executor = ActionExecutor(process: deps.process)
         let splitter = ReasoningSplitter()
         var raw = ""
+        var reads: [String] = []
+
+        // Synchronous triage of one parser event: collect read-requests (A2b) and
+        // skip the flush on a read-only artifact's close; otherwise return the
+        // event to apply. Nested (non-async) so the non-Sendable parser/executor
+        // stay inside this actor method's isolation region.
+        func toApply(_ event: ParserEvent) -> ParserEvent? {
+            switch event {
+            case .readRequest(let path):
+                reads.append(path)
+                continuation.yield(.assistantText("\n_Læser \(path)…_\n"))
+                return nil
+            case .artifactClose where !reads.isEmpty:
+                return nil   // read-only artifact: don't install/start — the read-round handles it
+            default:
+                return event
+            }
+        }
 
         // Route split pieces: reasoning to the UI, visible text through the
         // artifact parser. `raw` holds only the visible text (no <think>), so the
-        // repair history stays clean. Inlined (not a nested async fn) to keep the
-        // non-Sendable parser inside this actor method's isolation region.
+        // repair history stays clean.
         for try await event in deps.provider.stream(messages: messages, options: deps.options) {
             try Task.checkCancellation()
             let pieces: [ReasoningSplitter.Piece]
@@ -200,7 +235,9 @@ public actor AgentLoop {
                 case .text(let text):
                     raw += text
                     for parserEvent in parser.consume(text) {
-                        try await apply(parserEvent, executor: executor, continuation)
+                        if let event = toApply(parserEvent) {
+                            try await apply(event, executor: executor, continuation)
+                        }
                     }
                 }
             }
@@ -211,14 +248,18 @@ public actor AgentLoop {
             case .text(let text):
                 raw += text
                 for parserEvent in parser.consume(text) {
-                    try await apply(parserEvent, executor: executor, continuation)
+                    if let event = toApply(parserEvent) {
+                        try await apply(event, executor: executor, continuation)
+                    }
                 }
             }
         }
         for parserEvent in parser.finish() {
-            try await apply(parserEvent, executor: executor, continuation)
+            if let event = toApply(parserEvent) {
+                try await apply(event, executor: executor, continuation)
+            }
         }
-        return raw
+        return (raw, reads)
     }
 
     private func apply(

@@ -12,5 +12,6 @@ public enum ParserEvent: Sendable, Equatable {
     case lineReplaceOpen(path: String)             // a search/replace edit begins
     case lineReplaceClose(path: String, edits: [LineEdit]) // edits parsed → apply now
     case inlineAction(ForgeAction)                  // shell / start / add-dependency (queued)
+    case readRequest(path: String)                  // A2b: model asks to see a file's contents
     case artifactClose
 }

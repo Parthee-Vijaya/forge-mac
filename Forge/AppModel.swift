@@ -52,6 +52,7 @@ final class AppModel {
     var draft: String = ""
     var attachedImages: [String] = []   // B4: pending image data URLs for the next turn
     var isBusy: Bool = false
+    var isEnhancing: Bool = false        // B14: expanding the draft into a detailed brief
     var statusText: String = "Ready."
     var chatMode: AgentLoop.Mode = .build   // Plan vs Build toggle in the composer
 
@@ -670,6 +671,47 @@ final class AppModel {
         savePreferences()
     }
 
+    /// B14: expand the short draft into a detailed build brief (one model turn),
+    /// then replace the draft with it so the user can review and build. Uses the
+    /// plan-role model (good at structure), falling back to the selected model.
+    func enhancePrompt() {
+        let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty, !isBusy, !isEnhancing else { return }
+        isEnhancing = true
+        let config = modelFor(.plan)
+        let provider = ModelRouter.provider(for: config)
+        let options = ModelRouter.options(for: config)
+        let messages = [
+            ChatMessage(role: .system, content: SystemPrompt.enhance),
+            ChatMessage(role: .user, content: prompt),
+        ]
+        Task {
+            var raw = ""
+            do {
+                for try await event in provider.stream(messages: messages, options: options) {
+                    if case .token(let token) = event { raw += token }
+                }
+            } catch {
+                isEnhancing = false
+                return   // leave the draft untouched on failure
+            }
+            let cleaned = Self.stripReasoning(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cleaned.isEmpty { draft = cleaned }
+            isEnhancing = false
+        }
+    }
+
+    /// Drop inline `<think>…</think>` reasoning a model may emit in its token text.
+    static func stripReasoning(_ text: String) -> String {
+        var out = text
+        if let close = out.range(of: "</think>", options: .backwards) {
+            out = String(out[close.upperBound...])   // keep only what follows the last </think>
+        }
+        out = out.replacingOccurrences(of: "(?s)<think>.*?</think>", with: "",
+                                       options: [.regularExpression, .caseInsensitive])
+        return out
+    }
+
     static let examplePrompts = [
         "En prisside med tre planer og en CTA",
         "En pomodoro-timer med start, pause og nulstil",
@@ -946,6 +988,7 @@ final class AppModel {
             projectContext: { [workspace] in await AppModel.buildContext(workspace, touched: touched) },
             collectErrors: { [errorCollector] in await errorCollector.collect() },
             onTurnStart: { [errorCollector] in await errorCollector.reset() },
+            readFile: { [workspace] path in try? await workspace.readFile(path) },
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 

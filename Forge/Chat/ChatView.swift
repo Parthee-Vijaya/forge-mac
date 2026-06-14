@@ -80,6 +80,8 @@ struct ChatView: View {
                     onAttach: { model.attachImagesFromPicker() },
                     onRemoveImage: { model.removeAttachedImage(at: $0) },
                     onDropImages: { model.attachImages(at: $0) },
+                    isEnhancing: model.isEnhancing,
+                    onEnhance: model.selectedElement == nil ? { model.enhancePrompt() } : nil,
                     onSubmit: {
                         if model.selectedElement != nil { model.applyVisualEdit(model.draft) }
                         else { model.submit() }

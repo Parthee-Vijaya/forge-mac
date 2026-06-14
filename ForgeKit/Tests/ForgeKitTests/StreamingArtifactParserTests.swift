@@ -24,6 +24,26 @@ final class StreamingArtifactParserTests: XCTestCase {
         events.compactMap { if case .inlineAction(let a) = $0 { return a }; return nil }
     }
 
+    private func readRequests(_ events: [ParserEvent]) -> [String] {
+        events.compactMap { if case .readRequest(let p) = $0 { return p }; return nil }
+    }
+
+    func testReadFileRequest() {
+        let input = """
+        Let me check the board first.
+        <forgeArtifact id="read" title="Read">
+        <forgeAction type="read-file" filePath="src/components/Board.tsx"></forgeAction>
+        <forgeAction type="read-file" filePath="src/lib/utils.ts"></forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 7] {
+            let events = parse(input, chunkSize: chunk)
+            XCTAssertEqual(readRequests(events), ["src/components/Board.tsx", "src/lib/utils.ts"],
+                           "chunk size \(chunk)")
+            XCTAssertTrue(files(events).isEmpty, "read-file must not produce file writes")
+        }
+    }
+
     private let sample = """
     Here is your app.
     <forgeArtifact id="todo" title="Todo App">

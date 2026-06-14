@@ -36,7 +36,7 @@ public actor ActionExecutor {
         case .artifactClose:
             try await flush()
         case .text, .artifactOpen, .fileOpen, .fileChunk, .lineReplaceOpen,
-             .inlineAction(.file), .inlineAction(.lineReplace):
+             .readRequest, .inlineAction(.file), .inlineAction(.lineReplace):
             break
         }
     }

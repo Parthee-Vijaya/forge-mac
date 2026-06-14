@@ -55,7 +55,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 1. **Line-replace / diff-edits for stærke modeller** — pt. altid whole-file writes (dyrt + langsomt på store filer). `ModelConfig.supportsLineReplace` findes allerede. *Sådan:* ny `.inLineReplaceBody`-state i `StreamingArtifactParser`, `ForgeAction.lineReplace(path,search,replace)`, diff-apply i `ActionExecutor`, og en prompt-gren i `SystemPrompt`/`MessageBuilder` valgt på `config.supportsLineReplace`. **L · P0**
 
-2. **Smart context-styring** — `AppModel.buildContext` sender hele `App.tsx` + fil-listen hver tur; sprænger `num_ctx` på store projekter (den stille trunkering vi allerede frygter). *Sådan:* token-budgettér; medtag kun filer modellen rørte sidst + dem den eksplicit anmoder om via et nyt `read-file`-værktøj; komprimér fil-mappet. **L · P0**
+2. **Smart context-styring** — `AppModel.buildContext` sender hele `App.tsx` + fil-listen hver tur; sprænger `num_ctx` på store projekter (den stille trunkering vi allerede frygter). *Sådan:* token-budgettér; medtag kun filer modellen rørte sidst + dem den eksplicit anmoder om via et nyt `read-file`-værktøj; komprimér fil-mappet. **L · P0** — ✅ **A2b (read-file) bygget:** modellen kan midt i en build bede om en fils indhold via `<forgeAction type="read-file" filePath="…">`; `StreamingArtifactParser` → `.readRequest`, `AgentLoop` kører en læse-runde (henter filerne, fodrer dem tilbage, maks 3 runder, tæller ikke som repair), `Dependencies.readFile` leverer dem fra workspace. Parser-test dækker det.
 
 3. **Afbryd/stop en kørende generering** — ingen stop-knap i dag; en lang/forkert tur kan ikke annulleres. *Sådan:* `AgentLoop.run` returnerer allerede en `AsyncStream` med en `Task` — eksponér `cancel()`; composer-knappen viser "stop" mens `isBusy`, kalder cancel → afslut stream + behold delvist arbejde. **S · P0**
 
@@ -127,7 +127,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 13. **Projekt-eksport** — zip / "åbn i VS Code" / "åbn i Finder". *Sådan:* `NSWorkspace.open` på projektmappen; zip via `Process`; menupunkter i `ProjectMenu`. **S · P1**
 
-14. **Prompt-bibliotek + prompt-forbedring** — gem prompts; udvid en kort prompt til en detaljeret spec før build. *Sådan:* en "enhance"-knap kører en hurtig model-tur der ekspanderer prompten; gemte prompts i UserDefaults. **M · P2**
+14. **Prompt-bibliotek + prompt-forbedring** — gem prompts; udvid en kort prompt til en detaljeret spec før build. *Sådan:* en "enhance"-knap kører en hurtig model-tur der ekspanderer prompten; gemte prompts i UserDefaults. **M · P2** — ✅ **Prompt-forbedring bygget:** ✨-knap i composeren (`AppModel.enhancePrompt` + `SystemPrompt.enhance`) udvider et kort udkast til et struktureret build-brief (resumé, skærme, interaktioner, data, stil) via plan-modellen og erstatter udkastet. `<think>`-reasoning strippes. (Prompt-bibliotek/gem mangler stadig.)
 
 15. **Stemme-input** — diktér prompts (du har Saga/CanaryKit). *Sådan:* genbrug CanaryKit-CoreML (lokal dansk ASR) → tekst i composer; push-to-talk-knap. **M · P2**
 

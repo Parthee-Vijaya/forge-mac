@@ -26,6 +26,20 @@ public struct MessageBuilder: Sendable {
         return messages
     }
 
+    /// A follow-up user turn returning the contents of files the model asked to
+    /// read (A2b), so it can continue building with accurate context.
+    public func readResultTurn(_ files: [(path: String, contents: String?)]) -> ChatMessage {
+        var body = "Here are the files you requested. Continue with these in mind — do NOT request them again.\n\n"
+        for file in files {
+            if let contents = file.contents {
+                body += "<file path=\"\(file.path)\">\n\(contents)\n</file>\n\n"
+            } else {
+                body += "<file path=\"\(file.path)\">(this file does not exist)</file>\n\n"
+            }
+        }
+        return ChatMessage(role: .user, content: body)
+    }
+
     /// A follow-up user turn that feeds back the errors for self-correction.
     public func errorTurn(_ report: ErrorReport) -> ChatMessage {
         let body = """

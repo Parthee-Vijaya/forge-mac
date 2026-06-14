@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `ef0e202` 2026-06-14 — Address the user by their preferred name in the AI system prompt
 - `b8c9d17` 2026-06-14 — Open Forge on the start screen instead of resuming last project
 - `3e97ded` 2026-06-14 — Start screen: sidebar + prompt-first, name popup, clone from Git (B27)
 - `f31ead8` 2026-06-14 — Default to qwen3.6, retire qwen2.5-coder
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `2d1be5a` 2026-06-14 — Add plan mode, clarifying questions, and a reasoning view
 - `c69c053` 2026-06-14 — Harden the agent core: cancel, error classification, context, line-replace, few-shot
 - `3749a7e` 2026-06-14 — Add first-run onboarding + Settings window
-- `fc8c27c` 2026-06-14 — Add visual editing: click an element in the preview, describe a change
 <!-- COMMITLOG:END -->

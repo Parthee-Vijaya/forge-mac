@@ -145,6 +145,12 @@ public final class StreamingArtifactParser {
             fileContents = ""
             events.append(.lineReplaceOpen(path: path))
             state = .inLineReplaceBody(path: path)
+        } else if type == "read-file" {
+            // A2b: a request to see a file. Emit it now (path is in the attribute)
+            // and consume the (empty) body until </forgeAction>.
+            events.append(.readRequest(path: attribute("filePath", in: tag) ?? ""))
+            inlineBuffer = ""
+            state = .inInlineBody(type: "read-file")
         } else {
             inlineBuffer = ""
             state = .inInlineBody(type: type)
