@@ -10,20 +10,31 @@ struct PreviewPane: View {
             Divider().overlay(Theme.border)
             ZStack {
                 Theme.fill
-                if let url = model.previewURL {
-                    WebView(url: url, reloadToken: model.reloadToken) { model.handleRuntimeIssue($0) }
-                        .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .full ? 0 : 12))
-                        .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
-                                radius: 16, y: 4)
-                        .padding(model.previewWidth == .full ? 0 : 24)
-                } else {
-                    BuildingView(statusText: model.statusText, lastLog: model.serverLog.last?.text)
+                // Keep the WebView mounted (opacity) so HMR + state survive a
+                // switch to Code and back.
+                previewLayer
+                    .opacity(model.rightPaneMode == .preview ? 1 : 0)
+                    .allowsHitTesting(model.rightPaneMode == .preview)
+                if model.rightPaneMode == .code {
+                    CodePane()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.canvas)
+    }
+
+    @ViewBuilder private var previewLayer: some View {
+        if let url = model.previewURL {
+            WebView(url: url, reloadToken: model.reloadToken) { model.handleRuntimeIssue($0) }
+                .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .full ? 0 : 12))
+                .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
+                        radius: 16, y: 4)
+                .padding(model.previewWidth == .full ? 0 : 24)
+        } else {
+            BuildingView(statusText: model.statusText, lastLog: model.serverLog.last?.text)
+        }
     }
 }
 
@@ -33,40 +44,70 @@ private struct PreviewToolbar: View {
     var body: some View {
         HStack(spacing: 10) {
             HStack(spacing: 2) {
-                ForEach(AppModel.PreviewWidth.allCases, id: \.self) { width in
-                    Button { model.previewWidth = width } label: {
-                        Image(systemName: width.icon)
-                            .font(.system(size: 11))
-                            .foregroundStyle(model.previewWidth == width ? Theme.ink : Theme.inkFaint)
-                            .frame(width: 26, height: 22)
-                            .background(model.previewWidth == width ? Theme.surface : .clear,
-                                        in: RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
+                modeButton("Preview", .preview)
+                modeButton("Code", .code)
             }
-            .padding(3)
-            .background(Theme.fill, in: RoundedRectangle(cornerRadius: 9))
+            .padding(2).background(Theme.fill, in: RoundedRectangle(cornerRadius: 9))
 
-            HStack(spacing: 6) {
-                Circle().fill(model.previewURL != nil ? Theme.positive : Theme.inkFaint)
-                    .frame(width: 6, height: 6)
-                Text(model.previewURL?.absoluteString ?? "starting dev server…")
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(Theme.inkSoft)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+            if model.rightPaneMode == .preview {
+                deviceToggles
+                urlPill
+                Button { model.reloadPreview() } label: { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+                Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }
+                    .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+            } else {
+                Spacer()
             }
-            .padding(.horizontal, 11).padding(.vertical, 6)
-            .background(Theme.fill, in: Capsule())
-
-            Button { model.reloadPreview() } label: { Image(systemName: "arrow.clockwise") }
-                .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
-            Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }
-                .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
         }
         .padding(.horizontal, 12).padding(.vertical, 9)
         .background(Theme.canvas)
+    }
+
+    private func modeButton(_ title: String, _ mode: AppModel.RightPaneMode) -> some View {
+        Button {
+            if mode == .code { model.enterCodeMode() } else { model.rightPaneMode = .preview }
+        } label: {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(model.rightPaneMode == mode ? Theme.ink : Theme.inkFaint)
+                .padding(.horizontal, 12).padding(.vertical, 4)
+                .background(model.rightPaneMode == mode ? Theme.surface : .clear,
+                            in: RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var deviceToggles: some View {
+        HStack(spacing: 2) {
+            ForEach(AppModel.PreviewWidth.allCases, id: \.self) { width in
+                Button { model.previewWidth = width } label: {
+                    Image(systemName: width.icon)
+                        .font(.system(size: 11))
+                        .foregroundStyle(model.previewWidth == width ? Theme.ink : Theme.inkFaint)
+                        .frame(width: 26, height: 22)
+                        .background(model.previewWidth == width ? Theme.surface : .clear,
+                                    in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Theme.fill, in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private var urlPill: some View {
+        HStack(spacing: 6) {
+            Circle().fill(model.previewURL != nil ? Theme.positive : Theme.inkFaint)
+                .frame(width: 6, height: 6)
+            Text(model.previewURL?.absoluteString ?? "starting dev server…")
+                .font(.system(size: 11.5, design: .monospaced))
+                .foregroundStyle(Theme.inkSoft)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 11).padding(.vertical, 6)
+        .background(Theme.fill, in: Capsule())
     }
 }
 

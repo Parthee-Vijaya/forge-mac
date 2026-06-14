@@ -32,6 +32,8 @@ final class AppModel {
         }
     }
 
+    enum RightPaneMode { case preview, code }
+
     // Chat
     var messages: [UIMessage] = []
     var draft: String = ""
@@ -46,6 +48,13 @@ final class AppModel {
     var phase: AgentState = .idle
     var previewWidth: PreviewWidth = .full
     var reloadToken: Int = 0
+    var rightPaneMode: RightPaneMode = .preview
+
+    // Code view
+    var projectFiles: [String] = []
+    var selectedFile: String?
+    var editorText: String = ""
+    var editorDirty: Bool = false
 
     // Diagnostics
     var serverLog: [LogLine] = []
@@ -63,6 +72,8 @@ final class AppModel {
     @ObservationIgnored nonisolated let errorCollector: ErrorCollector
     @ObservationIgnored private var templateInstalled = false
     @ObservationIgnored private var logTask: Task<Void, Never>?
+    @ObservationIgnored private var autosaveTask: Task<Void, Never>?
+    @ObservationIgnored private var lastLoadedText = ""
 
     init() {
         let root = AppModel.projectRoot()
@@ -109,6 +120,56 @@ final class AppModel {
         models.first { $0.modelID.lowercased().contains("coder") }
             ?? models.first { $0.source == .ollama }
             ?? models.first ?? .localDefault
+    }
+
+    // MARK: - Code view
+
+    func enterCodeMode() {
+        rightPaneMode = .code
+        Task {
+            await refreshFiles()
+            if selectedFile == nil {
+                let entry = projectFiles.first { $0 == "src/App.tsx" } ?? projectFiles.first
+                if let entry { await openFile(entry) }
+            }
+        }
+    }
+
+    func refreshFiles() async {
+        projectFiles = await workspace.fileMap()
+    }
+
+    func openFile(_ path: String) async {
+        autosaveTask?.cancel()
+        guard let text = try? await workspace.readFile(path) else { return }
+        editorText = text
+        lastLoadedText = text
+        selectedFile = path
+        editorDirty = false
+    }
+
+    /// Debounced autosave: writing the file lets Vite HMR refresh the preview.
+    func onEditorChange() {
+        guard editorText != lastLoadedText else { return }
+        editorDirty = true
+        autosaveTask?.cancel()
+        let path = selectedFile
+        let text = editorText
+        autosaveTask = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, let path else { return }
+            try? await workspace.writeFile(path, contents: text)
+            lastLoadedText = text
+            editorDirty = false
+        }
+    }
+
+    func saveNow() async {
+        autosaveTask?.cancel()
+        guard let path = selectedFile else { return }
+        try? await workspace.writeFile(path, contents: editorText)
+        lastLoadedText = editorText
+        editorDirty = false
     }
 
     // MARK: - Chat submission
@@ -169,6 +230,7 @@ final class AppModel {
                 previewURL = url
             }
         }
+        await refreshFiles()
     }
 
     func handleRuntimeIssue(_ issue: RuntimeIssue) {

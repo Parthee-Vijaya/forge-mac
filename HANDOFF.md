@@ -7,7 +7,7 @@
 
 - **Sidst opdateret:** 2026-06-14
 - **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live — bygget counter via LM Studio nemotron). Alle ForgeKit-tests grønne.
-- **Branch:** main (ingen commits endnu — afventer din go)
+- **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
 ## Stack
 
@@ -51,6 +51,7 @@ ollama list | grep qwen2.5-coder
 - **App tvinger lyst tema** (`.preferredColorScheme(.light)` + eksplicitte `Theme`-farver) — ellers blev tekst usynlig i system-dark-mode. Brug ALDRIG `.primary`/`.secondary` i app-laget; brug `Theme.ink`/`inkSoft`.
 - **Nye SwiftUI-filer kræver `xcodegen generate`** før de er med i builden (project.yml indekserer mappen ved generering).
 - **Build kun aktiv arch**: `-arch arm64 ONLY_ACTIVE_ARCH=YES` (universal-build fejler på SwiftPM-modul-resolution). Byg via `-scheme Forge` (ikke `-target`) så pakke-produkter linkes.
+- **Kode-editoren MÅ ikke smart-quote** — SwiftUI `TextEditor` laver `"` om til krøllede `"` og ødelægger JSX. Brug `NSTextView` (NSViewRepresentable, `CodeTextView`) med `isAutomaticQuoteSubstitutionEnabled=false` + dash/text-replacement/spelling/grammar off.
 
 ## Status pr. fase (alle leveret + verificeret)
 
@@ -76,5 +77,6 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `80f9d1b` 2026-06-14 — Add local model discovery: Ollama + LM Studio in the picker
 - `4a4b5a7` 2026-06-14 — Forge: walking skeleton + Lovable-style UI (macOS-first)
 <!-- COMMITLOG:END -->
