@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `3d17993` 2026-06-15 — Kill leaked dev servers across all projects on launch
 - `b047d9c` 2026-06-15 — Copy this design: capture a website screenshot from a link
 - `5320276` 2026-06-15 — Midnat redesign: dark-by-default theme + light mode toggle
 - `70ca17d` 2026-06-14 — Reliable preview: per-project port + honest "starting preview" status
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `cd28b28` 2026-06-14 — Make Forge a capable website builder: images + rich multi-section pages
 - `02cb3a9` 2026-06-14 — Add auto-fix / "Fix it" for runtime errors (B12) + harden Preferences decoding
 - `6c100db` 2026-06-14 — Add project access: open in editor, reveal in Finder, export zip (B13 + B24)
-- `8e1f001` 2026-06-14 — Add DMG packaging script + roadmap B24 (open in VS Code/Xcode)
 <!-- COMMITLOG:END -->

@@ -128,11 +128,65 @@ struct StartScreen: View {
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 560)
+
+                templateGallery(model)
             }
             .padding(.horizontal, 28)
             Spacer()
-            Spacer()
         }
+    }
+
+    // MARK: - Template gallery (B6)
+
+    private func templateGallery(_ model: AppModel) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Rectangle().fill(Theme.border).frame(height: 1)
+                Text("ELLER START FRA EN SKABELON")
+                    .font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                    .fixedSize()
+                Rectangle().fill(Theme.border).frame(height: 1)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+                ForEach(StarterTemplates.all) { template in
+                    TemplateCard(template: template) { model.startFromTemplate(template) }
+                        .disabled(model.isBusy)
+                }
+            }
+        }
+        .frame(maxWidth: 600)
+        .padding(.top, 8)
+    }
+}
+
+/// A starter-template card on the launch screen: icon, title, one-line subtitle.
+/// Clicking it seeds the template's brief and starts a build.
+private struct TemplateCard: View {
+    let template: StarterTemplate
+    var action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: template.icon)
+                    .font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.accent)
+                Text(template.title)
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(template.subtitle)
+                    .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+            .padding(12)
+            .background(hovering ? Theme.fillHover : Theme.surface,
+                        in: RoundedRectangle(cornerRadius: Theme.radiusM))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM)
+                .strokeBorder(hovering ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }
 

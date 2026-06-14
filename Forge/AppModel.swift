@@ -747,6 +747,15 @@ final class AppModel {
         submit()
     }
 
+    /// Build from a starter template (B6): seed its detailed brief and submit.
+    /// Forces Build mode so a card always produces a running app.
+    func startFromTemplate(_ template: StarterTemplate) {
+        guard !isBusy else { return }
+        chatMode = .build
+        draft = template.prompt
+        submit()
+    }
+
     /// Begin the guided tutorial: turn learning mode on, reset the lessons so the
     /// explainer cards re-fire, and seed a simple first build for the user to run.
     func startTutorial() {
