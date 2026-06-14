@@ -56,6 +56,14 @@ final class AppModel {
     var editorText: String = ""
     var editorDirty: Bool = false
 
+    // Deploy
+    var isDeploying = false
+    var deployStatus = ""
+    var deployLog: [String] = []
+    var deployGithubURL: URL?
+    var deployVercelURL: URL?
+    var showDeploy = false
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -224,6 +232,72 @@ final class AppModel {
     static func projectName(from prompt: String) -> String {
         let trimmed = prompt.split(separator: " ").prefix(6).joined(separator: " ")
         return String(trimmed.prefix(42))
+    }
+
+    // MARK: - Deploy (GitHub + Vercel)
+
+    func deploy() {
+        guard !isDeploying, !isBusy, hasStarted else { return }
+        isDeploying = true
+        showDeploy = true
+        deployLog = []
+        deployGithubURL = nil
+        deployVercelURL = nil
+        let repo = "forge-" + Self.slug(currentProject.name)
+        Task {
+            await runDeploy(repo: repo)
+            isDeploying = false
+        }
+    }
+
+    private func runDeploy(repo: String) async {
+        deployStatus = "Preparing repository…"
+        _ = try? await deployShell(
+            "git init -q 2>/dev/null; git config user.email 'partivijaya@icloud.com'; "
+            + "git config user.name 'Parthee Vijaya'; git add -A; "
+            + "git commit -q -m 'Deploy from Forge' 2>/dev/null || true")
+
+        deployStatus = "Pushing to GitHub…"
+        let githubOutput = (try? await deployShell(
+            "gh repo create \(repo) --private --source=. --remote=origin --push 2>&1 "
+            + "|| git push -u origin HEAD 2>&1")) ?? ""
+        deployGithubURL = Self.firstMatch(#"https://github\.com/[^\s]+"#, in: githubOutput)
+            ?? URL(string: "https://github.com/Parthee-Vijaya/\(repo)")
+
+        deployStatus = "Deploying to Vercel…"
+        let vercelOutput = (try? await deployShell("vercel deploy --prod --yes 2>&1")) ?? ""
+        deployVercelURL = Self.firstMatch(#"https://[^\s]+\.vercel\.app"#, in: vercelOutput)
+        deployStatus = deployVercelURL != nil ? "Live on Vercel." : "Finished — check the log."
+    }
+
+    @discardableResult
+    private func deployShell(_ command: String) async throws -> String {
+        let (events, _) = try await devServer.runShellCommand(command)
+        var output = ""
+        for await event in events {
+            if case .log(let line) = event {
+                output += line.text + "\n"
+                deployLog.append(line.text)
+                if deployLog.count > 300 { deployLog.removeFirst(deployLog.count - 300) }
+            }
+        }
+        return output
+    }
+
+    func openURL(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    static func slug(_ name: String) -> String {
+        var s = String(name.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" })
+        while s.contains("--") { s = s.replacingOccurrences(of: "--", with: "-") }
+        s = s.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return s.isEmpty ? "app" : String(s.prefix(40))
+    }
+
+    static func firstMatch(_ pattern: String, in text: String) -> URL? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range, in: text) else { return nil }
+        return URL(string: String(text[range]))
     }
 
     // MARK: - Code view

@@ -67,13 +67,14 @@ ollama list | grep qwen2.5-coder
 
 - ✅ Feature 1: Kode-visning + fil-træ (redigerbar `CodeTextView`, autosave→HMR) — verificeret live
 - ✅ Feature 2: Multi-projekt + historik (skift/opret/slet, persistent chat + kode pr. projekt) — verificeret live
-- ⏳ Feature 3: Deploy GitHub + Vercel (næste)
-- ⏳ Feature 4: Visuel redigering (klik-i-preview, Onlook-stil data-oid)
+- ✅ Feature 3: Deploy GitHub + Vercel (git→`gh repo create`→`vercel deploy --prod`, status-panel m/ links). UI + CLI-auth (gh=Parthee-Vijaya, vercel=parthee-vijaya) verificeret; selve deploy = bruger-trigget klik (udadvendt handling). Respekterer ALDRIG-disable-deployment-protection.
+- ⏳ Feature 4: Visuel redigering (klik-i-preview, Onlook-stil data-oid) — sidste
 - Senere/udskudt: line-replace edits (`ModelConfig.supportsLineReplace` findes), syntax-highlighting i editor, Keychain-settings (afløser `FORGE_CLOUD_API_KEY`), MCP-eksponering, notariseret DMG, iOS companion, live NIM-cloud-test
 
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `c2d8072` 2026-06-14 — Add multi-project support: switch, create, delete, persist
 - `b4183f0` 2026-06-14 — Add code view: file tree + editable editor (autosave -> HMR)
 - `80f9d1b` 2026-06-14 — Add local model discovery: Ollama + LM Studio in the picker
 - `4a4b5a7` 2026-06-14 — Forge: walking skeleton + Lovable-style UI (macOS-first)

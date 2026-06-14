@@ -42,6 +42,7 @@ private struct PreviewToolbar: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         HStack(spacing: 10) {
             HStack(spacing: 2) {
                 modeButton("Preview", .preview)
@@ -56,6 +57,18 @@ private struct PreviewToolbar: View {
                     .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
                 Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }
                     .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+                Button { model.showDeploy = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrowtriangle.up.circle.fill").font(.system(size: 11))
+                        Text("Deploy").font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(Theme.onAccent)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.previewURL == nil)
+                .popover(isPresented: $model.showDeploy, arrowEdge: .bottom) { DeployPanel() }
             } else {
                 Spacer()
             }
