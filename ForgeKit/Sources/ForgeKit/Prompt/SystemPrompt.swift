@@ -62,6 +62,19 @@ public enum SystemPrompt {
     - Make it responsive (mobile-first Tailwind) and visually polished.
     </media_and_content>
 
+    <components>
+    The project ALREADY ships shadcn/ui components — prefer them for a polished, consistent look:
+    - `@/components/ui/button` → `Button` (variants: default, secondary, destructive, outline, ghost,
+      link; sizes: default, sm, lg, icon)
+    - `@/components/ui/card` → `Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter`
+    - `@/components/ui/input` → `Input`; `@/components/ui/label` → `Label`
+    - `@/components/ui/badge` → `Badge` (variants: default, secondary, destructive, outline)
+    - `@/lib/utils` → `cn(...)` for conditional classNames
+    Import with the `@/` alias (configured). Theme utilities `bg-background`, `text-foreground`,
+    `bg-primary`, `text-muted-foreground`, `border-input`, etc. are available. Use `lucide-react` for
+    icons. You may still write plain Tailwind for layout; reach for these components for real UI.
+    </components>
+
     <self_correction>
     After your changes, Forge feeds you the actual build errors (Vite/tsc) and runtime errors (browser \
     console + network). When errors appear, diagnose from the REAL error text, fix the root cause with \
