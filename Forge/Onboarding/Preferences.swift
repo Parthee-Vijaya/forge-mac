@@ -41,6 +41,9 @@ struct Preferences: Codable, Equatable {
     var preferredName = ""
     var askedPreferredName = false
 
+    /// App appearance: "dark" (Midnat, default) or "light".
+    var appearance = "dark"
+
     static let defaultRules = """
     # Project rules
 
@@ -67,6 +70,7 @@ extension Preferences {
         case planModelID, buildModelID, copyModelID, autoCopyPass
         case learningMode, learnedLessons
         case preferredName, askedPreferredName
+        case appearance
     }
 
     init(from decoder: Decoder) throws {
@@ -91,5 +95,6 @@ extension Preferences {
         learnedLessons = (try? c.decode([String].self, forKey: .learnedLessons)) ?? learnedLessons
         preferredName = (try? c.decode(String.self, forKey: .preferredName)) ?? preferredName
         askedPreferredName = (try? c.decode(Bool.self, forKey: .askedPreferredName)) ?? askedPreferredName
+        appearance = (try? c.decode(String.self, forKey: .appearance)) ?? appearance
     }
 }

@@ -23,7 +23,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 1040, minHeight: 680)
         .background(Theme.canvas)
-        .preferredColorScheme(.light) // forced light — keeps the B/W design + text visible under any system appearance
+        .preferredColorScheme(model.colorScheme) // Midnat dark by default; light via Settings
         .animation(.smooth(duration: 0.35), value: model.hasStarted)
         .animation(.smooth(duration: 0.35), value: model.preferences.onboarded)
     }

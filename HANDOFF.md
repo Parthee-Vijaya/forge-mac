@@ -5,7 +5,7 @@
 > Du skriver en prompt → en AI-agent skriver et React+Vite+TS+Tailwind-projekt til disk
 > → Forge kører det → preview opdaterer via HMR.
 
-- **Sidst opdateret:** 2026-06-14
+- **Sidst opdateret:** 2026-06-15
 - **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. Alle ForgeKit-tests grønne.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `70ca17d` 2026-06-14 — Reliable preview: per-project port + honest "starting preview" status
 - `a1d07ab` 2026-06-14 — Smarter builds: read-file tool (A2b) + prompt enhancement (B14)
 - `ef0e202` 2026-06-14 — Address the user by their preferred name in the AI system prompt
 - `b8c9d17` 2026-06-14 — Open Forge on the start screen instead of resuming last project
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `8e1f001` 2026-06-14 — Add DMG packaging script + roadmap B24 (open in VS Code/Xcode)
 - `5ca8635` 2026-06-14 — Add checkpoints + per-turn diff (safety net)
 - `2d1be5a` 2026-06-14 — Add plan mode, clarifying questions, and a reasoning view
-- `c69c053` 2026-06-14 — Harden the agent core: cancel, error classification, context, line-replace, few-shot
 <!-- COMMITLOG:END -->

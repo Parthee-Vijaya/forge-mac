@@ -1,24 +1,26 @@
 import SwiftUI
+import AppKit
 
-/// Lovable-style light design system: white canvas, black accents, subtle gray
-/// borders, generous whitespace. All colors are EXPLICIT (never .primary/
-/// .secondary) and the app forces light mode, so text is always visible
-/// regardless of the system appearance.
+/// "Midnat" design system — a dark, professional, IDE-like palette (the default)
+/// with a clean light variant. Every token is a DYNAMIC color that resolves by
+/// the view's effective appearance, which the app drives from
+/// `Preferences.appearance` via `.preferredColorScheme`. The violet accent is
+/// shared across both modes for brand consistency.
 enum Theme {
-    static let canvas = Color.white
-    static let sidebar = Color(white: 0.985)
-    static let surface = Color.white
-    static let border = Color(white: 0.90)
-    static let borderStrong = Color(white: 0.78)
-    static let ink = Color(white: 0.08)        // primary text
-    static let inkSoft = Color(white: 0.42)     // secondary text
-    static let inkFaint = Color(white: 0.62)    // tertiary text
-    static let accent = Color.black
-    static let onAccent = Color.white
-    static let fill = Color(white: 0.965)
-    static let fillHover = Color(white: 0.93)
-    static let positive = Color(red: 0.16, green: 0.72, blue: 0.45)
-    static let warning = Color(red: 0.85, green: 0.52, blue: 0.10)   // amber — runtime-error affordance
+    static let canvas      = dyn(light: 0xFFFFFF, dark: 0x0F1117)   // app background
+    static let sidebar     = dyn(light: 0xFAFAFB, dark: 0x0C0E14)   // rails / panels
+    static let surface     = dyn(light: 0xFFFFFF, dark: 0x161922)   // cards / inputs
+    static let border      = dyn(light: 0xE6E6EA, dark: 0x20242F)
+    static let borderStrong = dyn(light: 0xC9C9D0, dark: 0x2E3440)
+    static let ink         = dyn(light: 0x14151A, dark: 0xE6E8EE)   // primary text
+    static let inkSoft     = dyn(light: 0x6B6B76, dark: 0x9AA0AE)   // secondary text
+    static let inkFaint    = dyn(light: 0x9A9AA4, dark: 0x6B7180)   // tertiary text
+    static let accent      = dyn(light: 0x6F5CFF, dark: 0x7C6CFF)   // violet
+    static let onAccent    = Color.white
+    static let fill        = dyn(light: 0xF4F4F7, dark: 0x1A1F2B)
+    static let fillHover   = dyn(light: 0xEBEBEF, dark: 0x232938)
+    static let positive    = dyn(light: 0x1FA463, dark: 0x3FCF8E)
+    static let warning     = dyn(light: 0xC9810F, dark: 0xE0A33A)   // amber — runtime-error affordance
 
     static let radiusS: CGFloat = 8
     static let radiusM: CGFloat = 12
@@ -26,6 +28,22 @@ enum Theme {
 
     static func wordmark(_ size: CGFloat) -> Font {
         .system(size: size, weight: .semibold, design: .rounded)
+    }
+
+    /// A color that resolves per the view's effective appearance (light/dark).
+    static func dyn(light: Int, dark: Int) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(hex: dark) : NSColor(hex: light)
+        })
+    }
+}
+
+extension NSColor {
+    convenience init(hex: Int) {
+        self.init(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+                  green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
     }
 }
 

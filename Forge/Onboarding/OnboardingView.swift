@@ -33,7 +33,7 @@ struct OnboardingView: View {
         }
         .frame(minWidth: 1040, minHeight: 680)
         .background(Theme.canvas)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
         .task(id: step) { await onStepAppear($model) }
     }
 

@@ -5,6 +5,7 @@ import SwiftUI
 struct DiffView: View {
     let diff: String
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,7 +39,7 @@ struct DiffView: View {
         }
         .frame(width: 680, height: 540)
         .background(Theme.canvas)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
     }
 
     private func color(for line: String) -> Color {

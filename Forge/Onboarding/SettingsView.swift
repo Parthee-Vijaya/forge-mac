@@ -23,6 +23,14 @@ struct SettingsView: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
 
+            Section("Udseende") {
+                Picker("Tema", selection: $model.preferences.appearance) {
+                    Text("Mørk · Midnat").tag("dark")
+                    Text("Lys").tag("light")
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section("Projekter") {
                 HStack {
                     Text(model.preferences.projectsRoot.isEmpty
@@ -143,7 +151,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 480, height: 620)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
         .onChange(of: model.preferences) { _, _ in model.savePreferences() }
         .task {
             cloudKeyStored = (KeychainStore.get(account: KeychainStore.cloudKeyAccount)?.isEmpty == false)

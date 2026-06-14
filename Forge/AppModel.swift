@@ -237,6 +237,10 @@ final class AppModel {
 
     func savePreferences() { PreferencesStore.save(preferences) }
 
+    /// The app's color scheme, driven by `Preferences.appearance` (Midnat dark by
+    /// default). Applied at each window/sheet root via `.preferredColorScheme`.
+    var colorScheme: ColorScheme { preferences.appearance == "light" ? .light : .dark }
+
     func completeOnboarding() {
         preferences.onboarded = true
         applyPreferences()

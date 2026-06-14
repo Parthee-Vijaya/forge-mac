@@ -70,6 +70,7 @@ private struct TermRow: View {
 /// book button in the chat header.
 struct GlossaryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,6 +105,6 @@ struct GlossaryView: View {
         }
         .frame(width: 440, height: 560)
         .background(Theme.canvas)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
     }
 }

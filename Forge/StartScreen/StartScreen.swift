@@ -22,7 +22,7 @@ struct StartScreen: View {
                 .background(Theme.canvas)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
         .onAppear { if model.shouldAskPreferredName { showName = true } }
         .sheet(isPresented: $showName) { NamePromptView() }
         .sheet(isPresented: $model.showCloneDialog) { CloneDialogView() }
@@ -192,7 +192,7 @@ private struct NamePromptView: View {
         }
         .padding(24)
         .frame(width: 380)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
     }
 
     private func save() {
@@ -238,6 +238,6 @@ private struct CloneDialogView: View {
         }
         .padding(24)
         .frame(width: 420)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(model.colorScheme)
     }
 }

@@ -115,8 +115,11 @@ struct CodeTextView: NSViewRepresentable {
         textView.isGrammarCheckingEnabled = false
         textView.allowsUndo = true
         textView.font = .monospacedSystemFont(ofSize: 12.5, weight: .regular)
-        textView.textColor = NSColor(white: 0.08, alpha: 1)
-        textView.backgroundColor = .white
+        let editorBG = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? NSColor(hex: 0x0F1117) : .white }
+        let editorFG = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? NSColor(hex: 0xE6E8EE) : NSColor(hex: 0x14151A) }
+        textView.textColor = editorFG
+        textView.insertionPointColor = NSColor(hex: 0x7C6CFF)
+        textView.backgroundColor = editorBG
         textView.drawsBackground = true
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.string = text
@@ -125,7 +128,7 @@ struct CodeTextView: NSViewRepresentable {
         scrollView.documentView = textView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = true
-        scrollView.backgroundColor = .white
+        scrollView.backgroundColor = editorBG
         context.coordinator.textView = textView
         return scrollView
     }
