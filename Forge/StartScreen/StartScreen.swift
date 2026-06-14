@@ -75,7 +75,11 @@ struct StartScreen: View {
     }
 
     private func recentProjects(_ model: AppModel) -> [Project] {
-        Array(model.projects.filter { $0.id != model.currentProject.id }.prefix(8))
+        // Only worked-on projects (a project is renamed off "Untitled" on its
+        // first prompt), so unused empty canvases don't clutter the list.
+        Array(model.projects
+            .filter { $0.id != model.currentProject.id && !$0.name.isEmpty && $0.name != "Untitled" }
+            .prefix(8))
     }
 
     private func sectionLabel(_ text: String) -> some View {

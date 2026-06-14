@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `3e97ded` 2026-06-14 — Start screen: sidebar + prompt-first, name popup, clone from Git (B27)
 - `f31ead8` 2026-06-14 — Default to qwen3.6, retire qwen2.5-coder
 - `7cd5896` 2026-06-14 — Learning mode: guide beginners through vibecoding (B26)
 - `22041a0` 2026-06-14 — Fix "[object Event]" in runtime-error capture (B12 self-correction)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `3749a7e` 2026-06-14 — Add first-run onboarding + Settings window
 - `fc8c27c` 2026-06-14 — Add visual editing: click an element in the preview, describe a change
 - `86a10c2` 2026-06-14 — Add deploy: GitHub + Vercel from the preview toolbar
-- `c2d8072` 2026-06-14 — Add multi-project support: switch, create, delete, persist
 <!-- COMMITLOG:END -->

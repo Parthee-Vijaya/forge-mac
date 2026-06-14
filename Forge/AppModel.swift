@@ -133,12 +133,17 @@ final class AppModel {
             ProjectStore.configuredRoot = URL(fileURLWithPath: prefs.projectsRoot)
         }
         var loaded = ProjectStore.loadProjects()
-        if loaded.isEmpty {
-            let project = ProjectStore.makeProject(name: "Untitled")
-            ProjectStore.saveProjects([project])
-            loaded = [project]
+        // Open on the start screen (like Xcode/VS Code): the current canvas is a
+        // fresh/empty project, while the worked-on projects stay as "Recent" in
+        // the sidebar. Reuse an existing empty project so untitled ones don't pile up.
+        let current: Project
+        if let empty = loaded.first(where: { ProjectStore.loadChat(for: $0).isEmpty }) {
+            current = empty
+        } else {
+            current = ProjectStore.makeProject(name: "Untitled")
+            loaded.insert(current, at: 0)
+            ProjectStore.saveProjects(loaded)
         }
-        let current = loaded[0]
         self.projects = loaded
         self.currentProject = current
 
