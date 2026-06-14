@@ -9,7 +9,9 @@ Package.resolved
 # Xcode
 DerivedData/
 .build-xcode/
+.build-release/
 build/
+*.dmg
 *.xcuserstate
 xcuserdata/
 *.xcscmblueprint

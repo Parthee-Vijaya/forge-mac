@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `5ca8635` 2026-06-14 — Add checkpoints + per-turn diff (safety net)
 - `2d1be5a` 2026-06-14 — Add plan mode, clarifying questions, and a reasoning view
 - `c69c053` 2026-06-14 — Harden the agent core: cancel, error classification, context, line-replace, few-shot
 - `3749a7e` 2026-06-14 — Add first-run onboarding + Settings window

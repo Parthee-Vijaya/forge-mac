@@ -147,6 +147,8 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 23. **Konto-valg (GitHub + Vercel) i setup/settings** — vælg GitHub owner/org + Vercel team-scope; brugt af deploy. *Sådan:* `gh api user` + `/user/orgs`, `vercel teams ls`; gemt i `Preferences`; `AppModel.runDeploy` bruger dem (`gh repo create <owner>/<repo>`, `vercel --scope <scope>`). **M · P1**
 
+24. **Åbn koden i ekstern editor (VS Code / Xcode)** — åbn det genererede projekt direkte i den *rette* editor, valgt efter hvad man bygger: **VS Code** til web-projekter (Vite/React i dag), **Xcode** når et projekt er et native/Swift-mål (fremtid, jf. B7-parametrisering). *Sådan:* en "Åbn i…"-handling i `ProjectMenu` + preview-toolbar; detektér type (web = `package.json`/`vite.config` → VS Code; `*.xcodeproj`/`Package.swift` → Xcode) og kald `NSWorkspace.shared.open(dir)` med `open -a "Visual Studio Code"` / `open -a Xcode`; fald tilbage til Finder hvis editoren ikke er installeret. Live ekstern redigering virker allerede med dev-serverens HMR. Udvider B13's "åbn i VS Code". **S · P1**
+
 ---
 
 ## C. 20 DESIGN-FORSLAG (UI/UX/visuelt)
@@ -230,7 +232,7 @@ model/nøgler/memory/regler/konti læses af alt det øvrige.
 - **Hvorfor sidst:** stor scope, lavere paritets-værdi, eller afhænger af et modent fundament. Estimat ~4-6 uger.
 
 ### Løbende (drys ind mellem faser)
-Hurtige gevinster der kan tages når som helst: A7 token-tælling · A9 log-persistens · A13 NodeResolver-cache · A17 migrering · A18 slet-bekræftelse · B9 npm-søgning · C5 transition · C14 toasts · C18 paneler · C20 genveje.
+Hurtige gevinster der kan tages når som helst: A7 token-tælling · A9 log-persistens · A13 NodeResolver-cache · A17 migrering · A18 slet-bekræftelse · B9 npm-søgning · **B24 åbn i VS Code/Xcode** · C5 transition · C14 toasts · C18 paneler · C20 genveje.
 
 ### Anbefalet "gør-nu" top-5
 1. **A22 + C10 onboarding & config** (first-run-flowet + fundamentet alt andet læser)
