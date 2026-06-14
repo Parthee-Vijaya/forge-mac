@@ -26,6 +26,7 @@ struct StartScreen: View {
         .onAppear { if model.shouldAskPreferredName { showName = true } }
         .sheet(isPresented: $showName) { NamePromptView() }
         .sheet(isPresented: $model.showCloneDialog) { CloneDialogView() }
+        .sheet(isPresented: $model.showLinkDialog) { LinkDialogView() }
         .sheet(isPresented: $model.showGlossary) { GlossaryView() }
     }
 
@@ -54,6 +55,7 @@ struct StartScreen: View {
 
             sectionLabel("KOM I GANG").padding(.top, 18)
             SidebarRow(title: "Klon fra Git", icon: "arrow.triangle.branch") { model.showCloneDialog = true }
+            SidebarRow(title: "Kopiér design fra link", icon: "link") { model.showLinkDialog = true }
             SidebarRow(title: "Start tutorial", icon: "graduationcap") { model.startTutorial() }
             SidebarRow(title: "Prøv et eksempel", icon: "sparkles") { model.tryExample() }
 
@@ -119,6 +121,8 @@ struct StartScreen: View {
                     onAttach: { model.attachImagesFromPicker() },
                     onRemoveImage: { model.removeAttachedImage(at: $0) },
                     onDropImages: { model.attachImages(at: $0) },
+                    onAttachLink: { model.showLinkDialog = true },
+                    isCapturing: model.isCapturing,
                     isEnhancing: model.isEnhancing,
                     onEnhance: { model.enhancePrompt() },
                     onSubmit: { model.submit() }

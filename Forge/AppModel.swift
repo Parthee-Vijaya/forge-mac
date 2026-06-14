@@ -96,6 +96,12 @@ final class AppModel {
     var cloneURL = ""
     @ObservationIgnored private var cloneTask: Task<Void, Never>?
 
+    // Copy a design from a link (offscreen screenshot → attached reference)
+    var showLinkDialog = false
+    var linkURL = ""
+    var isCapturing = false
+    @ObservationIgnored private var captureTask: Task<Void, Never>?
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -840,12 +846,50 @@ final class AppModel {
         attachedImages.remove(at: index)
     }
 
-    /// Load, downscale (longest side ≤ 1568px — a common vision-model cap), and
-    /// re-encode any image to a base64 JPEG data URL. Returns nil if it can't be
-    /// read as an image.
+    /// "Copy this design from a link": render the page in an offscreen browser,
+    /// snapshot it, and attach the screenshot as a visual reference for the next
+    /// turn — so a URL works exactly like dropping a screenshot. Accepts bare
+    /// hosts ("stripe.com") by defaulting to https://.
+    func captureDesignFromLink() {
+        let raw = linkURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, !isCapturing, attachedImages.count < 4 else { return }
+        let normalized = raw.contains("://") ? raw : "https://\(raw)"
+        guard let url = URL(string: normalized), let host = url.host, !host.isEmpty else {
+            statusText = "Ugyldig URL."
+            return
+        }
+        showLinkDialog = false
+        linkURL = ""
+        isCapturing = true
+        statusText = "Henter design fra \(host)…"
+        captureTask = Task {
+            defer { isCapturing = false; captureTask = nil }
+            do {
+                let image = try await DesignCapture().capture(url)
+                if let dataURL = Self.encodeImageDataURL(from: image), attachedImages.count < 4 {
+                    attachedImages.append(dataURL)
+                    statusText = "Design hentet fra \(host) — beskriv evt. ændringer, eller send for at genskabe det."
+                } else {
+                    statusText = "Kunne ikke behandle skærmbilledet."
+                }
+            } catch {
+                statusText = "Kunne ikke hente \(host) — tjek linket og din forbindelse."
+            }
+        }
+    }
+
+    /// Load an image file and encode it (see `encodeImageDataURL(from image:)`).
     static func encodeImageDataURL(from url: URL, maxDimension: CGFloat = 1568) -> String? {
-        guard let image = NSImage(contentsOf: url),
-              let tiff = image.tiffRepresentation,
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        return encodeImageDataURL(from: image, maxDimension: maxDimension)
+    }
+
+    /// Downscale (longest side ≤ 1568px — a common vision-model cap) and re-encode
+    /// an image to a base64 JPEG data URL. Returns nil if it can't be rasterized.
+    /// Shared by file attachments and link/screenshot capture (the captured page
+    /// rides the same image → vision-model pipeline).
+    static func encodeImageDataURL(from image: NSImage, maxDimension: CGFloat = 1568) -> String? {
+        guard let tiff = image.tiffRepresentation,
               let source = NSBitmapImageRep(data: tiff) else { return nil }
         let pw = source.pixelsWide, ph = source.pixelsHigh
         guard pw > 0, ph > 0 else { return nil }
@@ -878,15 +922,28 @@ final class AppModel {
         draft = ""
         attachedImages = []
         let mode = chatMode
-        // An image with no words still means "build this" — give the model a default.
-        let modelPrompt = prompt.isEmpty
-            ? (mode == .plan ? "Plan how to build the UI in the attached image."
-                             : "Build this UI to match the attached image as closely as possible.")
-            : prompt
-        let visiblePrompt = prompt.isEmpty ? "Build the attached design" : prompt
+        let modelPrompt = Self.composeModelPrompt(prompt: prompt, hasImages: !images.isEmpty, mode: mode)
+        let visiblePrompt = prompt.isEmpty ? "Kopiér dette design" : prompt
         if mode == .build { presentLessonIfNew("welcome") }
         beginTurn(visiblePrompt: visiblePrompt, modelPrompt: modelPrompt,
                   mode: mode, role: mode == .plan ? .plan : .build, images: images)
+    }
+
+    /// The prompt the model receives. With an attached design (uploaded screenshot
+    /// or a captured link) we add explicit "copy this design" framing so the model
+    /// recreates it faithfully — layout, sections, spacing, colors, typography —
+    /// whether or not the user also typed instructions.
+    static func composeModelPrompt(prompt: String, hasImages: Bool, mode: AgentLoop.Mode) -> String {
+        guard hasImages else { return prompt }
+        let copyDirective = "Recreate the attached design as closely as possible — match its layout, "
+            + "sections, spacing, colors, typography and overall visual style. Use sensible "
+            + "placeholder text and images where real content isn't legible in the reference."
+        if prompt.isEmpty {
+            return mode == .plan
+                ? "Plan how to build a web app that recreates the attached design as closely as possible."
+                : copyDirective
+        }
+        return "\(copyDirective)\n\nAdditional instructions from the user: \(prompt)"
     }
 
     /// Run the Danish copy-pass (B25): a normal build turn driven by the COPY

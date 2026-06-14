@@ -16,6 +16,8 @@ struct Composer: View {
     var onAttach: (() -> Void)? = nil               // paperclip → file picker
     var onRemoveImage: ((Int) -> Void)? = nil
     var onDropImages: (([URL]) -> Void)? = nil       // Finder drag-and-drop
+    var onAttachLink: (() -> Void)? = nil            // link → screenshot a page to copy
+    var isCapturing: Bool = false                    // a page is being screenshotted
     var isEnhancing: Bool = false                    // B14: expanding the prompt
     var onEnhance: (() -> Void)? = nil               // ✨ → expand prompt into a brief
     var onSubmit: () -> Void
@@ -110,6 +112,22 @@ struct Composer: View {
                 .help("Vedhæft et billede / mockup")
                 .disabled(isBusy)
             }
+            if let onAttachLink {
+                Button(action: onAttachLink) {
+                    Group {
+                        if isCapturing {
+                            ProgressView().controlSize(.small).scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "link").font(.system(size: 14, weight: .medium))
+                        }
+                    }
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Kopiér design fra et link — Forge tager et skærmbillede af siden")
+                .disabled(isBusy || isCapturing)
+            }
             if let onEnhance {
                 Button(action: onEnhance) {
                     Group {
@@ -166,6 +184,49 @@ struct Composer: View {
                 .disabled(!canSend)
             }
         }
+    }
+}
+
+/// Dialog for "copy this design from a link": paste a URL → Forge screenshots
+/// the page offscreen and attaches it as a visual reference. Shared by the start
+/// screen and the chat composer.
+struct LinkDialogView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        @Bindable var model = model
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Kopiér design fra et link")
+                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text("Indsæt en URL. Forge tager et skærmbillede af siden og bruger det som visuel reference, så den kan genskabe designet — layout, sektioner, farver og typografi.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            TextField("https://stripe.com", text: $model.linkURL)
+                .textFieldStyle(.plain).font(.system(size: 14, design: .monospaced))
+                .foregroundStyle(Theme.ink).tint(Theme.accent)
+                .padding(12)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
+                .onSubmit { model.captureDesignFromLink() }
+            HStack {
+                Button("Annuller") { dismiss() }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
+                Spacer()
+                Button { model.captureDesignFromLink() } label: {
+                    Text("Hent design").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                        .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.linkURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+        .preferredColorScheme(model.colorScheme)
     }
 }
 

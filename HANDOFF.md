@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `5320276` 2026-06-15 — Midnat redesign: dark-by-default theme + light mode toggle
 - `70ca17d` 2026-06-14 — Reliable preview: per-project port + honest "starting preview" status
 - `a1d07ab` 2026-06-14 — Smarter builds: read-file tool (A2b) + prompt enhancement (B14)
 - `ef0e202` 2026-06-14 — Address the user by their preferred name in the AI system prompt
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `6c100db` 2026-06-14 — Add project access: open in editor, reveal in Finder, export zip (B13 + B24)
 - `8e1f001` 2026-06-14 — Add DMG packaging script + roadmap B24 (open in VS Code/Xcode)
 - `5ca8635` 2026-06-14 — Add checkpoints + per-turn diff (safety net)
-- `2d1be5a` 2026-06-14 — Add plan mode, clarifying questions, and a reasoning view
 <!-- COMMITLOG:END -->

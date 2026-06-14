@@ -80,6 +80,8 @@ struct ChatView: View {
                     onAttach: { model.attachImagesFromPicker() },
                     onRemoveImage: { model.removeAttachedImage(at: $0) },
                     onDropImages: { model.attachImages(at: $0) },
+                    onAttachLink: { model.showLinkDialog = true },
+                    isCapturing: model.isCapturing,
                     isEnhancing: model.isEnhancing,
                     onEnhance: model.selectedElement == nil ? { model.enhancePrompt() } : nil,
                     onSubmit: {
@@ -93,6 +95,7 @@ struct ChatView: View {
         }
         .background(Theme.sidebar)
         .sheet(isPresented: $model.showGlossary) { GlossaryView() }
+        .sheet(isPresented: $model.showLinkDialog) { LinkDialogView() }
     }
 
     private func header(_ model: AppModel) -> some View {
