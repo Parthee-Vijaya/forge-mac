@@ -16,6 +16,9 @@ struct ChatView: View {
             }
             Divider().overlay(Theme.border)
             VStack(spacing: 8) {
+                if let lesson = model.currentLesson {
+                    LessonCard(lesson: lesson) { withAnimation { model.dismissLesson() } }
+                }
                 if model.hasFixableErrors {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -87,6 +90,7 @@ struct ChatView: View {
             .padding(12)
         }
         .background(Theme.sidebar)
+        .sheet(isPresented: $model.showGlossary) { GlossaryView() }
     }
 
     private func header(_ model: AppModel) -> some View {
@@ -95,6 +99,13 @@ struct ChatView: View {
             ProjectMenu(model: model)
             Spacer()
             ModelPicker(model: model)
+            if model.preferences.learningMode {
+                Button { model.showGlossary = true } label: {
+                    Image(systemName: "book")
+                }
+                .buttonStyle(IconButtonStyle())
+                .help("Ordbog — forklaring af fagudtryk")
+            }
             Button { model.showConsole.toggle() } label: {
                 Image(systemName: "terminal")
             }

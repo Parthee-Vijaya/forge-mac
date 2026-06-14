@@ -14,6 +14,13 @@ struct EmptyStateView: View {
                 ProjectMenu(model: model)
                 Spacer()
                 ModelPicker(model: model)
+                if model.preferences.learningMode {
+                    Button { model.showGlossary = true } label: {
+                        Image(systemName: "book")
+                    }
+                    .buttonStyle(IconButtonStyle())
+                    .help("Ordbog — forklaring af fagudtryk")
+                }
             }
             .padding(14)
 
@@ -24,9 +31,13 @@ struct EmptyStateView: View {
                     Text("Forge")
                         .font(Theme.wordmark(44))
                         .foregroundStyle(Theme.ink)
-                    Text("Describe an app and watch it build — live.")
+                    Text(model.preferences.learningMode
+                         ? "Beskriv en app i almindeligt sprog — så bygger jeg den og forklarer hvert skridt undervejs."
+                         : "Describe an app and watch it build — live.")
                         .font(.system(size: 15))
                         .foregroundStyle(Theme.inkSoft)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Composer(
@@ -71,5 +82,6 @@ struct EmptyStateView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.canvas)
+        .sheet(isPresented: $model.showGlossary) { GlossaryView() }
     }
 }

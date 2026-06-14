@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `22041a0` 2026-06-14 — Fix "[object Event]" in runtime-error capture (B12 self-correction)
 - `dc6c725` 2026-06-14 — B4: image / screenshot → UI (multimodal)
 - `86ed628` 2026-06-14 — B25: multi-model roles + Danish copy-pass (agentic)
 - `5dfa718` 2026-06-14 — Recover from stalled model streams (watchdog + force-cancel)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `c2d8072` 2026-06-14 — Add multi-project support: switch, create, delete, persist
 - `b4183f0` 2026-06-14 — Add code view: file tree + editable editor (autosave -> HMR)
 - `80f9d1b` 2026-06-14 — Add local model discovery: Ollama + LM Studio in the picker
-- `4a4b5a7` 2026-06-14 — Forge: walking skeleton + Lovable-style UI (macOS-first)
 <!-- COMMITLOG:END -->

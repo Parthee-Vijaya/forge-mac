@@ -77,7 +77,18 @@ struct OnboardingView: View {
         switch step {
         case 0:
             stepShell("Velkommen til Forge", "Beskriv en app, og se den blive bygget — live. Lad os sætte dig op (et minut).") {
-                EmptyView()
+                Toggle(isOn: model.preferences.learningMode) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Jeg er ny til at kode")
+                            .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ink)
+                        Text("Slå learning mode til: Forge forklarer hvad der sker undervejs, har en ordbog over fagudtryk, og guider dig gennem build, fejl, kode og deployment til GitHub.")
+                            .font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .toggleStyle(.switch).tint(Theme.accent)
+                .padding(12)
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
             }
         case 1:
             stepShell("Hvad skal vi kalde dig?", "Bruges i appen og fortæller agenten hvem den hjælper.") {

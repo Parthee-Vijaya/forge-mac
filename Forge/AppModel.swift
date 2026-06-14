@@ -84,6 +84,11 @@ final class AppModel {
     var selectMode = false
     var selectedElement: SelectedElement?
 
+    // Learning mode
+    var currentLesson: Lesson?      // the explainer card currently shown (beginner)
+    var showGlossary = false
+    @ObservationIgnored private var lessonQueue: [String] = []   // milestone ids waiting to show
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -247,6 +252,17 @@ final class AppModel {
         case .copy: base = SystemPrompt.copyPass(lineReplace: config.supportsLineReplace)
         }
         var parts = [base]
+        if preferences.learningMode, role != .copy {
+            parts.append("""
+            The user is a COMPLETE BEGINNER who is learning to code by using this tool. \
+            Be warm and encouraging. Explain briefly, in plain language, what you are doing and \
+            why — in Danish. The FIRST time you use a technical term (e.g. component, state, hook, \
+            prop, dependency, deploy, commit), keep the English word and add a short Danish \
+            explanation in parentheses, e.g. "en component (en genbrugelig byggeklods)". Never tell \
+            them to edit files or run commands themselves. Keep it short — a couple of sentences \
+            of plain explanation, then build.
+            """)
+        }
         if !preferences.userName.isEmpty {
             parts.append("The user you are helping is called \(preferences.userName). Address them by name when natural.")
         }
@@ -362,6 +378,7 @@ final class AppModel {
 
     func deploy() {
         guard !isDeploying, !isBusy, hasStarted else { return }
+        presentLessonIfNew("deploy-git")
         isDeploying = true
         showDeploy = true
         deployLog = []
@@ -521,9 +538,41 @@ final class AppModel {
         submit()
     }
 
+    // MARK: - Learning mode (beginner)
+
+    /// Queue a milestone explainer the first time it's relevant. No-op unless
+    /// learning mode is on / already learned / already queued. Lessons that fire
+    /// while another card is showing are QUEUED (not dropped), so none is lost
+    /// when milestones land close together (e.g. a build going clean while the
+    /// welcome card is still up).
+    func presentLessonIfNew(_ id: String) {
+        guard preferences.learningMode,
+              !preferences.learnedLessons.contains(id),
+              currentLesson?.id != id, !lessonQueue.contains(id),
+              Lessons.lesson(id) != nil else { return }
+        lessonQueue.append(id)
+        showNextLesson()
+    }
+
+    /// Show the next queued lesson if no card is up. Marked learned only when
+    /// actually shown (so a queued-but-unseen lesson re-fires later if missed).
+    private func showNextLesson() {
+        guard currentLesson == nil, !lessonQueue.isEmpty else { return }
+        let id = lessonQueue.removeFirst()
+        preferences.learnedLessons.append(id)
+        savePreferences()
+        currentLesson = Lessons.lesson(id)
+    }
+
+    func dismissLesson() {
+        currentLesson = nil
+        showNextLesson()
+    }
+
     // MARK: - Code view
 
     func enterCodeMode() {
+        presentLessonIfNew("code-view")
         rightPaneMode = .code
         Task {
             await refreshFiles()
@@ -643,6 +692,7 @@ final class AppModel {
                              : "Build this UI to match the attached image as closely as possible.")
             : prompt
         let visiblePrompt = prompt.isEmpty ? "Build the attached design" : prompt
+        if mode == .build { presentLessonIfNew("welcome") }
         beginTurn(visiblePrompt: visiblePrompt, modelPrompt: modelPrompt,
                   mode: mode, role: mode == .plan ? .plan : .build, images: images)
     }
@@ -764,6 +814,8 @@ final class AppModel {
             case .state(let state):
                 phase = state
                 statusText = Self.statusText(for: state)
+                if case .clean = state { presentLessonIfNew("app-running") }
+                if case .repairing = state { presentLessonIfNew("errors-fixing") }
             case .fileWriting(let path):
                 statusText = "Writing \(path)…"
                 beginStreaming(path)

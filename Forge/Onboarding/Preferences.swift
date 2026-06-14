@@ -29,6 +29,12 @@ struct Preferences: Codable, Equatable {
     /// a copy model is set).
     var autoCopyPass = false
 
+    /// Learning mode (beginner): show contextual explainer cards at milestones,
+    /// a glossary, and a more beginner-friendly AI tone. `learnedLessons` holds
+    /// the ids of explainers already shown, so each appears only once.
+    var learningMode = false
+    var learnedLessons: [String] = []
+
     static let defaultRules = """
     # Project rules
 
@@ -53,6 +59,7 @@ extension Preferences {
         case onboarded, userName, projectsRoot, defaultModelID, cloudProvider
         case cloudModel, githubOwner, vercelScope, memory, rulesTemplate, autoFix
         case planModelID, buildModelID, copyModelID, autoCopyPass
+        case learningMode, learnedLessons
     }
 
     init(from decoder: Decoder) throws {
@@ -73,5 +80,7 @@ extension Preferences {
         buildModelID = (try? c.decode(String.self, forKey: .buildModelID)) ?? buildModelID
         copyModelID = (try? c.decode(String.self, forKey: .copyModelID)) ?? copyModelID
         autoCopyPass = (try? c.decode(Bool.self, forKey: .autoCopyPass)) ?? autoCopyPass
+        learningMode = (try? c.decode(Bool.self, forKey: .learningMode)) ?? learningMode
+        learnedLessons = (try? c.decode([String].self, forKey: .learnedLessons)) ?? learnedLessons
     }
 }

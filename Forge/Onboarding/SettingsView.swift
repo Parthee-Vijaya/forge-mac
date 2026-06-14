@@ -125,6 +125,9 @@ struct SettingsView: View {
             }
 
             Section("Adfærd") {
+                Toggle("Learning mode (for begyndere)", isOn: $model.preferences.learningMode)
+                Text("Viser forklarings-kort ved hvert vigtigt skridt, en ordbog over fagudtryk, og en mere nybegynder-venlig tone i AI'en. Slå til hvis du er ny til at kode.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
                 Toggle("Auto-fix runtime-fejl", isOn: $model.preferences.autoFix)
                 Text("Når slået til retter Forge automatisk en fejl i den kørende app uden du beder om det. Kan altid rulles tilbage via checkpoints. ‘Fix it’-knappen er tilgængelig uanset.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
