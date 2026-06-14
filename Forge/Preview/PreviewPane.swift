@@ -35,7 +35,10 @@ struct PreviewPane: View {
                         radius: 16, y: 4)
                 .padding(model.previewWidth == .full ? 0 : 24)
         } else {
-            BuildingView(statusText: model.statusText, lastLog: model.serverLog.last?.text, isBusy: model.isBusy)
+            BuildingView(statusText: model.displayStatus,
+                         lastLog: model.serverLog.last?.text,
+                         isBusy: model.isBusy || model.isStartingPreview,
+                         onRestart: model.previewServerDown ? { model.restartDevServer() } : nil)
         }
     }
 }
@@ -140,6 +143,7 @@ private struct BuildingView: View {
     let statusText: String
     let lastLog: String?
     var isBusy: Bool = true
+    var onRestart: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 14) {
@@ -156,6 +160,19 @@ private struct BuildingView: View {
                     .foregroundStyle(Theme.inkFaint)
                     .lineLimit(1).truncationMode(.middle)
                     .frame(maxWidth: 380)
+            }
+            if let onRestart {
+                Button(action: onRestart) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .semibold))
+                        Text("Genstart preview").font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundStyle(Theme.onAccent)
+                    .padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
             }
         }
         .padding(28)

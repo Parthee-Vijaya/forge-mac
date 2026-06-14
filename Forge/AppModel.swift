@@ -61,6 +61,7 @@ final class AppModel {
 
     // Preview
     var previewURL: URL?
+    var serverPhase: DevServerPhase = .idle   // dev-server lifecycle, mirrored for the preview UI
     var phase: AgentState = .idle
     var previewWidth: PreviewWidth = .full
     var reloadToken: Int = 0
@@ -344,6 +345,7 @@ final class AppModel {
         installHandles(for: project)
 
         previewURL = nil
+        serverPhase = .idle
         phase = .idle
         rightPaneMode = .preview
         selectedFile = nil
@@ -1219,8 +1221,13 @@ final class AppModel {
                     if self.serverLog.count > 500 { self.serverLog.removeFirst(self.serverLog.count - 500) }
                 case .ready(let url):
                     self.previewURL = url
-                case .phase, .exited:
-                    break
+                    self.serverPhase = .running(url: url)
+                case .phase(let phase):
+                    self.serverPhase = phase
+                case .exited:
+                    // Dev server stopped → drop the now-dead preview so we don't
+                    // show a frozen page; the UI offers a restart instead.
+                    self.previewURL = nil
                 }
             }
         }
@@ -1231,6 +1238,51 @@ final class AppModel {
         let firstLine = reason.split(whereSeparator: \.isNewline).first.map(String.init) ?? reason
         let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
         return trimmed.count > 160 ? String(trimmed.prefix(160)) + "…" : trimmed
+    }
+
+    // MARK: - Preview status
+
+    /// The dev server is actively coming up (installing / starting) but the
+    /// preview isn't live yet.
+    var isStartingPreview: Bool {
+        guard previewURL == nil else { return false }
+        switch serverPhase {
+        case .installingDependencies, .startingServer, .running: return true
+        default: return false
+        }
+    }
+
+    /// A build finished but there's no live preview and the server isn't coming
+    /// up — it failed or stopped, so we offer a restart.
+    var previewServerDown: Bool {
+        previewURL == nil && hasStarted && templateInstalled && !isBusy && !isStartingPreview
+    }
+
+    /// Status for the preview placeholder + chat. Never claims "Done" without a
+    /// live preview — it reflects the dev server while it comes up.
+    var displayStatus: String {
+        if previewURL != nil { return Self.statusText(for: phase) }
+        switch serverPhase {
+        case .failed(let reason): return "Preview kunne ikke starte: \(Self.briefReason(reason))"
+        case .installingDependencies: return "Installerer afhængigheder…"
+        case .startingServer, .running: return "Forge starter preview…"
+        case .stopped: return "Preview-serveren stoppede — genstart for at se den."
+        case .idle:
+            switch phase {
+            case .clean, .idle, .planReady: return "Forge starter preview…"
+            default: return Self.statusText(for: phase)   // building / repairing / failed…
+            }
+        }
+    }
+
+    /// Restart the dev server for the current project (after a crash, or when it
+    /// never came up). Relaunches and the preview reappears once it's ready.
+    func restartDevServer() {
+        guard templateInstalled, !isBusy else { return }
+        serverPhase = .startingServer
+        statusText = "Forge starter preview…"
+        let server = devServer
+        Task { try? await server.restartForDependencyChange() }
     }
 
     static func statusText(for state: AgentState) -> String {

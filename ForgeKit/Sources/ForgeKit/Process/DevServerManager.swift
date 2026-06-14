@@ -174,14 +174,20 @@ public actor DevServerManager {
 
         var devEnv = env
         var executableURL = managerURL
-        var arguments = packageManager.devArgs
+        // Give each project its own port (off Vite's default 5173) so projects
+        // don't collide with each other or with other dev tools (e.g. OrbStack on
+        // 5173) and end up serving the wrong app. strictPort is false in the
+        // template, so Vite picks the next free port if even this is taken — and
+        // Forge parses the actual port from stdout.
+        let portArgs = ["--", "--port", "\(projectPort)"]
+        var arguments = packageManager.devArgs + portArgs
 
         // Prefer the forge-run.sh wrapper for orphan safety; fall back to a
         // direct launch if it can't be written.
         if let wrapper = try? materializeRunWrapper() {
             devEnv["FORGE_PARENT_PID"] = "\(ProcessInfo.processInfo.processIdentifier)"
             executableURL = URL(fileURLWithPath: "/bin/sh")
-            arguments = [wrapper.path, managerURL.path] + packageManager.devArgs
+            arguments = [wrapper.path, managerURL.path] + packageManager.devArgs + portArgs
         }
 
         let (events, process) = try runner.run(
@@ -299,6 +305,18 @@ public actor DevServerManager {
     }
 
     private func recentLogTail() -> [LogLine] { Array(recentLog.suffix(20)) }
+
+    /// A stable, per-project dev-server port in a Forge range (5300–5699), well
+    /// clear of Vite's default 5173. Derived from the project folder via FNV-1a
+    /// so a project always prefers the same port; collisions fall through to the
+    /// next free port (strictPort is false).
+    private var projectPort: Int {
+        var hash: UInt32 = 2_166_136_261
+        for byte in workspace.root.lastPathComponent.utf8 {
+            hash = (hash ^ UInt32(byte)) &* 16_777_619
+        }
+        return 5300 + Int(hash % 400)
+    }
 
     /// Public snapshot of recent log lines, for the agent loop's error probe.
     public func recentLogLines(limit: Int = 40) -> [LogLine] {
