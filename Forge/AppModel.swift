@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import ForgeKit
 
 /// Root app state and the glue between the SwiftUI UI and the ForgeKit engine.
@@ -16,6 +17,7 @@ final class AppModel {
         var isPlan: Bool = false     // a plan-mode response → show "Build this plan"
         var questions: [PlanQuestion] = []   // clarifying questions → tappable chips
         var checkpoint: String?      // shadow-git sha snapshotted before this turn ran
+        var imageDataURLs: [String] = []   // B4: images the user attached to this turn
     }
 
     enum PreviewWidth: CaseIterable {
@@ -48,6 +50,7 @@ final class AppModel {
     // Chat
     var messages: [UIMessage] = []
     var draft: String = ""
+    var attachedImages: [String] = []   // B4: pending image data URLs for the next turn
     var isBusy: Bool = false
     var statusText: String = "Ready."
     var chatMode: AgentLoop.Mode = .build   // Plan vs Build toggle in the composer
@@ -569,15 +572,79 @@ final class AppModel {
         editorDirty = false
     }
 
+    // MARK: - Image attachments (B4)
+
+    /// Open a file picker and attach the chosen image(s) to the next turn.
+    func attachImagesFromPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.image]
+        panel.prompt = "Vedhæft"
+        if panel.runModal() == .OK { attachImages(at: panel.urls) }
+    }
+
+    /// Attach image files (from the picker or a drag-and-drop), normalizing each
+    /// to a downscaled JPEG data URL so the payload stays small and vision models
+    /// accept it. Caps at 4 images per turn.
+    func attachImages(at urls: [URL]) {
+        for url in urls where attachedImages.count < 4 {
+            if let dataURL = Self.encodeImageDataURL(from: url) { attachedImages.append(dataURL) }
+        }
+    }
+
+    func removeAttachedImage(at index: Int) {
+        guard attachedImages.indices.contains(index) else { return }
+        attachedImages.remove(at: index)
+    }
+
+    /// Load, downscale (longest side ≤ 1568px — a common vision-model cap), and
+    /// re-encode any image to a base64 JPEG data URL. Returns nil if it can't be
+    /// read as an image.
+    static func encodeImageDataURL(from url: URL, maxDimension: CGFloat = 1568) -> String? {
+        guard let image = NSImage(contentsOf: url),
+              let tiff = image.tiffRepresentation,
+              let source = NSBitmapImageRep(data: tiff) else { return nil }
+        let pw = source.pixelsWide, ph = source.pixelsHigh
+        guard pw > 0, ph > 0 else { return nil }
+        let longest = CGFloat(max(pw, ph))
+        let scale = longest > maxDimension ? maxDimension / longest : 1
+        let tw = max(1, Int(CGFloat(pw) * scale)), th = max(1, Int(CGFloat(ph) * scale))
+
+        guard let target = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: tw, pixelsHigh: th,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        target.size = NSSize(width: tw, height: th)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: target)
+        source.draw(in: NSRect(x: 0, y: 0, width: tw, height: th))
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let jpeg = target.representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        else { return nil }
+        return "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
+    }
+
     // MARK: - Chat submission
 
     func submit() {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, !isBusy else { return }
+        let images = attachedImages
+        guard !prompt.isEmpty || !images.isEmpty, !isBusy else { return }
         draft = ""
+        attachedImages = []
         let mode = chatMode
-        beginTurn(visiblePrompt: prompt, modelPrompt: prompt,
-                  mode: mode, role: mode == .plan ? .plan : .build)
+        // An image with no words still means "build this" — give the model a default.
+        let modelPrompt = prompt.isEmpty
+            ? (mode == .plan ? "Plan how to build the UI in the attached image."
+                             : "Build this UI to match the attached image as closely as possible.")
+            : prompt
+        let visiblePrompt = prompt.isEmpty ? "Build the attached design" : prompt
+        beginTurn(visiblePrompt: visiblePrompt, modelPrompt: modelPrompt,
+                  mode: mode, role: mode == .plan ? .plan : .build, images: images)
     }
 
     /// Run the Danish copy-pass (B25): a normal build turn driven by the COPY
@@ -598,21 +665,21 @@ final class AppModel {
     /// `submit()` and `runCopyPass()`. `visiblePrompt` is what the chat shows;
     /// `modelPrompt` is what the model receives (they differ for the copy-pass).
     private func beginTurn(visiblePrompt: String, modelPrompt: String,
-                           mode: AgentLoop.Mode, role: ModelRole) {
+                           mode: AgentLoop.Mode, role: ModelRole, images: [String] = []) {
         if messages.isEmpty { renameCurrent(to: Self.projectName(from: visiblePrompt)) }
         hasStarted = true
         jsErrors = []                  // a new turn supersedes prior runtime errors
         lastAutoFixSignature = nil
         autoFixTask?.cancel()
         let history = chatHistory()
-        messages.append(UIMessage(role: .user, text: visiblePrompt))
+        messages.append(UIMessage(role: .user, text: visiblePrompt, imageDataURLs: images))
         messages.append(UIMessage(role: .assistant, text: ""))
         let assistantIndex = messages.count - 1
         isBusy = true
 
         agentTask = Task {
             await runAgent(prompt: modelPrompt, history: history,
-                           assistantIndex: assistantIndex, mode: mode, role: role)
+                           assistantIndex: assistantIndex, mode: mode, role: role, images: images)
             let cancelled = Task.isCancelled
             if cancelled {
                 phase = .idle
@@ -652,9 +719,9 @@ final class AppModel {
     }
 
     private func runAgent(prompt: String, history: [ChatMessage], assistantIndex: Int,
-                          mode: AgentLoop.Mode, role: ModelRole) async {
+                          mode: AgentLoop.Mode, role: ModelRole, images: [String] = []) async {
         if mode == .plan {
-            await runPlan(prompt: prompt, history: history, assistantIndex: assistantIndex)
+            await runPlan(prompt: prompt, history: history, assistantIndex: assistantIndex, images: images)
             return
         }
         // Checkpoint the pre-turn state so this turn can be rolled back.
@@ -688,7 +755,7 @@ final class AppModel {
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 
-        for await event in AgentLoop(deps).run(userPrompt: prompt, history: history) {
+        for await event in AgentLoop(deps).run(userPrompt: prompt, history: history, images: images) {
             switch event {
             case .assistantText(let text):
                 appendAssistant(assistantIndex, text)
@@ -736,7 +803,7 @@ final class AppModel {
     /// Plan-mode turn: stream a plan + reasoning, write nothing. The model's
     /// `<forgeQuestion>` blocks are parsed out of the text on completion and the
     /// message is marked `isPlan` so the UI can offer "Build this plan".
-    private func runPlan(prompt: String, history: [ChatMessage], assistantIndex: Int) async {
+    private func runPlan(prompt: String, history: [ChatMessage], assistantIndex: Int, images: [String] = []) async {
         let config = modelFor(.plan)
         let systemPrompt = await composedSystemPrompt(role: .plan, config: config)
         let touched = Self.recentTouched(from: messages)
@@ -748,7 +815,7 @@ final class AppModel {
             projectContext: { [workspace] in await AppModel.buildContext(workspace, touched: touched) },
             collectErrors: { ErrorReport() })
 
-        for await event in AgentLoop(deps).run(userPrompt: prompt, history: history, mode: .plan) {
+        for await event in AgentLoop(deps).run(userPrompt: prompt, history: history, mode: .plan, images: images) {
             switch event {
             case .assistantText(let text): appendAssistant(assistantIndex, text)
             case .reasoning(let text): appendReasoning(assistantIndex, text)

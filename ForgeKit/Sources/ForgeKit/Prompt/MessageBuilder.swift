@@ -10,18 +10,19 @@ public struct MessageBuilder: Sendable {
         systemPrompt: String,
         projectContext: String?,
         history: [ChatMessage],
-        userPrompt: String
+        userPrompt: String,
+        images: [String] = []
     ) -> [ChatMessage] {
         var messages: [ChatMessage] = [ChatMessage(role: .system, content: systemPrompt)]
         messages.append(contentsOf: history)
 
+        let content: String
         if let context = projectContext, !context.isEmpty {
-            messages.append(ChatMessage(
-                role: .user,
-                content: "<project_context>\n\(context)\n</project_context>\n\n\(userPrompt)"))
+            content = "<project_context>\n\(context)\n</project_context>\n\n\(userPrompt)"
         } else {
-            messages.append(ChatMessage(role: .user, content: userPrompt))
+            content = userPrompt
         }
+        messages.append(ChatMessage(role: .user, content: content, imageDataURLs: images))
         return messages
     }
 

@@ -33,10 +33,14 @@ struct EmptyStateView: View {
                     text: $model.draft,
                     placeholder: model.chatMode == .plan
                         ? "Describe what to plan…"
-                        : "Build a todo app with add, complete and delete…",
+                        : "Build a todo app — or drop a screenshot to match…",
                     isBusy: model.isBusy,
                     autofocus: true,
                     mode: $model.chatMode,
+                    images: model.attachedImages,
+                    onAttach: { model.attachImagesFromPicker() },
+                    onRemoveImage: { model.removeAttachedImage(at: $0) },
+                    onDropImages: { model.attachImages(at: $0) },
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 560)

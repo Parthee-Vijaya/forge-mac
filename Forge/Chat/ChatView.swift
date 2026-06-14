@@ -73,6 +73,10 @@ struct ChatView: View {
                     placeholder: composerPlaceholder(model),
                     isBusy: model.isBusy,
                     mode: model.selectedElement == nil ? $model.chatMode : nil,
+                    images: model.attachedImages,
+                    onAttach: { model.attachImagesFromPicker() },
+                    onRemoveImage: { model.removeAttachedImage(at: $0) },
+                    onDropImages: { model.attachImages(at: $0) },
                     onSubmit: {
                         if model.selectedElement != nil { model.applyVisualEdit(model.draft) }
                         else { model.submit() }
@@ -143,12 +147,30 @@ private struct MessageView: View {
         if message.role == .user {
             HStack {
                 Spacer(minLength: 36)
-                Text(message.text)
-                    .font(.system(size: 13.5))
-                    .foregroundStyle(Theme.onAccent)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 13).padding(.vertical, 9)
-                    .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+                VStack(alignment: .trailing, spacing: 6) {
+                    if !message.imageDataURLs.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(Array(message.imageDataURLs.enumerated()), id: \.offset) { _, dataURL in
+                                if let image = Composer.nsImage(fromDataURL: dataURL) {
+                                    Image(nsImage: image)
+                                        .resizable().scaledToFill()
+                                        .frame(width: 130, height: 96)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                        .overlay(RoundedRectangle(cornerRadius: 10)
+                                            .strokeBorder(Theme.border, lineWidth: 1))
+                                }
+                            }
+                        }
+                    }
+                    if !message.text.isEmpty {
+                        Text(message.text)
+                            .font(.system(size: 13.5))
+                            .foregroundStyle(Theme.onAccent)
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 13).padding(.vertical, 9)
+                            .background(Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+                    }
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 9) {

@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `86ed628` 2026-06-14 — B25: multi-model roles + Danish copy-pass (agentic)
 - `5dfa718` 2026-06-14 — Recover from stalled model streams (watchdog + force-cancel)
 - `4081b87` 2026-06-14 — C2: live "file being typed" animation as the agent writes
 - `137d2e4` 2026-06-14 — B5 follow-up: pin icons to lucide-react in the prompt

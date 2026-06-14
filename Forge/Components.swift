@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 import ForgeKit
 
 /// The prompt input — used both on the empty-state hero and in the chat panel.
@@ -10,32 +12,102 @@ struct Composer: View {
     var isBusy: Bool
     var autofocus: Bool = false
     var mode: Binding<AgentLoop.Mode>? = nil
+    var images: [String] = []                       // B4: attached image data URLs
+    var onAttach: (() -> Void)? = nil               // paperclip → file picker
+    var onRemoveImage: ((Int) -> Void)? = nil
+    var onDropImages: (([URL]) -> Void)? = nil       // Finder drag-and-drop
     var onSubmit: () -> Void
     var onStop: (() -> Void)? = nil
 
     @FocusState private var focused: Bool
+    @State private var dropTargeted = false
 
     private var canSend: Bool {
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isBusy
+        (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) && !isBusy
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let mode { ModeToggle(mode: mode) }
+            if !images.isEmpty { thumbnailStrip }
             inputRow
         }
         .padding(10)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusL))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusL)
-                .strokeBorder(focused ? Theme.borderStrong : Theme.border, lineWidth: 1)
+                .strokeBorder(dropTargeted ? Theme.accent : (focused ? Theme.borderStrong : Theme.border),
+                              lineWidth: dropTargeted ? 1.5 : 1)
         )
         .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
         .onAppear { if autofocus { focused = true } }
+        .onDrop(of: [.fileURL], isTargeted: onDropImages == nil ? nil : $dropTargeted) { providers in
+            handleDrop(providers)
+        }
+    }
+
+    private var thumbnailStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(images.enumerated()), id: \.offset) { index, dataURL in
+                    ZStack(alignment: .topTrailing) {
+                        if let image = Self.nsImage(fromDataURL: dataURL) {
+                            Image(nsImage: image)
+                                .resizable().scaledToFill()
+                                .frame(width: 54, height: 54)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1))
+                        }
+                        Button { onRemoveImage?(index) } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.white, .black.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
+                        .offset(x: 5, y: -5)
+                    }
+                }
+            }
+            .padding(.horizontal, 2).padding(.top, 2)
+        }
+        .frame(height: 62)
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard let onDropImages else { return false }
+        var collected: [URL] = []
+        let group = DispatchGroup()
+        for provider in providers {
+            group.enter()
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
+                    collected.append(url)
+                }
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) { if !collected.isEmpty { onDropImages(collected) } }
+        return true
+    }
+
+    static func nsImage(fromDataURL string: String) -> NSImage? {
+        guard let comma = string.firstIndex(of: ","),
+              let data = Data(base64Encoded: String(string[string.index(after: comma)...])) else { return nil }
+        return NSImage(data: data)
     }
 
     private var inputRow: some View {
         HStack(alignment: .bottom, spacing: 8) {
+            if let onAttach {
+                Button(action: onAttach) {
+                    Image(systemName: "paperclip").font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Vedhæft et billede / mockup")
+                .disabled(isBusy)
+            }
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))

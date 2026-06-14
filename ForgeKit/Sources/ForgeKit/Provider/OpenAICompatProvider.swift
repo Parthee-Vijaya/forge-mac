@@ -29,7 +29,9 @@ public struct OpenAICompatProvider: ChatModel {
                     }
                     let body = Request(
                         model: modelID,
-                        messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
+                        messages: messages.map {
+                            .init(role: $0.role.rawValue, content: $0.content, images: $0.imageDataURLs)
+                        },
                         stream: true,
                         temperature: options.temperature,
                         max_tokens: options.maxTokens)
@@ -80,7 +82,48 @@ public struct OpenAICompatProvider: ChatModel {
         let stream: Bool
         let temperature: Double
         let max_tokens: Int
-        struct Message: Encodable { let role: String; let content: String }
+
+        /// Encodes `content` as a plain string normally, or as the OpenAI
+        /// multimodal parts array (`[{type:text}, {type:image_url}]`) when the
+        /// message carries images — the format vision models expect.
+        struct Message: Encodable {
+            let role: String
+            let content: String
+            let images: [String]
+
+            enum CodingKeys: String, CodingKey { case role, content }
+
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(role, forKey: .role)
+                if images.isEmpty {
+                    try c.encode(content, forKey: .content)
+                } else {
+                    var parts: [ContentPart] = [.text(content)]
+                    parts.append(contentsOf: images.map(ContentPart.imageURL))
+                    try c.encode(parts, forKey: .content)
+                }
+            }
+        }
+
+        enum ContentPart: Encodable {
+            case text(String)
+            case imageURL(String)
+
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                switch self {
+                case .text(let t):
+                    try c.encode("text", forKey: .type)
+                    try c.encode(t, forKey: .text)
+                case .imageURL(let url):
+                    try c.encode("image_url", forKey: .type)
+                    try c.encode(ImageURL(url: url), forKey: .image_url)
+                }
+            }
+            enum CodingKeys: String, CodingKey { case type, text, image_url }
+            struct ImageURL: Encodable { let url: String }
+        }
     }
 
     private struct Chunk: Decodable {

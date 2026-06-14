@@ -5,10 +5,15 @@ public struct ChatMessage: Sendable, Equatable {
     public enum Role: String, Sendable { case system, user, assistant }
     public let role: Role
     public let content: String
+    /// Optional attached images as base64 data URLs (`data:image/png;base64,…`).
+    /// Sent to vision-capable models (B4: screenshot/mockup → UI). Empty for
+    /// text-only turns.
+    public let imageDataURLs: [String]
 
-    public init(role: Role, content: String) {
+    public init(role: Role, content: String, imageDataURLs: [String] = []) {
         self.role = role
         self.content = content
+        self.imageDataURLs = imageDataURLs
     }
 }
 

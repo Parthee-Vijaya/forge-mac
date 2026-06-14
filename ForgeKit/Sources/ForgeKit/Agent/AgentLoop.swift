@@ -53,13 +53,14 @@ public actor AgentLoop {
     public nonisolated func run(
         userPrompt: String,
         history: [ChatMessage],
-        mode: Mode = .build
+        mode: Mode = .build,
+        images: [String] = []
     ) -> AsyncStream<AgentEvent> {
         let (stream, continuation) = AsyncStream.makeStream(of: AgentEvent.self)
         let task = Task {
             switch mode {
-            case .build: await runLoop(userPrompt: userPrompt, history: history, continuation)
-            case .plan: await runPlan(userPrompt: userPrompt, history: history, continuation)
+            case .build: await runLoop(userPrompt: userPrompt, history: history, images: images, continuation)
+            case .plan: await runPlan(userPrompt: userPrompt, history: history, images: images, continuation)
             }
         }
         continuation.onTermination = { _ in task.cancel() }
@@ -71,6 +72,7 @@ public actor AgentLoop {
     private func runPlan(
         userPrompt: String,
         history: [ChatMessage],
+        images: [String] = [],
         _ continuation: AsyncStream<AgentEvent>.Continuation
     ) async {
         do {
@@ -79,7 +81,8 @@ public actor AgentLoop {
                 systemPrompt: deps.systemPrompt,
                 projectContext: context,
                 history: history,
-                userPrompt: userPrompt)
+                userPrompt: userPrompt,
+                images: images)
             continuation.yield(.state(.planning))
             let splitter = ReasoningSplitter()
             for try await event in deps.provider.stream(messages: messages, options: deps.options) {
@@ -115,6 +118,7 @@ public actor AgentLoop {
     private func runLoop(
         userPrompt: String,
         history: [ChatMessage],
+        images: [String] = [],
         _ continuation: AsyncStream<AgentEvent>.Continuation
     ) async {
         do {
@@ -123,7 +127,8 @@ public actor AgentLoop {
                 systemPrompt: deps.systemPrompt,
                 projectContext: context,
                 history: history,
-                userPrompt: userPrompt)
+                userPrompt: userPrompt,
+                images: images)
 
             var attempt = 0
             var lastSignature: String?

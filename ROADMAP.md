@@ -107,7 +107,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 3. **Supabase / backend-integration** — tilføj DB + auth til genererede apps (Lovables killer-feature). *Sådan:* en "Add backend"-handling der scaffolder Supabase-client + env, og udvider `SystemPrompt` med Supabase-mønstre; secrets i Keychain (A4). **XL · P1**
 
-4. **Billede/screenshot-input → UI** — drop et mockup/screenshot, modellen bygger matchende UI. *Sådan:* multimodal sti i `ChatModel` (vision-model via NIM/Anthropic, eller lokal Qwen-VL); `Composer` får drop-zone; billede sendes som image-part. **L · P1**
+4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **L · P1**
 
 5. **shadcn/ui-integration** — lad modellen bruge shadcn-komponenter (kvalitetsløft på genereret UI). *Sådan:* baked-in template m/ shadcn forudkonfigureret; `add-dependency`/`shell`-handling kører `npx shadcn add`; prompt kender komponentsættet. **M · P1**
 
