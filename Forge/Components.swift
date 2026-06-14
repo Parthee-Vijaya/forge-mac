@@ -59,30 +59,26 @@ struct Composer: View {
     }
 }
 
-/// Compact model selector (green dot = local, blue = cloud).
+/// Compact model selector, grouped by source (Ollama / LM Studio / Cloud) with
+/// a colored dot per source and a Refresh action.
 struct ModelPicker: View {
     @Bindable var model: AppModel
 
     var body: some View {
         Menu {
-            ForEach(model.availableModels) { config in
-                Button {
-                    model.selectedModelID = config.id
-                } label: {
-                    if config.id == model.selectedModelID {
-                        Label(config.displayName, systemImage: "checkmark")
-                    } else {
-                        Text(config.displayName)
-                    }
-                }
+            sourceSection(.ollama, "Ollama")
+            sourceSection(.lmStudio, "LM Studio")
+            sourceSection(.cloud, "Cloud")
+            Divider()
+            Button { Task { await model.refreshModels() } } label: {
+                Label("Refresh models", systemImage: "arrow.clockwise")
             }
         } label: {
             HStack(spacing: 5) {
-                Circle()
-                    .fill(model.selectedModel.kind == .ollamaNative ? Theme.positive : Color.blue)
-                    .frame(width: 6, height: 6)
+                Circle().fill(Self.dotColor(model.selectedModel.source)).frame(width: 6, height: 6)
                 Text(model.selectedModel.displayName)
                     .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1).truncationMode(.middle).frame(maxWidth: 170)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .semibold)).foregroundStyle(Theme.inkFaint)
             }
@@ -91,7 +87,32 @@ struct ModelPicker: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func sourceSection(_ source: ModelConfig.Source, _ title: String) -> some View {
+        let items = model.availableModels.filter { $0.source == source }
+        if !items.isEmpty {
+            Section(title) {
+                ForEach(items) { config in
+                    Button { model.selectedModelID = config.id } label: {
+                        if config.id == model.selectedModelID {
+                            Label(config.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(config.displayName)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static func dotColor(_ source: ModelConfig.Source) -> Color {
+        switch source {
+        case .ollama: Theme.positive
+        case .lmStudio: Color.purple
+        case .cloud: Color.blue
+        }
     }
 }
 

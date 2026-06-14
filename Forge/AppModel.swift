@@ -73,16 +73,11 @@ final class AppModel {
         self.processLayer = ForgeProcessLayer(workspace: workspace, devServer: devServer)
         self.errorCollector = ErrorCollector(devServer: devServer)
 
-        var models: [ModelConfig] = [.localDefault]
-        let env = ProcessInfo.processInfo.environment
-        if let key = env["FORGE_CLOUD_API_KEY"], !key.isEmpty {
-            let model = env["FORGE_CLOUD_MODEL"] ?? "nvidia/llama-3.1-nemotron-70b-instruct"
-            models.append(.nvidiaNIM(key: key, model: model))
-        }
-        self.availableModels = models
-        self.selectedModelID = models.first?.id ?? ""
+        self.availableModels = [.localDefault]
+        self.selectedModelID = ModelConfig.localDefault.id
 
         startLogStream()
+        Task { await refreshModels() }
     }
 
     static func projectRoot() -> URL {
@@ -92,6 +87,28 @@ final class AppModel {
 
     var selectedModel: ModelConfig {
         availableModels.first { $0.id == selectedModelID } ?? .localDefault
+    }
+
+    /// Re-discover local models (Ollama + LM Studio) plus the optional cloud
+    /// model. Called at launch and from the picker's Refresh button.
+    func refreshModels() async {
+        var models = await ModelDiscovery.discoverLocal()
+        let env = ProcessInfo.processInfo.environment
+        if let key = env["FORGE_CLOUD_API_KEY"], !key.isEmpty {
+            let cloud = env["FORGE_CLOUD_MODEL"] ?? "nvidia/llama-3.1-nemotron-70b-instruct"
+            models.append(.nvidiaNIM(key: key, model: cloud))
+        }
+        if models.isEmpty { models = [.localDefault] }
+        availableModels = models
+        if !models.contains(where: { $0.id == selectedModelID }) {
+            selectedModelID = Self.preferredDefault(models).id
+        }
+    }
+
+    static func preferredDefault(_ models: [ModelConfig]) -> ModelConfig {
+        models.first { $0.modelID.lowercased().contains("coder") }
+            ?? models.first { $0.source == .ollama }
+            ?? models.first ?? .localDefault
     }
 
     // MARK: - Chat submission

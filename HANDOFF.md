@@ -6,7 +6,7 @@
 > → Forge kører det → preview opdaterer via HMR.
 
 - **Sidst opdateret:** 2026-06-14
-- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. Alle ForgeKit-tests grønne.
+- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live — bygget counter via LM Studio nemotron). Alle ForgeKit-tests grønne.
 - **Branch:** main (ingen commits endnu — afventer din go)
 
 ## Stack
@@ -16,7 +16,7 @@
 | App-shell | SwiftUI (macOS 26), WKWebView via NSViewRepresentable |
 | Motor | ForgeKit — Swift Package (macOS 14+), ren Foundation, Swift 6 strict concurrency |
 | Proces | Foundation `Process` + `Pipe.readabilityHandler` → `AsyncStream` |
-| Modeller | Ollama native `/api/chat` (qwen2.5-coder:14b, num_ctx 32768) + NVIDIA NIM/OpenAI (SSE) + Anthropic-shim |
+| Modeller | Auto-discovery: Ollama native `/api/chat` (num_ctx) + LM Studio `/v1` (OpenAI-kompat) + NVIDIA NIM/OpenAI/Anthropic. Grupperet vælger m/ refresh; embeddings filtreres fra |
 | Genereret app | React + Vite + TypeScript + Tailwind v4 (baked-in template) |
 | Distribution | Developer ID + Hardened Runtime, INGEN sandbox, notariseret DMG |
 
@@ -76,5 +76,5 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
-(ingen commits endnu)
+- `4a4b5a7` 2026-06-14 — Forge: walking skeleton + Lovable-style UI (macOS-first)
 <!-- COMMITLOG:END -->
