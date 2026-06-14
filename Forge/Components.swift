@@ -130,3 +130,48 @@ struct FileChip: View {
         .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
     }
 }
+
+/// Project switcher: lists projects, switch, new, delete current.
+struct ProjectMenu: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        Menu {
+            ForEach(model.projects) { project in
+                Button { model.switchTo(project) } label: {
+                    if project.id == model.currentProject.id {
+                        Label(displayName(project), systemImage: "checkmark")
+                    } else {
+                        Text(displayName(project))
+                    }
+                }
+            }
+            Divider()
+            Button { model.newProject() } label: { Label("New project", systemImage: "plus") }
+            if model.projects.count > 1 {
+                Button(role: .destructive) {
+                    model.deleteProject(model.currentProject)
+                } label: {
+                    Label("Delete “\(displayName(model.currentProject))”", systemImage: "trash")
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(displayName(model.currentProject))
+                    .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink)
+                    .lineLimit(1).truncationMode(.middle).frame(maxWidth: 170)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 5)
+            .background(Theme.fill, in: Capsule())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .disabled(model.isBusy)
+    }
+
+    private func displayName(_ project: Project) -> String {
+        project.name.isEmpty ? "Untitled" : project.name
+    }
+}

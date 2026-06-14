@@ -9,7 +9,9 @@ struct EmptyStateView: View {
     var body: some View {
         @Bindable var model = model
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 9) {
+                Circle().fill(Theme.accent).frame(width: 9, height: 9)
+                ProjectMenu(model: model)
                 Spacer()
                 ModelPicker(model: model)
             }

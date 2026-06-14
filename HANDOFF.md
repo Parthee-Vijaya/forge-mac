@@ -6,7 +6,7 @@
 > → Forge kører det → preview opdaterer via HMR.
 
 - **Sidst opdateret:** 2026-06-14
-- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live — bygget counter via LM Studio nemotron). Alle ForgeKit-tests grønne.
+- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. Alle ForgeKit-tests grønne.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
 ## Stack
@@ -63,20 +63,18 @@ ollama list | grep qwen2.5-coder
 - ✅ Fase C: SwiftUI app-shell + WKWebView JS-bro (onerror/console.error/unhandledrejection)
 - ✅ Fase F(UI): xcodebuild grøn + end-to-end GUI — Todo-app renderede live, HMR-edit virkede, ingen orphan-vite ved quit
 
-## Næste skridt (bevidst udskudt fra skelet)
+## Roadmap (efter skelet) — brugeren valgte 4 features, bygges i rækkefølge
 
-- Monaco/CodeMirror editor + fil-træ i venstre side
-- Line-replace incremental edits (capability-switch findes allerede i `ModelConfig.supportsLineReplace`)
-- Multi-projekt-håndtering + projekt-historik
-- Keychain-baseret settings UI (afløser `FORGE_CLOUD_API_KEY` env-var)
-- Live-verificér cloud-provider (NVIDIA NIM) når nøgle er tilgængelig — pt. kun lokal sti kørt live
-- MCP-eksponering af filsystem/terminal/preview
-- Notariseret DMG (Developer ID) + evt. bundlet Node-runtime
-- iOS companion-klient (remote build mod Mac/DGX)
+- ✅ Feature 1: Kode-visning + fil-træ (redigerbar `CodeTextView`, autosave→HMR) — verificeret live
+- ✅ Feature 2: Multi-projekt + historik (skift/opret/slet, persistent chat + kode pr. projekt) — verificeret live
+- ⏳ Feature 3: Deploy GitHub + Vercel (næste)
+- ⏳ Feature 4: Visuel redigering (klik-i-preview, Onlook-stil data-oid)
+- Senere/udskudt: line-replace edits (`ModelConfig.supportsLineReplace` findes), syntax-highlighting i editor, Keychain-settings (afløser `FORGE_CLOUD_API_KEY`), MCP-eksponering, notariseret DMG, iOS companion, live NIM-cloud-test
 
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `b4183f0` 2026-06-14 — Add code view: file tree + editable editor (autosave -> HMR)
 - `80f9d1b` 2026-06-14 — Add local model discovery: Ollama + LM Studio in the picker
 - `4a4b5a7` 2026-06-14 — Forge: walking skeleton + Lovable-style UI (macOS-first)
 <!-- COMMITLOG:END -->

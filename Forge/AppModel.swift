@@ -6,9 +6,9 @@ import ForgeKit
 @MainActor
 @Observable
 final class AppModel {
-    struct UIMessage: Identifiable {
-        enum Role { case user, assistant }
-        let id = UUID()
+    struct UIMessage: Identifiable, Codable {
+        enum Role: String, Codable { case user, assistant }
+        var id = UUID()
         let role: Role
         var text: String
         var files: [String] = []
@@ -66,18 +66,31 @@ final class AppModel {
     var selectedModelID: String = ""
 
     // ForgeKit handles (Sendable; safe to use from off-main tasks).
-    @ObservationIgnored nonisolated let workspace: ProjectWorkspace
-    @ObservationIgnored nonisolated let devServer: DevServerManager
-    @ObservationIgnored nonisolated let processLayer: ForgeProcessLayer
-    @ObservationIgnored nonisolated let errorCollector: ErrorCollector
+    // Projects
+    var projects: [Project] = []
+    var currentProject: Project
+
+    @ObservationIgnored private(set) var workspace: ProjectWorkspace
+    @ObservationIgnored private(set) var devServer: DevServerManager
+    @ObservationIgnored private(set) var processLayer: ForgeProcessLayer
+    @ObservationIgnored private(set) var errorCollector: ErrorCollector
     @ObservationIgnored private var templateInstalled = false
     @ObservationIgnored private var logTask: Task<Void, Never>?
     @ObservationIgnored private var autosaveTask: Task<Void, Never>?
     @ObservationIgnored private var lastLoadedText = ""
 
     init() {
-        let root = AppModel.projectRoot()
-        let workspace = ProjectWorkspace(root: root)
+        var loaded = ProjectStore.loadProjects()
+        if loaded.isEmpty {
+            let project = ProjectStore.makeProject(name: "Untitled")
+            ProjectStore.saveProjects([project])
+            loaded = [project]
+        }
+        let current = loaded[0]
+        self.projects = loaded
+        self.currentProject = current
+
+        let workspace = ProjectWorkspace(root: ProjectStore.dir(for: current))
         let devServer = DevServerManager(workspace: workspace)
         self.workspace = workspace
         self.devServer = devServer
@@ -87,13 +100,17 @@ final class AppModel {
         self.availableModels = [.localDefault]
         self.selectedModelID = ModelConfig.localDefault.id
 
-        startLogStream()
-        Task { await refreshModels() }
-    }
+        self.messages = ProjectStore.loadChat(for: current)
+        self.hasStarted = !messages.isEmpty
+        self.templateInstalled = ProjectStore.hasBuiltApp(current)
 
-    static func projectRoot() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("Forge/project", isDirectory: true)
+        startLogStream()
+        let resume = templateInstalled && !messages.isEmpty
+        let devServerRef = devServer
+        Task {
+            await refreshModels()
+            if resume { try? await devServerRef.start() }
+        }
     }
 
     var selectedModel: ModelConfig {
@@ -120,6 +137,93 @@ final class AppModel {
         models.first { $0.modelID.lowercased().contains("coder") }
             ?? models.first { $0.source == .ollama }
             ?? models.first ?? .localDefault
+    }
+
+    // MARK: - Projects
+
+    func newProject() {
+        guard !isBusy else { return }
+        persistCurrentChat()
+        let project = ProjectStore.makeProject(name: "Untitled")
+        projects.insert(project, at: 0)
+        ProjectStore.saveProjects(projects)
+        activate(project, freshState: true)
+    }
+
+    func switchTo(_ project: Project) {
+        guard !isBusy, project.id != currentProject.id else { return }
+        persistCurrentChat()
+        activate(project, freshState: false)
+    }
+
+    func deleteProject(_ project: Project) {
+        guard !isBusy else { return }
+        projects.removeAll { $0.id == project.id }
+        ProjectStore.deleteDir(for: project)
+        if projects.isEmpty {
+            projects = [ProjectStore.makeProject(name: "Untitled")]
+        }
+        ProjectStore.saveProjects(projects)
+        if currentProject.id == project.id {
+            activate(projects[0], freshState: false)
+        }
+    }
+
+    private func activate(_ project: Project, freshState: Bool) {
+        let previous = devServer
+        Task { await previous.shutdown() }
+
+        currentProject = project
+        installHandles(for: project)
+
+        previewURL = nil
+        phase = .idle
+        rightPaneMode = .preview
+        selectedFile = nil
+        editorText = ""
+        projectFiles = []
+        serverLog = []
+        jsErrors = []
+        statusText = "Ready."
+        messages = freshState ? [] : ProjectStore.loadChat(for: project)
+        templateInstalled = ProjectStore.hasBuiltApp(project)
+        hasStarted = !messages.isEmpty
+
+        if templateInstalled && !messages.isEmpty {
+            let devServerRef = devServer
+            Task { try? await devServerRef.start() }
+        }
+    }
+
+    private func installHandles(for project: Project) {
+        let workspace = ProjectWorkspace(root: ProjectStore.dir(for: project))
+        self.workspace = workspace
+        self.devServer = DevServerManager(workspace: workspace)
+        self.processLayer = ForgeProcessLayer(workspace: workspace, devServer: devServer)
+        self.errorCollector = ErrorCollector(devServer: devServer)
+        startLogStream()
+    }
+
+    private func persistCurrentChat() {
+        ProjectStore.saveChat(messages, for: currentProject)
+        currentProject.updatedAt = Date()
+        if let index = projects.firstIndex(where: { $0.id == currentProject.id }) {
+            projects[index] = currentProject
+        }
+        ProjectStore.saveProjects(projects)
+    }
+
+    private func renameCurrent(to name: String) {
+        currentProject.name = name
+        if let index = projects.firstIndex(where: { $0.id == currentProject.id }) {
+            projects[index] = currentProject
+        }
+        ProjectStore.saveProjects(projects)
+    }
+
+    static func projectName(from prompt: String) -> String {
+        let trimmed = prompt.split(separator: " ").prefix(6).joined(separator: " ")
+        return String(trimmed.prefix(42))
     }
 
     // MARK: - Code view
@@ -177,6 +281,7 @@ final class AppModel {
     func submit() {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isBusy else { return }
+        if messages.isEmpty { renameCurrent(to: Self.projectName(from: prompt)) }
         draft = ""
         hasStarted = true
         let history = chatHistory()
@@ -231,6 +336,7 @@ final class AppModel {
             }
         }
         await refreshFiles()
+        persistCurrentChat()
     }
 
     func handleRuntimeIssue(_ issue: RuntimeIssue) {
@@ -278,6 +384,7 @@ final class AppModel {
     }
 
     private func startLogStream() {
+        logTask?.cancel()
         let devServer = self.devServer
         logTask = Task { [weak self] in
             for await event in await devServer.events() {
