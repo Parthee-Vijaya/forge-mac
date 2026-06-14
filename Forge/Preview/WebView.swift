@@ -117,21 +117,40 @@ struct WebView: NSViewRepresentable {
       function post(payload) {
         try { window.webkit.messageHandlers.forge.postMessage(payload); } catch (e) {}
       }
+      // Turn any thrown value / console.error argument into a useful string for
+      // the self-correction loop — never the useless "[object Event]" /
+      // "[object Object]". Prefers an Error's stack, then its message, then a
+      // readable Event description, then JSON, then String().
+      function describe(v) {
+        if (v == null) return String(v);
+        if (typeof v === 'string') return v;
+        if (typeof v !== 'object' && typeof v !== 'function') return String(v);
+        if (v.stack || v.message) return String(v.stack || v.message);
+        if (typeof Event !== 'undefined' && v instanceof Event) {
+          var t = v.target || {};
+          var where = t.src || t.href || (t.tagName ? t.tagName.toLowerCase() : '');
+          return 'Event(' + v.type + ')' + (where ? ' on ' + where : '');
+        }
+        try { var s = JSON.stringify(v); if (s && s !== '{}') return s; } catch (_) {}
+        return String(v);
+      }
       window.addEventListener('error', function (e) {
+        var msg = (e.error && (e.error.stack || e.error.message)) || e.message || describe(e);
         post({ kind: 'onerror',
-               message: (e && e.message) ? e.message : String(e),
-               source: (e && e.filename) ? e.filename : null,
-               line: (e && e.lineno) ? e.lineno : null });
+               message: msg,
+               source: e.filename || null,
+               line: e.lineno || null });
       }, true);
       window.addEventListener('unhandledrejection', function (e) {
-        var r = (e && e.reason) || {};
-        post({ kind: 'unhandledRejection', message: (r.message || String(r)), source: null, line: null });
+        var r = e.reason;
+        var msg = (r && (r.stack || r.message)) || describe(r);
+        post({ kind: 'unhandledRejection', message: msg, source: null, line: null });
       });
       var original = console.error;
       console.error = function () {
         try {
           post({ kind: 'consoleError',
-                 message: Array.prototype.map.call(arguments, String).join(' '),
+                 message: Array.prototype.map.call(arguments, describe).join(' '),
                  source: null, line: null });
         } catch (_) {}
         return original.apply(console, arguments);
