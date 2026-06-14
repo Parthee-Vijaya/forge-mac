@@ -75,7 +75,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 11. **Self-correction der ser den fejlende fil** — repair-turen får kun fejlteksten, ikke filens nuværende indhold. *Sådan:* `MessageBuilder.errorTurn` inkluderer den/de fil(er) fejlen peger på (fra `ErrorReport.Item`-fil-sti). Færre forkerte fixes. **M · P1**
 
-12. **Robust orphan-håndtering for ALLE projekter** — `ProcessSupervisor` tracker kun det aktive projekts PID. *Sådan:* central PID-registry under `~/Library/Application Support/Forge/pids/`; reclaim alle stale ved opstart; ryd ved deploy/quit. **S · P1**
+12. **Robust orphan-håndtering for ALLE projekter** — ✅ *bygget.* `ProcessSupervisor.reclaimAllOrphans(under:)` laver en global sweep ved opstart: matcher processer hvis kommandolinje refererer Forge-projektmappen OG ligner en dev-server (`vite`/`forge-run.sh`), SIGTERM→SIGKILL. Editorer med et projekt åbent og fremmede vite-processer røres ikke. Wiret i `AppModel.init` off-main før resume-`start()`. Supplerer den per-projekt pidfile-reclaim + `forge-run.sh`-watchdog. **S · P1**
 
 13. **NodeResolver-caching + tydelig "mangler Node"-UI** — login-shell-probe (~100-300ms) køres ved hver `start`. *Sådan:* cache resolved sti i UserDefaults m/ invalidation; hvis Node mangler, vis en handlingsrettet besked (de søgte stier findes allerede i `DevServerError.nodeRuntimeNotFound`). **S · P1**
 
@@ -107,11 +107,11 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 3. **Supabase / backend-integration** — tilføj DB + auth til genererede apps (Lovables killer-feature). *Sådan:* en "Add backend"-handling der scaffolder Supabase-client + env, og udvider `SystemPrompt` med Supabase-mønstre; secrets i Keychain (A4). **XL · P1**
 
-4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **L · P1**
+4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **Udvidet:** indsæt et **link** → Forge tager et offscreen-screenshot af siden (`DesignCapture`, en skjult WKWebView der scroller for at trigge entrance-animationer) og vedhæfter det som design-reference; `submit()` tilføjer eksplicit “recreate this design”-framing når et billede er vedhæftet (“kopiér dette design”). Verificeret med stripe.com + vercel.com. **L · P1**
 
 5. **shadcn/ui-integration** — lad modellen bruge shadcn-komponenter (kvalitetsløft på genereret UI). *Sådan:* baked-in template m/ shadcn forudkonfigureret; `add-dependency`/`shell`-handling kører `npx shadcn add`; prompt kender komponentsættet. **M · P1**
 
-6. **Template-galleri** — flere startpunkter (dashboard, landing, blog, e-commerce) ud over ét Vite+React. *Sådan:* `ProjectTemplate` gøres til en liste; empty-state viser galleri; valg kopierer den rette skabelon. **M · P1**
+6. **Template-galleri** — ✅ *bygget.* Seks startpunkter på startskærmen (landing, dashboard, todo, portfolio, blog, pomodoro), hver med en detaljeret dansk brief så første build lander et imponerende sted. *Sådan:* `StarterTemplate` + `StarterTemplates.all`; `AppModel.startFromTemplate()` seeder briefen og submitter i Build-mode; et 3×2 kort-grid under composeren (ikon/titel/undertekst, hover-highlight). **M · P1**
 
 7. **Multi-framework** — Next.js / Svelte / Vue ud over React+Vite (differentiator; Lovable er React-only). *Sådan:* `ProjectTemplate` + `DevServerManager` parametriseres på framework (dev-kommando, ready-mønster i `ViteReadyDetector` generaliseres). **XL · P2**
 
@@ -181,7 +181,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 11. **Projekt-dashboard m/ thumbnails** — grid/liste over alle projekter med screenshot-thumbnail, sidst-redigeret, deploy-status. *Sådan:* `WKWebView.takeSnapshot` pr. projekt gemt i `.forge/thumb.png`; et dashboard-view tilgået fra `ProjectMenu`. **L · P2**
 
-12. **Formaliseret design-system + dark mode** — `Theme` gøres til et dokumenteret token-system (spacing/type-skala/elevation); en mørk variant bag en toggle. *Sådan:* udvid `Theme` med semantiske tokens + en `colorScheme`-styret palet; bevar eksplicitte farver (dark-mode-fælden). **M · P1**
+12. **Formaliseret design-system + dark mode** — ✅ *bygget (dark mode-delen).* Forge er redesignet i “Midnat” (mørk pro) som standard med en lys variant bag en toggle i Settings. *Sådan:* `Theme.dyn(light:dark:)` via `NSColor(name:dynamicProvider:)` resolver pr. effektiv appearance; `Preferences.appearance` styrer `AppModel.colorScheme` → `.preferredColorScheme` på hvert vindue/sheet; `CodePane`/editor bruger dynamiske `NSColor`. Skifter øjeblikkeligt uden genstart. Verificeret i begge temaer på tværs af startskærm, chat, galleri, dialoger. *(Token-skala/elevation-formalisering udestår stadig.)* **M · P1**
 
 13. **Venlig fejl-præsentation** — ikke rå Vite-overlay, men et pænt fejl-kort med "Fix det"-knap der fodrer self-correction. *Sådan:* JS-broen fanger overlay-fejl; vis et native kort i `PreviewPane` m/ knap → trigger repair-tur. **M · P1**
 
