@@ -145,8 +145,10 @@ final class AppModel {
         self.errorCollector = ErrorCollector(devServer: devServer)
         self.checkpoints = CheckpointManager(root: ProjectStore.dir(for: current))
 
+        if AppModel.isStaleModelID(prefs.defaultModelID) { self.preferences.defaultModelID = "" }
         self.availableModels = [.localDefault]
-        self.selectedModelID = prefs.defaultModelID.isEmpty ? ModelConfig.localDefault.id : prefs.defaultModelID
+        let savedDefault = self.preferences.defaultModelID
+        self.selectedModelID = savedDefault.isEmpty ? ModelConfig.localDefault.id : savedDefault
 
         self.messages = ProjectStore.loadChat(for: current)
         self.hasStarted = !messages.isEmpty
@@ -207,9 +209,16 @@ final class AppModel {
     }
 
     static func preferredDefault(_ models: [ModelConfig]) -> ModelConfig {
-        models.first { $0.modelID.lowercased().contains("coder") }
-            ?? models.first { $0.source == .ollama }
+        models.first { $0.modelID.lowercased().contains("qwen3.6") }
+            ?? models.first { $0.modelID.lowercased().contains("qwen") }
             ?? models.first ?? .localDefault
+    }
+
+    /// A saved default that no longer exists (the retired qwen2.5-coder) should
+    /// not stick — treat it as unset so discovery picks the new default (qwen3.6).
+    static func isStaleModelID(_ id: String) -> Bool {
+        let lower = id.lowercased()
+        return lower.contains("qwen2.5") || lower.contains("coder")
     }
 
     // MARK: - Preferences / config

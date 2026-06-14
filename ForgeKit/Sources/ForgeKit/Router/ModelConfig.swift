@@ -40,7 +40,7 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
     }
 
     /// Used until model discovery runs / if nothing else is available.
-    public static let localDefault = ModelConfig.ollama(model: "qwen2.5-coder:14b")
+    public static let localDefault = ModelConfig.lmStudio(model: "qwen/qwen3.6-35b-a3b")
 
     /// Ollama via its NATIVE /api/chat endpoint (so num_ctx is honored).
     public static func ollama(

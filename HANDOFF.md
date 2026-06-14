@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `7cd5896` 2026-06-14 — Learning mode: guide beginners through vibecoding (B26)
 - `22041a0` 2026-06-14 — Fix "[object Event]" in runtime-error capture (B12 self-correction)
 - `dc6c725` 2026-06-14 — B4: image / screenshot → UI (multimodal)
 - `86ed628` 2026-06-14 — B25: multi-model roles + Danish copy-pass (agentic)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `86a10c2` 2026-06-14 — Add deploy: GitHub + Vercel from the preview toolbar
 - `c2d8072` 2026-06-14 — Add multi-project support: switch, create, delete, persist
 - `b4183f0` 2026-06-14 — Add code view: file tree + editable editor (autosave -> HMR)
-- `80f9d1b` 2026-06-14 — Add local model discovery: Ollama + LM Studio in the picker
 <!-- COMMITLOG:END -->
