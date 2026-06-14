@@ -26,7 +26,9 @@ struct PreviewPane: View {
 
     @ViewBuilder private var previewLayer: some View {
         if let url = model.previewURL {
-            WebView(url: url, reloadToken: model.reloadToken) { model.handleRuntimeIssue($0) }
+            WebView(url: url, reloadToken: model.reloadToken, selectMode: model.selectMode,
+                    onRuntimeIssue: { model.handleRuntimeIssue($0) },
+                    onElementSelected: { model.handleElementSelected(tag: $0, text: $1, className: $2, selector: $3) })
                 .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .full ? 0 : 12))
                 .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
@@ -53,6 +55,16 @@ private struct PreviewToolbar: View {
             if model.rightPaneMode == .preview {
                 deviceToggles
                 urlPill
+                Button { model.toggleSelectMode() } label: {
+                    Image(systemName: "cursorarrow.rays")
+                        .font(.system(size: 12))
+                        .foregroundStyle(model.selectMode ? Theme.onAccent : Theme.inkSoft)
+                        .frame(width: 30, height: 28)
+                        .background(model.selectMode ? Theme.accent : Theme.fill,
+                                    in: RoundedRectangle(cornerRadius: Theme.radiusS))
+                }
+                .buttonStyle(.plain).disabled(model.previewURL == nil)
+                .help("Select an element to edit")
                 Button { model.reloadPreview() } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
                 Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }

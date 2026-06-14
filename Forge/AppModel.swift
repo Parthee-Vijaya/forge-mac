@@ -34,6 +34,13 @@ final class AppModel {
 
     enum RightPaneMode { case preview, code }
 
+    struct SelectedElement: Equatable {
+        var tag: String
+        var text: String
+        var className: String
+        var selector: String
+    }
+
     // Chat
     var messages: [UIMessage] = []
     var draft: String = ""
@@ -63,6 +70,10 @@ final class AppModel {
     var deployGithubURL: URL?
     var deployVercelURL: URL?
     var showDeploy = false
+
+    // Visual editing
+    var selectMode = false
+    var selectedElement: SelectedElement?
 
     // Diagnostics
     var serverLog: [LogLine] = []
@@ -298,6 +309,37 @@ final class AppModel {
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let range = Range(match.range, in: text) else { return nil }
         return URL(string: String(text[range]))
+    }
+
+    // MARK: - Visual editing
+
+    func toggleSelectMode() {
+        selectMode.toggle()
+        if !selectMode { selectedElement = nil }
+    }
+
+    func handleElementSelected(tag: String, text: String, className: String, selector: String) {
+        selectedElement = SelectedElement(tag: tag, text: text, className: className, selector: selector)
+    }
+
+    func clearSelection() {
+        selectedElement = nil
+        selectMode = false
+    }
+
+    /// Turn the selected element + a natural-language instruction into a targeted
+    /// edit turn for the agent loop (which rewrites the source → HMR).
+    func applyVisualEdit(_ instruction: String) {
+        let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let element = selectedElement, !trimmed.isEmpty, !isBusy else { return }
+        selectMode = false
+        selectedElement = nil
+        draft = """
+        In the running preview the user selected this element:
+        <\(element.tag) class="\(element.className)">\(element.text)</\(element.tag)>
+        Apply this change to that exact element in the source: \(trimmed)
+        """
+        submit()
     }
 
     // MARK: - Code view

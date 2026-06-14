@@ -15,12 +15,35 @@ struct ChatView: View {
                 LogConsoleView().frame(height: 150)
             }
             Divider().overlay(Theme.border)
-            Composer(
-                text: $model.draft,
-                placeholder: "Describe a change…",
-                isBusy: model.isBusy,
-                onSubmit: { model.submit() }
-            )
+            VStack(spacing: 8) {
+                if let element = model.selectedElement {
+                    HStack(spacing: 6) {
+                        Image(systemName: "cursorarrow.rays").font(.system(size: 11)).foregroundStyle(Theme.accent)
+                        Text(element.text.isEmpty ? element.tag : "\(element.tag) · \(element.text)")
+                            .font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.inkSoft)
+                            .lineLimit(1).truncationMode(.tail)
+                        Spacer(minLength: 0)
+                        Button { model.clearSelection() } label: {
+                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                        }
+                        .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Theme.fill, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
+                }
+                Composer(
+                    text: $model.draft,
+                    placeholder: model.selectedElement != nil
+                        ? "Change the selected \(model.selectedElement!.tag)…"
+                        : "Describe a change…",
+                    isBusy: model.isBusy,
+                    onSubmit: {
+                        if model.selectedElement != nil { model.applyVisualEdit(model.draft) }
+                        else { model.submit() }
+                    }
+                )
+            }
             .padding(12)
         }
         .background(Theme.sidebar)
