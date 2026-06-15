@@ -147,6 +147,19 @@ struct CodeTextView: NSViewRepresentable {
         scrollView.drawsBackground = true
         scrollView.backgroundColor = editorBG
         context.coordinator.textView = textView
+
+        // Line-number gutter (+ active-line) — redrawn on scroll, edit, and caret move.
+        let ruler = LineNumberRulerView(textView: textView)
+        scrollView.verticalRulerView = ruler
+        scrollView.hasVerticalRuler = true
+        scrollView.rulersVisible = true
+        context.coordinator.ruler = ruler
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        let nc = NotificationCenter.default
+        nc.addObserver(context.coordinator, selector: #selector(Coordinator.refreshRuler),
+                       name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+        nc.addObserver(context.coordinator, selector: #selector(Coordinator.refreshRuler),
+                       name: NSTextView.didChangeSelectionNotification, object: textView)
         return scrollView
     }
 
@@ -170,14 +183,18 @@ struct CodeTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         private let text: Binding<String>
         weak var textView: NSTextView?
+        weak var ruler: LineNumberRulerView?
         private var highlightWork: DispatchWorkItem?
 
         init(text: Binding<String>) { self.text = text }
+
+        @objc func refreshRuler() { ruler?.refresh() }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             scheduleHighlight()
+            ruler?.refresh()
         }
 
         /// Debounced re-highlight (coalesces rapid edits + streamed chunks).
@@ -235,5 +252,72 @@ enum SyntaxHighlighter {
         re.enumerateMatches(in: ns as String, range: full) { match, _, _ in
             if let r = match?.range { storage.addAttribute(.foregroundColor, value: color, range: r) }
         }
+    }
+}
+
+/// Left gutter that draws line numbers aligned with the editor's lines. Only the
+/// first fragment of each logical line is numbered (wrapped lines don't renumber),
+/// and the caret's line is highlighted in the accent colour.
+final class LineNumberRulerView: NSRulerView {
+    weak var codeView: NSTextView?
+
+    init(textView: NSTextView) {
+        super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
+        self.codeView = textView
+        clientView = textView
+        ruleThickness = 44
+    }
+    required init(coder: NSCoder) { fatalError("init(coder:) not implemented") }
+
+    func refresh() { needsDisplay = true }
+
+    private static func dyn(_ light: Int, _ dark: Int) -> NSColor {
+        NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? NSColor(hex: dark) : NSColor(hex: light) }
+    }
+    private let gutterBG = dyn(0xF4F4F7, 0x0C0E14)
+    private let numColor = dyn(0x9A9AA4, 0x6B7180)
+    private let activeColor = NSColor(hex: 0x7C6CFF)
+
+    override func drawHashMarksAndLabels(in rect: NSRect) {
+        guard let textView = codeView, let lm = textView.layoutManager,
+              let tc = textView.textContainer, let clip = scrollView?.contentView else { return }
+        gutterBG.setFill()
+        bounds.fill()
+
+        let content = textView.string as NSString
+        let inset = textView.textContainerInset.height
+        let visibleRect = clip.bounds
+        let glyphRange = lm.glyphRange(forBoundingRect: visibleRect, in: tc)
+        let firstChar = lm.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil).location
+
+        var lineNumber = 1 + countNewlines(content, upTo: firstChar)
+        let caret = textView.selectedRange().location
+        let activeLine = 1 + countNewlines(content, upTo: min(caret, content.length))
+
+        let base = NSFont.monospacedSystemFont(ofSize: 10.5, weight: .regular)
+        let bold = NSFont.monospacedSystemFont(ofSize: 10.5, weight: .semibold)
+
+        lm.enumerateLineFragments(forGlyphRange: glyphRange) { fragRect, _, _, fragGlyphRange, _ in
+            let charStart = lm.characterRange(forGlyphRange: fragGlyphRange, actualGlyphRange: nil).location
+            let isParaStart = charStart == 0 || content.character(at: charStart - 1) == 0x0A
+            guard isParaStart else { return }
+            let active = lineNumber == activeLine
+            let label = "\(lineNumber)" as NSString
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: active ? bold : base,
+                .foregroundColor: active ? self.activeColor : self.numColor,
+            ]
+            let size = label.size(withAttributes: attrs)
+            let y = fragRect.minY + inset - visibleRect.minY + (fragRect.height - size.height) / 2
+            label.draw(at: NSPoint(x: self.ruleThickness - size.width - 8, y: y), withAttributes: attrs)
+            lineNumber += 1
+        }
+    }
+
+    private func countNewlines(_ s: NSString, upTo idx: Int) -> Int {
+        var count = 0, i = 0
+        let end = min(idx, s.length)
+        while i < end { if s.character(at: i) == 0x0A { count += 1 }; i += 1 }
+        return count
     }
 }

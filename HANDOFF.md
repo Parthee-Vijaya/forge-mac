@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `eeef6d7` 2026-06-15 — A9: persist the dev-server console log per project
 - `ff32892` 2026-06-15 — A8: reuse node_modules across projects (APFS clone cache)
 - `8b43ac9` 2026-06-15 — A6: fuzz + edge tests for the streaming artifact parser
 - `dc2af80` 2026-06-15 — Onboarding: richer welcome hero + fuller copy on every step
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `b308f85` 2026-06-15 — Share live link over LAN/Tailscale
 - `4cb0bc7` 2026-06-15 — Deploy targets: Vercel or Netlify
 - `aa0bdac` 2026-06-15 — Syntax highlighting in the code editor
-- `a574286` 2026-06-15 — Dependency manager: add/remove npm packages from the UI
 <!-- COMMITLOG:END -->
