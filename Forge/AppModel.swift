@@ -140,6 +140,10 @@ final class AppModel {
     var availableModels: [ModelConfig] = []
     var selectedModelID: String = ""
 
+    /// Framework for the NEXT new project (start-screen picker). Locked onto the
+    /// project on its first turn. "react" | "svelte" | "vue".
+    var selectedFramework: String = "react"
+
     // ForgeKit handles (Sendable; safe to use from off-main tasks).
     // Config
     var preferences = Preferences()
@@ -343,6 +347,11 @@ final class AppModel {
            !rules.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             parts.append("Project-specific rules (AI_RULES.md):\n\(rules)")
         }
+        // Non-React frameworks override the React-centric base prompt (high
+        // salience at the end).
+        if role != .copy, let note = SystemPrompt.frameworkNote(currentProject.framework) {
+            parts.append(note)
+        }
         return parts.joined(separator: "\n\n")
     }
 
@@ -438,6 +447,13 @@ final class AppModel {
         if let index = projects.firstIndex(where: { $0.id == currentProject.id }) {
             projects[index] = currentProject
         }
+        ProjectStore.saveProjects(projects)
+    }
+
+    private func setCurrentFramework(_ framework: String) {
+        guard currentProject.framework != framework else { return }
+        currentProject.framework = framework
+        if let i = projects.firstIndex(where: { $0.id == currentProject.id }) { projects[i] = currentProject }
         ProjectStore.saveProjects(projects)
     }
 
@@ -1124,7 +1140,10 @@ final class AppModel {
     /// `modelPrompt` is what the model receives (they differ for the copy-pass).
     private func beginTurn(visiblePrompt: String, modelPrompt: String,
                            mode: AgentLoop.Mode, role: ModelRole, images: [String] = []) {
-        if messages.isEmpty { renameCurrent(to: Self.projectName(from: visiblePrompt)) }
+        if messages.isEmpty {
+            renameCurrent(to: Self.projectName(from: visiblePrompt))
+            setCurrentFramework(selectedFramework)   // lock the framework onto the project
+        }
         hasStarted = true
         jsErrors = []                  // a new turn supersedes prior runtime errors
         turnTokens = 0                 // count tokens for this turn afresh
@@ -1194,7 +1213,8 @@ final class AppModel {
         if messages.indices.contains(assistantIndex) { messages[assistantIndex].checkpoint = preSha }
         if !templateInstalled {
             do {
-                try await TemplateInstaller().install(into: workspace)
+                try await TemplateInstaller().install(
+                    Framework(id: currentProject.framework).template, into: workspace)
                 if !preferences.rulesTemplate.isEmpty, !(await workspace.fileExists("AI_RULES.md")) {
                     try? await workspace.writeFile("AI_RULES.md", contents: preferences.rulesTemplate)
                 }

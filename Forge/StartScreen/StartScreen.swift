@@ -130,6 +130,16 @@ struct StartScreen: View {
                 )
                 .frame(maxWidth: 560)
 
+                HStack(spacing: 8) {
+                    Text("Framework").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+                    Picker("", selection: Bindable(model).selectedFramework) {
+                        Text("React").tag("react")
+                        Text("Svelte").tag("svelte")
+                        Text("Vue").tag("vue")
+                    }
+                    .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 260)
+                }
+
                 templateGallery(model)
             }
             .padding(.horizontal, 28)

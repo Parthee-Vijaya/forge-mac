@@ -104,6 +104,37 @@ public enum SystemPrompt {
     </communication>
     """
 
+    /// Framework override appended to the build prompt for non-React projects.
+    /// The base prompt assumes React/TSX/shadcn; this REPLACES those assumptions
+    /// for Svelte/Vue (entry file, component syntax, no shadcn). Returns nil for
+    /// React (the base prompt already fits).
+    public static func frameworkNote(_ framework: String) -> String? {
+        switch framework {
+        case "svelte":
+            return """
+            IMPORTANT FRAMEWORK OVERRIDE — this project is **Svelte 5 + Vite + Tailwind v4**, NOT React. \
+            Ignore the React / TSX / shadcn / lucide-react guidance above. Write Svelte components in \
+            `.svelte` files; the entry component is `src/App.svelte` (there is no src/App.tsx). Use \
+            Svelte 5 runes — `let x = $state(0)`, `$derived(...)`, `$effect(() => {...})` — and event \
+            handlers like `onclick={...}`, with `{#if}` / `{#each}` / `{#await}` blocks. There is no \
+            shadcn here: build UI with Tailwind utility classes in the markup. If you need icons, add \
+            `lucide-svelte` (not lucide-react). Keep `src/main.ts` and config files as-is.
+            """
+        case "vue":
+            return """
+            IMPORTANT FRAMEWORK OVERRIDE — this project is **Vue 3 + Vite + Tailwind v4**, NOT React. \
+            Ignore the React / TSX / shadcn / lucide-react guidance above. Write Vue Single-File \
+            Components in `.vue` files with `<script setup lang="ts">`; the entry component is \
+            `src/App.vue` (there is no src/App.tsx). Use the Composition API — `ref`, `computed`, \
+            `watch` — with `@click`, `v-if`, `v-for`, and `{{ }}` interpolation. There is no shadcn \
+            here: build UI with Tailwind utility classes. If you need icons, add `lucide-vue-next` \
+            (not lucide-react). Keep `src/main.ts` and config files as-is.
+            """
+        default:
+            return nil
+        }
+    }
+
     /// Prompt-enhancement (B14): expand a short app idea into a clear, detailed
     /// build brief that the build model then implements — better first-pass
     /// results, fewer iterations.
