@@ -55,6 +55,7 @@ private struct FileTreeView: View {
 
 private struct CodeEditorView: View {
     @Environment(AppModel.self) private var model
+    @State private var copied = false
 
     var body: some View {
         @Bindable var model = model
@@ -71,6 +72,14 @@ private struct CodeEditorView: View {
                     Circle().fill(Theme.inkFaint).frame(width: 6, height: 6)
                 }
                 Spacer()
+                Button { copyCode() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc").font(.system(size: 10))
+                        Text(copied ? "Kopieret" : "Kopiér").font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain).foregroundStyle(copied ? Theme.positive : Theme.inkSoft)
+                .disabled(model.selectedFile == nil)
                 Button { Task { await model.saveNow() } } label: {
                     Text("Save").font(.system(size: 11, weight: .medium))
                 }
@@ -92,6 +101,13 @@ private struct CodeEditorView: View {
             }
         }
         .background(Theme.canvas)
+    }
+
+    private func copyCode() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(model.editorText, forType: .string)
+        copied = true
+        Task { try? await Task.sleep(for: .seconds(1.3)); copied = false }
     }
 }
 

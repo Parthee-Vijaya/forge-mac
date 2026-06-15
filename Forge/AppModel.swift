@@ -612,6 +612,12 @@ final class AppModel {
 
     // MARK: - Code view
 
+    /// Toggle the right pane between preview and code (⌘\). No-op before a build.
+    func toggleRightPane() {
+        guard hasStarted else { return }
+        if rightPaneMode == .code { rightPaneMode = .preview } else { enterCodeMode() }
+    }
+
     func enterCodeMode() {
         presentLessonIfNew("code-view")
         rightPaneMode = .code

@@ -371,6 +371,7 @@ struct FileChip: View {
 /// Project switcher: lists projects, switch, new, delete current.
 struct ProjectMenu: View {
     @Bindable var model: AppModel
+    @State private var confirmDelete = false
 
     var body: some View {
         Menu {
@@ -395,9 +396,9 @@ struct ProjectMenu: View {
             if model.projects.count > 1 {
                 Divider()
                 Button(role: .destructive) {
-                    model.deleteProject(model.currentProject)
+                    confirmDelete = true
                 } label: {
-                    Label("Delete “\(displayName(model.currentProject))”", systemImage: "trash")
+                    Label("Slet “\(displayName(model.currentProject))”", systemImage: "trash")
                 }
             }
         } label: {
@@ -414,6 +415,13 @@ struct ProjectMenu: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .disabled(model.isBusy)
+        .confirmationDialog("Slet “\(displayName(model.currentProject))”?",
+                            isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Slet projekt", role: .destructive) { model.deleteProject(model.currentProject) }
+            Button("Annuller", role: .cancel) {}
+        } message: {
+            Text("Projektets kode, chat og historik slettes permanent. Dette kan ikke fortrydes.")
+        }
     }
 
     private func displayName(_ project: Project) -> String {
