@@ -130,10 +130,11 @@ struct StartScreen: View {
                 Composer(
                     text: Bindable(model).draft,
                     placeholder: model.chatMode == .plan
-                        ? "Beskriv hvad jeg skal planlægge…"
-                        : "Beskriv din app — eller klon et repo i sidebaren…",
+                        ? "Beskriv hvad jeg skal planlægge — eller skriv / for kommandoer…"
+                        : "Beskriv din app — eller skriv / for kommandoer…",
                     isBusy: model.isBusy,
                     autofocus: true,
+                    large: true,
                     mode: Bindable(model).chatMode,
                     images: model.attachedImages,
                     onAttach: { model.attachImagesFromPicker() },
@@ -147,7 +148,7 @@ struct StartScreen: View {
                     onMic: { model.toggleDictation() },
                     onSubmit: { model.submit() }
                 )
-                .frame(maxWidth: 560)
+                .frame(maxWidth: 600)
                 .tourAnchor(.composer)
 
                 HStack(spacing: 8) {

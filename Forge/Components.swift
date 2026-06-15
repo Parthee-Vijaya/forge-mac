@@ -11,6 +11,7 @@ struct Composer: View {
     var placeholder: String
     var isBusy: Bool
     var autofocus: Bool = false
+    var large: Bool = false                          // taller, roomier hero field on the start screen
     var mode: Binding<AgentLoop.Mode>? = nil
     var images: [String] = []                       // B4: attached image data URLs
     var onAttach: (() -> Void)? = nil               // paperclip → file picker
@@ -27,18 +28,20 @@ struct Composer: View {
 
     @FocusState private var focused: Bool
     @State private var dropTargeted = false
+    @State private var slashSelection = 0
+    @State private var slashSuppressed = false       // Esc hides the menu until the leading "/" is cleared
 
     private var canSend: Bool {
         (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) && !isBusy
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let mode { ModeToggle(mode: mode) }
+        VStack(alignment: .leading, spacing: large ? 12 : 8) {
             if !images.isEmpty { thumbnailStrip }
-            inputRow
+            field
+            bottomBar
         }
-        .padding(10)
+        .padding(large ? 13 : 10)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusL))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.radiusL)
@@ -46,7 +49,10 @@ struct Composer: View {
                               lineWidth: dropTargeted ? 1.5 : 1)
         )
         .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+        .overlay(alignment: .topLeading) { slashMenu }   // floats above the field while typing "/…"
+        .animation(.easeOut(duration: 0.12), value: slashActive)
         .onAppear { if autofocus { focused = true } }
+        .onChange(of: text) { handleTextChange() }
         .onDrop(of: [.fileURL], isTargeted: onDropImages == nil ? nil : $dropTargeted) { providers in
             handleDrop(providers)
         }
@@ -102,108 +108,248 @@ struct Composer: View {
         return NSImage(data: data)
     }
 
-    private var inputRow: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if let onAttach {
-                Button(action: onAttach) {
-                    Image(systemName: "paperclip").font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Theme.inkSoft)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .help("Vedhæft et billede / mockup")
-                .accessibilityLabel("Vedhæft billede")
-                .disabled(isBusy)
+    // MARK: - Text field (full-width, grows with content)
+
+    private var field: some View {
+        TextField(placeholder, text: $text, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.system(size: large ? 15 : 14))
+            .foregroundStyle(Theme.ink)
+            .tint(Theme.accent)
+            .lineLimit(large ? (3...14) : (1...8))
+            .focused($focused)
+            .onKeyPress(.upArrow) {
+                guard slashActive else { return .ignored }
+                moveSlash(-1); return .handled
             }
-            if let onAttachLink {
-                Button(action: onAttachLink) {
-                    Group {
-                        if isCapturing {
-                            ProgressView().controlSize(.small).scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "link").font(.system(size: 14, weight: .medium))
-                        }
-                    }
-                    .foregroundStyle(Theme.inkSoft)
-                    .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .help("Kopiér design fra et link — Forge tager et skærmbillede af siden")
-                .accessibilityLabel("Kopiér design fra link")
-                .disabled(isBusy || isCapturing)
+            .onKeyPress(.downArrow) {
+                guard slashActive else { return .ignored }
+                moveSlash(1); return .handled
             }
-            if let onEnhance {
-                Button(action: onEnhance) {
-                    Group {
-                        if isEnhancing {
-                            ProgressView().controlSize(.small).scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "wand.and.stars").font(.system(size: 14, weight: .medium))
-                        }
-                    }
-                    .foregroundStyle(Theme.inkSoft)
-                    .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .help("Forbedr prompt — udvid til en detaljeret spec")
-                .accessibilityLabel("Forbedr prompt")
-                .disabled(isBusy || isEnhancing || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .onKeyPress(.escape) {
+                guard slashActive else { return .ignored }
+                slashSuppressed = true; return .handled
             }
-            if let onMic {
-                Button(action: onMic) {
-                    Image(systemName: isDictating ? "mic.fill" : "mic")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(isDictating ? Theme.accent : Theme.inkSoft)
-                        .frame(width: 28, height: 28)
-                        .background(isDictating ? Theme.accent.opacity(0.12) : .clear,
-                                    in: RoundedRectangle(cornerRadius: Theme.radiusS))
-                }
-                .buttonStyle(.plain)
-                .help(isDictating ? "Stop diktering" : "Diktér med stemmen")
-                .accessibilityLabel(isDictating ? "Stop diktering" : "Diktér prompt")
-                .disabled(isBusy)
-            }
-            TextField(placeholder, text: $text, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.ink)
-                .tint(Theme.accent)
-                .lineLimit(1...8)
-                .focused($focused)
-                .onKeyPress(keys: [.return]) { press in
-                    if press.modifiers.contains(.shift) { return .ignored }
-                    if canSend { onSubmit() }
+            .onKeyPress(keys: [.return, .tab]) { press in
+                if slashActive {                               // Enter/Tab completes the highlighted command
+                    let matches = slashMatches
+                    let idx = min(slashSelection, matches.count - 1)
+                    if matches.indices.contains(idx) { applySlash(matches[idx]) }
                     return .handled
                 }
-
-            if isBusy, let onStop {
-                Button(action: onStop) {
-                    Image(systemName: "stop.fill").font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(width: 30, height: 30)
-                        .background(Theme.accent, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Stop generation")
-                .accessibilityLabel("Stop generering")
-            } else {
-                Button(action: onSubmit) {
-                    Group {
-                        if isBusy {
-                            ProgressView().controlSize(.small).tint(Theme.onAccent)
-                        } else {
-                            Image(systemName: "arrow.up").font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(Theme.onAccent)
-                        }
-                    }
-                    .frame(width: 30, height: 30)
-                    .background(canSend || isBusy ? Theme.accent : Theme.borderStrong, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(!canSend)
-                .accessibilityLabel("Send")
+                if press.key == .tab { return .ignored }       // normal focus traversal
+                if press.modifiers.contains(.shift) { return .ignored }   // Shift+Enter = newline
+                if canSend { onSubmit() }
+                return .handled
             }
+    }
+
+    // MARK: - Bottom toolbar: tools on the left, Build/Plan + send on the right
+
+    private var bottomBar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 10) {                              // tool cluster — roomier than before
+                attachButton
+                linkButton
+                enhanceButton
+                micButton
+            }
+            Spacer(minLength: 8)
+            if let mode { ModeToggle(mode: mode) }
+            sendButton
+        }
+    }
+
+    @ViewBuilder private var attachButton: some View {
+        if let onAttach {
+            Button(action: onAttach) {
+                Image(systemName: "paperclip").font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Theme.inkSoft).frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain).help("Vedhæft et billede / mockup")
+            .accessibilityLabel("Vedhæft billede").disabled(isBusy)
+        }
+    }
+
+    @ViewBuilder private var linkButton: some View {
+        if let onAttachLink {
+            Button(action: onAttachLink) {
+                Group {
+                    if isCapturing { ProgressView().controlSize(.small).scaleEffect(0.8) }
+                    else { Image(systemName: "link").font(.system(size: 15, weight: .medium)) }
+                }
+                .foregroundStyle(Theme.inkSoft).frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .help("Kopiér design fra et link — Forge tager et skærmbillede af siden")
+            .accessibilityLabel("Kopiér design fra link").disabled(isBusy || isCapturing)
+        }
+    }
+
+    @ViewBuilder private var enhanceButton: some View {
+        if let onEnhance {
+            Button(action: onEnhance) {
+                Group {
+                    if isEnhancing { ProgressView().controlSize(.small).scaleEffect(0.8) }
+                    else { Image(systemName: "wand.and.stars").font(.system(size: 15, weight: .medium)) }
+                }
+                .foregroundStyle(Theme.inkSoft).frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain).help("Forbedr prompt — udvid til en detaljeret spec")
+            .accessibilityLabel("Forbedr prompt")
+            .disabled(isBusy || isEnhancing || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    @ViewBuilder private var micButton: some View {
+        if let onMic {
+            Button(action: onMic) {
+                Image(systemName: isDictating ? "mic.fill" : "mic")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(isDictating ? Theme.accent : Theme.inkSoft)
+                    .frame(width: 30, height: 30)
+                    .background(isDictating ? Theme.accent.opacity(0.12) : .clear,
+                                in: RoundedRectangle(cornerRadius: Theme.radiusS))
+            }
+            .buttonStyle(.plain)
+            .help(isDictating ? "Stop diktering" : "Diktér med stemmen")
+            .accessibilityLabel(isDictating ? "Stop diktering" : "Diktér prompt").disabled(isBusy)
+        }
+    }
+
+    @ViewBuilder private var sendButton: some View {
+        if isBusy, let onStop {
+            Button(action: onStop) {
+                Image(systemName: "stop.fill").font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.onAccent).frame(width: 32, height: 32)
+                    .background(Theme.accent, in: Circle())
+            }
+            .buttonStyle(.plain).help("Stop generation").accessibilityLabel("Stop generering")
+        } else {
+            Button(action: onSubmit) {
+                Group {
+                    if isBusy { ProgressView().controlSize(.small).tint(Theme.onAccent) }
+                    else {
+                        Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.onAccent)
+                    }
+                }
+                .frame(width: 32, height: 32)
+                .background(canSend || isBusy ? Theme.accent : Theme.borderStrong, in: Circle())
+            }
+            .buttonStyle(.plain).keyboardShortcut(.return, modifiers: .command)
+            .disabled(!canSend).accessibilityLabel("Send")
+        }
+    }
+
+    // MARK: - Slash commands
+
+    /// A "/" command surfaced in the composer. `mode` commands flip Build/Plan;
+    /// `insert` commands prefill the prompt with a ready-made brief.
+    struct SlashCommand: Identifiable {
+        enum Action { case mode(AgentLoop.Mode); case insert(String) }
+        let id: String
+        let triggers: [String]   // first entry is the canonical label shown in the menu
+        let hint: String
+        let icon: String
+        let action: Action
+    }
+
+    static let slashCommands: [SlashCommand] = [
+        .init(id: "build", triggers: ["build", "byg"], hint: "Byg appen med det samme",
+              icon: "hammer", action: .mode(.build)),
+        .init(id: "plan", triggers: ["plan", "planlæg"], hint: "Læg en plan før koden skrives",
+              icon: "list.bullet.clipboard", action: .mode(.plan)),
+        .init(id: "fix", triggers: ["fix", "ret"], hint: "Find og ret fejl i appen",
+              icon: "wrench.and.screwdriver",
+              action: .insert("Find og ret fejlene i appen, og forklar kort hvad der var galt.")),
+        .init(id: "style", triggers: ["style", "stil"], hint: "Skift tema / udseende",
+              icon: "paintbrush", action: .insert("Skift stilen til ")),
+        .init(id: "responsive", triggers: ["responsive", "mobil"], hint: "Gør appen pæn på mobil",
+              icon: "iphone", action: .insert("Gør appen responsiv, så den ser godt ud på mobil.")),
+        .init(id: "explain", triggers: ["explain", "forklar"], hint: "Forklar koden i projektet",
+              icon: "text.book.closed",
+              action: .insert("Forklar kort hvordan koden i dette projekt hænger sammen.")),
+    ]
+
+    /// The "/…" the user is currently typing (nil unless the text is a bare slash token).
+    private var slashQuery: String? {
+        guard !slashSuppressed, text.hasPrefix("/") else { return nil }
+        let rest = text.dropFirst()
+        guard !rest.contains(" "), !rest.contains("\n") else { return nil }
+        return rest.lowercased()
+    }
+
+    private var slashMatches: [SlashCommand] {
+        guard let q = slashQuery else { return [] }
+        return Self.slashCommands.filter { cmd in
+            if case .mode = cmd.action, mode == nil { return false }   // no Build/Plan binding here
+            return q.isEmpty || cmd.triggers.contains { $0.hasPrefix(q) }
+        }
+    }
+
+    private var slashActive: Bool { !slashMatches.isEmpty }
+
+    private func moveSlash(_ delta: Int) {
+        let count = slashMatches.count
+        guard count > 0 else { return }
+        slashSelection = max(0, min(slashSelection + delta, count - 1))
+    }
+
+    private func applySlash(_ cmd: SlashCommand) {
+        switch cmd.action {
+        case .mode(let m): mode?.wrappedValue = m; text = ""
+        case .insert(let template): text = template
+        }
+        slashSelection = 0
+        slashSuppressed = false
+        focused = true
+    }
+
+    /// Keeps slash state in sync and supports the inline shortcut: typing
+    /// "/byg " or "/plan " applies the mode and strips the token.
+    private func handleTextChange() {
+        if !text.hasPrefix("/") { slashSuppressed = false }
+        slashSelection = 0
+        guard text.hasPrefix("/"),
+              let sep = text.firstIndex(where: { $0 == " " || $0 == "\n" }) else { return }
+        let token = text[text.index(after: text.startIndex)..<sep].lowercased()
+        guard let cmd = Self.slashCommands.first(where: { $0.triggers.contains(token) }),
+              case .mode(let m) = cmd.action, mode != nil else { return }
+        mode?.wrappedValue = m
+        text = String(text[text.index(after: sep)...])
+    }
+
+    @ViewBuilder private var slashMenu: some View {
+        if slashActive {
+            let matches = slashMatches
+            let sel = min(slashSelection, matches.count - 1)
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(Array(matches.enumerated()), id: \.element.id) { idx, cmd in
+                    HStack(spacing: 9) {
+                        Image(systemName: cmd.icon).font(.system(size: 12))
+                            .foregroundStyle(idx == sel ? Theme.onAccent : Theme.accent).frame(width: 16)
+                        Text("/\(cmd.triggers[0])")
+                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(idx == sel ? Theme.onAccent : Theme.ink)
+                        Text(cmd.hint).font(.system(size: 11)).lineLimit(1)
+                            .foregroundStyle(idx == sel ? Theme.onAccent.opacity(0.85) : Theme.inkFaint)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 9).padding(.vertical, 6)
+                    .background(idx == sel ? Theme.accent : .clear, in: RoundedRectangle(cornerRadius: 6))
+                    .contentShape(Rectangle())
+                    .onTapGesture { applySlash(cmd) }
+                    .onHover { if $0 { slashSelection = idx } }
+                }
+            }
+            .padding(5)
+            .frame(width: 300, alignment: .leading)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border, lineWidth: 1))
+            .shadow(color: .black.opacity(0.18), radius: 14, y: 4)
+            .alignmentGuide(.top) { $0.height + 8 }   // sit just above the composer
+            .transition(.opacity)
         }
     }
 }
@@ -859,6 +1005,10 @@ struct ShortcutsView: View {
         ("Chat", [("⌘↩", "Send besked")]),
         ("Kode & preview", [("⌘\\", "Skift kode / preview"), ("⌘S", "Gem fil"),
                             ("⌘R", "Genindlæs preview"), ("⌘/", "Vis denne genvejsoversigt")]),
+        ("Slash-kommandoer (skriv / i prompten)",
+            [("/byg", "Byg appen direkte"), ("/plan", "Læg en plan først"),
+             ("/ret", "Find og ret fejl"), ("/stil", "Skift tema / udseende"),
+             ("/mobil", "Gør appen responsiv"), ("/forklar", "Forklar koden")]),
     ]
 
     var body: some View {

@@ -158,7 +158,8 @@ struct ChatView: View {
     private func composerPlaceholder(_ model: AppModel) -> String {
         if model.askMode { return "Spørg om koden (read-only)…" }
         if let element = model.selectedElement { return "Change the selected \(element.tag)…" }
-        return model.chatMode == .plan ? "Describe what to plan…" : "Describe a change…"
+        return model.chatMode == .plan ? "Describe what to plan — or type / for commands…"
+                                       : "Describe a change — or type / for commands…"
     }
 
     private var messageList: some View {
