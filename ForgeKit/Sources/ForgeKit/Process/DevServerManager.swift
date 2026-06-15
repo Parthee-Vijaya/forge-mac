@@ -132,6 +132,44 @@ public actor DevServerManager {
         )
     }
 
+    /// One-shot TypeScript type-check (`tsc --noEmit`) feeding the self-correction
+    /// loop. Vite's dev server transpiles with esbuild, which *strips* types
+    /// without checking them, so a real type error otherwise ships silently as
+    /// "clean". Returns tsc's output as log lines for `ErrorClassifier` (which
+    /// already parses the `file(line,col): error TSxxxx` format and dedups against
+    /// the Vite overlay).
+    ///
+    /// Returns `[]` — never fabricated errors — when the project can't be checked:
+    /// no `tsconfig.json` or no locally-installed `tsc` (e.g. the Svelte/Vue
+    /// scaffolds, which would need svelte-check / vue-tsc instead). A watchdog
+    /// terminates a tsc that runs past `timeout` so the loop can't stall.
+    public func typeCheck(timeout: Duration = .seconds(45)) async -> [LogLine] {
+        let fm = FileManager.default
+        let tsconfig = workspace.root.appendingPathComponent("tsconfig.json")
+        let tscBin = workspace.root.appendingPathComponent("node_modules/.bin/tsc")
+        guard fm.fileExists(atPath: tsconfig.path), fm.fileExists(atPath: tscBin.path) else { return [] }
+
+        do {
+            // `--pretty false` forces the plain, parseable diagnostic format and
+            // strips ANSI colour codes; the relative bin resolves against cwd.
+            let (events, process) = try await runShellCommand("node_modules/.bin/tsc --noEmit --pretty false")
+            let watchdog = Task {
+                try? await Task.sleep(for: timeout)
+                if process.isRunning { await process.terminate() }
+            }
+            defer { watchdog.cancel() }
+            // Consume privately (do NOT broadcast): tsc output belongs in the
+            // error report, not the live dev-server log pane.
+            var lines: [LogLine] = []
+            for await event in events {
+                if case .log(let line) = event { lines.append(line) }
+            }
+            return lines
+        } catch {
+            return []
+        }
+    }
+
     /// Graceful stop + cleanup. Safe to call multiple times.
     public func shutdown() async {
         await stopDevProcessQuietly()

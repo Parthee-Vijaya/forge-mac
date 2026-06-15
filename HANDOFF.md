@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `de705cb` 2026-06-15 — Harden: parser cancel-flush, keychain, preview bridge, error cap, prompt-injection
 - `3cfcead` 2026-06-15 — Harden: deploy shell-quoting, safe checkpoint restore, shell-probe timeout
 - `4b3b307` 2026-06-15 — Roadmap: Supabase + multi-framework + syntax-highlight done
 - `5ef3f95` 2026-06-15 — Supabase backend integration (XL)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `2359175` 2026-06-15 — Project thumbnails in the recent-projects list
 - `d87a65a` 2026-06-15 — Token usage counter per turn + project
 - `4ee03c9` 2026-06-15 — Tidier project names from the first prompt
-- `9654261` 2026-06-15 — Toast notifications for async successes
 <!-- COMMITLOG:END -->

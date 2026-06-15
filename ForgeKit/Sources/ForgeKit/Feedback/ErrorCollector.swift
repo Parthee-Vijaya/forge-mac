@@ -27,6 +27,11 @@ public actor ErrorCollector {
 
     public func collect() async -> ErrorReport {
         let logs = await devServer.recentLogLines()
-        return classifier.report(logs: logs, runtime: runtimeIssues)
+        // A real `tsc --noEmit` pass — the dev server (esbuild) never type-checks,
+        // so without this a type error reads as "clean". No-op for projects that
+        // can't be checked (returns []), and the classifier dedups any error the
+        // Vite overlay also reported.
+        let typeErrors = await devServer.typeCheck()
+        return classifier.report(logs: logs + typeErrors, runtime: runtimeIssues)
     }
 }

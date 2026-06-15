@@ -126,10 +126,16 @@ private let templateTSConfig = """
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"]
 }
 """
+// NOTE: the root config intentionally has NO `references`. It type-checks `src`
+// standalone so `tsc --noEmit` succeeds on a clean scaffold — which is what lets
+// the self-correction loop use tsc as a real type-error gate (Vite/esbuild strip
+// types without checking them). tsconfig.node.json is kept only so editors get
+// node types for vite.config.ts; it is deliberately NOT referenced here, because
+// a referenced project must be `composite` (and a composite project can't set
+// `noEmit`), which previously made `tsc` fail on every generated project.
 
 private let templateTSConfigNode = """
 {

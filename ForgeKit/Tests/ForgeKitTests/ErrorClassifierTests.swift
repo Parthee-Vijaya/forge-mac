@@ -118,6 +118,30 @@ final class ErrorClassifierTests: XCTestCase {
         XCTAssertEqual(report.signature, "")
     }
 
+    // MARK: - `tsc --noEmit` gate (DevServerManager.typeCheck feeds these lines)
+
+    /// The exact, verified output of `tsc --noEmit --pretty false`: one bare
+    /// diagnostic per line, NO trailing "Found N errors" summary (so no phantom
+    /// item). This is the contract the self-correction loop now relies on to
+    /// catch type errors esbuild silently strips.
+    func testClassifiesRealTscNoEmitDump() {
+        let dump = [
+            log("src/App.tsx(309,7): error TS2322: Type 'string' is not assignable to type 'number'."),
+            log("src/App.tsx(310,7): error TS2322: Type 'number' is not assignable to type 'string'."),
+        ]
+        let report = classifier.report(logs: dump, runtime: [])
+        XCTAssertEqual(report.items.count, 2)
+        XCTAssertEqual(report.items.first?.source, .build)
+        XCTAssertEqual(report.items.first?.file, "src/App.tsx")
+        XCTAssertEqual(report.items.first?.code, "TS2322")
+        XCTAssertFalse(report.isClean)
+    }
+
+    /// A passing `tsc --noEmit` prints nothing → the gate must stay clean.
+    func testEmptyTscOutputIsClean() {
+        XCTAssertTrue(classifier.report(logs: [], runtime: []).isClean)
+    }
+
     func testSignatureStableAcrossLineDrift() {
         let a = classifier.report(logs: [log("src/App.tsx(12,5): error TS2304: Cannot find name 'foo'.")], runtime: [])
         let b = classifier.report(logs: [log("src/App.tsx(40,2): error TS2304: Cannot find name 'foo'.")], runtime: [])
