@@ -9,10 +9,13 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "ForgeKit", targets: ["ForgeKit"])
+        .library(name: "ForgeKit", targets: ["ForgeKit"]),
+        // B18: a stdio MCP server that exposes a project's files to external agents.
+        .executable(name: "forge-mcp", targets: ["forge-mcp"])
     ],
     targets: [
         .target(name: "ForgeKit"),
+        .executableTarget(name: "forge-mcp"),
         .testTarget(
             name: "ForgeKitTests",
             dependencies: ["ForgeKit"]
