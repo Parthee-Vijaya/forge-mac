@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `5b4f549` 2026-06-15 — docs: landing page på dansk + nybegynder/gratis-vinkel
 - `1228091` 2026-06-15 — docs: GitHub Pages landing page (served from /docs)
 - `3fc881e` 2026-06-15 — docs: refresh screenshots for v0.2.1 + add slash/tutorial steps
 - `8c2069d` 2026-06-15 — UI-polish: status bar, editor tabs, minimap, native notifications
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `2596882` 2026-06-15 — A19: reuse preview WebView + warm shared process pool
 - `124795e` 2026-06-15 — B17-rest: push .env.local to Vercel env after deploy
 - `06c4aa6` 2026-06-15 — A14: coalesce streaming UI updates (chat tokens + dev-server log)
-- `8411318` 2026-06-15 — B20: shareable project bundles (export + import)
 <!-- COMMITLOG:END -->
