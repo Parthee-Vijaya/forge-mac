@@ -70,6 +70,7 @@ final class AppModel {
     var isEnhancing: Bool = false        // B14: expanding the draft into a detailed brief
     var statusText: String = "Ready."
     var chatMode: AgentLoop.Mode = .build   // Plan vs Build toggle in the composer
+    var askMode = false                     // B10: read-only "ask about the code" mode
 
     // Layout: the preview pane only appears once the first build has started.
     var hasStarted: Bool = false
@@ -1482,6 +1483,10 @@ final class AppModel {
         guard !prompt.isEmpty || !images.isEmpty, !isBusy else { return }
         draft = ""
         attachedImages = []
+        if askMode {   // B10: route to a read-only answer instead of a build turn
+            answerAboutCode(prompt.isEmpty ? "Forklar kort hvad denne app gør." : prompt)
+            return
+        }
         let mode = chatMode
         let modelPrompt = Self.composeModelPrompt(prompt: prompt, hasImages: !images.isEmpty, mode: mode)
         let visiblePrompt = prompt.isEmpty ? "Kopiér dette design" : prompt
@@ -1582,6 +1587,77 @@ final class AppModel {
                 maybeAutoCopyPass(afterRole: role)
             }
         }
+    }
+
+    /// B10: read-only "Spørg om koden" — answer a question about the current
+    /// project's source WITHOUT writing files. For project-sized codebases we put
+    /// the source directly in context (more reliable than retrieval at this scale);
+    /// embeddings-based retrieval over sqlite-vec is a future scale-up for large repos.
+    func answerAboutCode(_ question: String) {
+        guard !isBusy, hasStarted, templateInstalled else { return }
+        messages.append(UIMessage(role: .user, text: question))
+        messages.append(UIMessage(role: .assistant, text: ""))
+        let idx = messages.count - 1
+        isBusy = true
+        phase = .building
+        statusText = "Læser koden…"
+        turnTokens = 0
+        let config = modelFor(.plan)   // a reasoning model answers Q&A well
+        agentTask = Task {
+            let context = await gatherSourceContext(maxChars: 24_000)
+            let system = "You are a READ-ONLY code assistant for THIS project. Answer the user's "
+                + "question about the codebase clearly and concisely. Do NOT write, modify, or "
+                + "propose file edits — only explain. Base your answer on the provided source. "
+                + "Reply in the user's language."
+            let userMsg = "Project source:\n\(context)\n\n---\nQuestion: \(question)"
+            statusText = "Tænker…"
+            do {
+                let provider = ModelRouter.provider(for: config)
+                let options = ModelRouter.options(for: config)
+                for try await event in provider.stream(
+                    messages: [ChatMessage(role: .system, content: system),
+                               ChatMessage(role: .user, content: userMsg)],
+                    options: options) {
+                    if Task.isCancelled { break }
+                    switch event {
+                    case .token(let t): appendAssistant(idx, t)
+                    case .reasoning(let r): appendReasoning(idx, r)
+                    case .done(_, let pt, let ct):
+                        if let pt, let ct { turnTokens += pt + ct; projectTokens += pt + ct }
+                    }
+                }
+            } catch {
+                appendAssistant(idx, "\n\n_Kunne ikke besvare: \(error.localizedDescription)_")
+            }
+            flushStreamBuffers()
+            if messages.indices.contains(idx), messages[idx].text.isEmpty, !Task.isCancelled {
+                messages[idx].text = "_Intet svar._"
+            }
+            phase = .idle
+            statusText = Task.isCancelled ? "Stopped." : "Ready."
+            isBusy = false
+            agentTask = nil
+            persistCurrentChat()
+        }
+    }
+
+    /// Gather the project's source (src/** + key config files), capped + formatted
+    /// as labeled blocks, for the read-only code Q&A (B10).
+    private func gatherSourceContext(maxChars: Int) async -> String {
+        let files = await workspace.fileMap()
+        let configFiles: Set<String> = ["package.json", "index.html", "vite.config.ts",
+                                         "tailwind.config.js", "tsconfig.json", "AI_RULES.md"]
+        let wanted = files.filter { ($0.hasPrefix("src/") || configFiles.contains($0)) && $0 != "package-lock.json" }
+        var out = ""
+        for path in wanted {
+            guard let content = try? await workspace.readFile(path) else { continue }
+            let block = "// FILE: \(path)\n\(content)\n\n"
+            if out.count + block.count > maxChars {
+                out += "// FILE: \(path)\n(udeladt — for stor)\n\n"; continue
+            }
+            out += block
+        }
+        return out.isEmpty ? "(ingen kildefiler fundet)" : out
     }
 
     /// After a clean build, automatically run the Danish copy-pass if enabled.
@@ -1940,6 +2016,8 @@ final class AppModel {
                                     icon: "key") { Task { await self.openEnvEditor() } })
             c.append(PaletteCommand(id: "terminal", title: "Terminal…",
                                     icon: "terminal") { self.showTerminal = true })
+            c.append(PaletteCommand(id: "ask", title: "Spørg om koden (read-only)",
+                                    icon: "questionmark.bubble") { self.askMode = true })
         }
         if canCopyPass {
             c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",

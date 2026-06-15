@@ -123,6 +123,17 @@ struct ChatView: View {
                 .help("Tokens — denne tur: \(AppModel.formatTokens(model.turnTokens)) · projekt i alt: \(AppModel.formatTokens(model.projectTokens))")
             }
             ModelPicker(model: model)
+            Button { model.askMode.toggle() } label: {   // B10: read-only "ask about the code"
+                Image(systemName: "questionmark.bubble")
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.askMode ? Theme.onAccent : Theme.inkSoft)
+                    .frame(width: 30, height: 28)
+                    .background(model.askMode ? Theme.accent : Theme.fill,
+                                in: RoundedRectangle(cornerRadius: Theme.radiusS))
+            }
+            .buttonStyle(.plain)
+            .help("Spørg om koden (read-only)")
+            .accessibilityLabel("Spørg om koden")
             if model.preferences.learningMode {
                 Button { model.showGlossary = true } label: {
                     Image(systemName: "book")
@@ -143,6 +154,7 @@ struct ChatView: View {
     }
 
     private func composerPlaceholder(_ model: AppModel) -> String {
+        if model.askMode { return "Spørg om koden (read-only)…" }
         if let element = model.selectedElement { return "Change the selected \(element.tag)…" }
         return model.chatMode == .plan ? "Describe what to plan…" : "Describe a change…"
     }
