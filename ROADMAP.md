@@ -105,7 +105,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 2. **Git-diff pr. tur i chatten** — vis hvad hver tur ændrede (tilføjet/fjernet) inline som en mini-PR. *Sådan:* git-diff mellem checkpoints (fra B1); render som farvet diff i `MessageView`. **M · P1**
 
-3. **Supabase / backend-integration** — tilføj DB + auth til genererede apps (Lovables killer-feature). *Sådan:* en "Add backend"-handling der scaffolder Supabase-client + env, og udvider `SystemPrompt` med Supabase-mønstre; secrets i Keychain (A4). **XL · P1**
+3. **Supabase / backend-integration** — ✅ *bygget.* "Tilføj backend (Supabase)" (projekt-menu + ⌘K) → dialog for projekt-URL + anon-nøgle → scaffolder `src/lib/supabase.ts` (konfigureret client), skriver env til `.env.local`, installerer `@supabase/supabase-js` og genstarter dev-serveren. `SystemPrompt.supabaseNote` (gated på at klienten findes) lærer modellen at bruge DB + auth uden at hardcode nøgler. **XL · P1**
 
 4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **Udvidet:** indsæt et **link** → Forge tager et offscreen-screenshot af siden (`DesignCapture`, en skjult WKWebView der scroller for at trigge entrance-animationer) og vedhæfter det som design-reference; `submit()` tilføjer eksplicit “recreate this design”-framing når et billede er vedhæftet (“kopiér dette design”). Verificeret med stripe.com + vercel.com. **L · P1**
 
@@ -113,7 +113,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 6. **Template-galleri** — ✅ *bygget.* Seks startpunkter på startskærmen (landing, dashboard, todo, portfolio, blog, pomodoro), hver med en detaljeret dansk brief så første build lander et imponerende sted. *Sådan:* `StarterTemplate` + `StarterTemplates.all`; `AppModel.startFromTemplate()` seeder briefen og submitter i Build-mode; et 3×2 kort-grid under composeren (ikon/titel/undertekst, hover-highlight). **M · P1**
 
-7. **Multi-framework** — Next.js / Svelte / Vue ud over React+Vite (differentiator; Lovable er React-only). *Sådan:* `ProjectTemplate` + `DevServerManager` parametriseres på framework (dev-kommando, ready-mønster i `ViteReadyDetector` generaliseres). **XL · P2**
+7. **Multi-framework** — ◑ *bygget (Vite-baseret).* React / Svelte / Vue kan vælges pr. projekt (`Framework`-enum → `ProjectTemplate`; Svelte 5- og Vue 3-scaffolds verificeret til `npm install` + `vite build`). Framework-vælger på startskærmen, persisteret på `Project`, og `SystemPrompt.frameworkNote` override'er den React-centrerede prompt for Svelte/Vue. *Udestår:* Next.js (anden dev-server/ready-output). **XL · P2**
 
 8. **Indbygget terminal** — kør vilkårlige kommandoer i projektet. *Sådan:* `DevServerManager.runShellCommand` findes; tilføj en terminal-pane (PTY via `Process` + en terminal-emulator-view, eller simpel kommando/output-log). **L · P2**
 
@@ -159,7 +159,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 ## C. 20 DESIGN-FORSLAG (UI/UX/visuelt)
 
-1. **VS Code-agtig kode-editor** — syntax highlight, linjenumre, minimap, aktiv-linje-marker. *Sådan:* CodeMirror 6 i WebView eller Tree-sitter→`NSAttributedString` i `CodeTextView`; matcher Forges sort/hvide tema. **M · P1**
+1. **VS Code-agtig kode-editor** — ◑ *delvist bygget.* Syntax highlighting er på plads: en let regex-tokenizer (`SyntaxHighlighter`) farver `CodeTextView`s textStorage (keywords/typer/tal/strenge/kommentarer) i mørk + lys palet, debounced, uden at røre teksten. *Udestår:* linjenumre, minimap, aktiv-linje-marker. **M · P1**
 
 2. **Live "fil-skrives"-animation** — vis filen blive "tastet" i editoren mens modellen streamer (Bolt/Lovable-signatur). *Sådan:* `ParserEvent.fileChunk` findes allerede — rut den til editoren med en cursor-typing-effekt + auto-scroll. **M · P1**
 
