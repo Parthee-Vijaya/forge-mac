@@ -25,6 +25,8 @@ struct ForgeApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("Skift kode / preview") { appDelegate.model.toggleRightPane() }
                     .keyboardShortcut("\\", modifiers: .command)
+                Button("Terminal") { if appDelegate.model.hasStarted { appDelegate.model.showTerminal = true } }
+                    .keyboardShortcut("t", modifiers: .command)
                 Divider()
                 Button("Stop generering") { appDelegate.model.cancelGeneration() }
                     .keyboardShortcut(".", modifiers: .command)

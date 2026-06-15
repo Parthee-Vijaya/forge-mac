@@ -894,6 +894,68 @@ private struct KeyCap: View {
     }
 }
 
+/// B8: a lightweight built-in terminal — a command field + scrollable output log,
+/// running each command in the project root via the dev server's runShellCommand.
+struct TerminalView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
+    @State private var command = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "terminal").font(.system(size: 13)).foregroundStyle(Theme.accent)
+                Text("Terminal").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                Button("Ryd") { model.clearTerminal() }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkSoft)
+                Button("Luk") { dismiss() }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkSoft).keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            Divider().overlay(Theme.border)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 1) {
+                        if model.terminalLines.isEmpty {
+                            Text("Kør kommandoer i projektmappen — fx npm run build, git status, ls.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
+                        }
+                        ForEach(Array(model.terminalLines.enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.system(size: 11.5, design: .monospaced))
+                                .foregroundStyle(line.hasPrefix("$ ") ? Theme.accent : Theme.inkSoft)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Color.clear.frame(height: 1).id("term-bottom")
+                    }
+                    .padding(12)
+                }
+                .onChange(of: model.terminalLines.count) {
+                    withAnimation(Theme.Motion.quick) { proxy.scrollTo("term-bottom", anchor: .bottom) }
+                }
+            }
+            Divider().overlay(Theme.border)
+            HStack(spacing: 8) {
+                Text("$").font(.system(size: 12, weight: .medium, design: .monospaced)).foregroundStyle(Theme.inkFaint)
+                TextField("kommando…", text: $command)
+                    .textFieldStyle(.plain).font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(Theme.ink).focused($focused)
+                    .onSubmit { let c = command; command = ""; model.runTerminalCommand(c) }
+                if model.terminalBusy { ProgressView().controlSize(.small) }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+        }
+        .frame(width: 640, height: 440)
+        .background(Theme.surface)
+        .preferredColorScheme(model.colorScheme)
+        .onAppear { focused = true }
+    }
+}
+
 /// A horizontal split whose divider position is draggable AND remembered across
 /// launches (@AppStorage). Replaces HSplitView, which can't persist its position.
 struct PersistentHSplit<Left: View, Right: View>: View {

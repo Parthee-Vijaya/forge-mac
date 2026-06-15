@@ -44,5 +44,6 @@ struct ContentView: View {
         .animation(.smooth(duration: 0.35), value: model.preferences.onboarded)
         .sheet(isPresented: $model.showCommandPalette) { CommandPaletteView() }
         .sheet(isPresented: $model.showShortcuts) { ShortcutsView() }
+        .sheet(isPresented: $model.showTerminal) { TerminalView() }
     }
 }

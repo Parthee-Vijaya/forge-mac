@@ -106,6 +106,12 @@ final class AppModel {
     var deployHistory: [Deployment] = []
     var isFetchingDeploys = false
 
+    // B8: built-in terminal (command + output log over runShellCommand)
+    var showTerminal = false
+    var terminalLines: [String] = []
+    var terminalBusy = false
+    @ObservationIgnored private var terminalTask: Task<Void, Never>?
+
     // Visual editing
     var selectMode = false
     var selectedElement: SelectedElement?
@@ -726,6 +732,36 @@ final class AppModel {
     }
 
     func openURL(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    // MARK: - Terminal (B8)
+
+    /// B8: run a shell command in the project root (node on PATH), streaming its
+    /// output into the terminal log. Each command runs in its own `/bin/sh -c`, so
+    /// shell state (cd, exports) doesn't persist between commands — fine for the
+    /// common cases (npm scripts, git, ls). Reuses the dev server's runShellCommand.
+    func runTerminalCommand(_ command: String) {
+        let cmd = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cmd.isEmpty, hasStarted, !terminalBusy else { return }
+        terminalLines.append("$ \(cmd)")
+        terminalBusy = true
+        let server = devServer
+        terminalTask = Task {
+            do {
+                let (events, _) = try await server.runShellCommand(cmd)
+                for await event in events {
+                    if case .log(let line) = event {
+                        terminalLines.append(line.text)
+                        if terminalLines.count > 800 { terminalLines.removeFirst(terminalLines.count - 800) }
+                    }
+                }
+            } catch {
+                terminalLines.append("⚠️ kunne ikke køre kommandoen: \(error.localizedDescription)")
+            }
+            terminalBusy = false
+        }
+    }
+
+    func clearTerminal() { terminalLines.removeAll() }
 
     static func slug(_ name: String) -> String {
         var s = String(name.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" })
@@ -1902,6 +1938,8 @@ final class AppModel {
                                     icon: "cylinder.split.1x2") { self.showSupabaseDialog = true })
             c.append(PaletteCommand(id: "env", title: "Miljøvariabler (.env)…",
                                     icon: "key") { Task { await self.openEnvEditor() } })
+            c.append(PaletteCommand(id: "terminal", title: "Terminal…",
+                                    icon: "terminal") { self.showTerminal = true })
         }
         if canCopyPass {
             c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",
