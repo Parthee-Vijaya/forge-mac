@@ -109,6 +109,10 @@ final class AppModel {
     var isCapturing = false
     @ObservationIgnored private var captureTask: Task<Void, Never>?
 
+    // Rename the current project (from the project menu)
+    var showRenameDialog = false
+    var renameText = ""
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -425,6 +429,14 @@ final class AppModel {
             projects[index] = currentProject
         }
         ProjectStore.saveProjects(projects)
+    }
+
+    /// Manual rename from the project menu's "Omdøb…". No-op on an empty name.
+    func renameCurrentProject(to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        renameCurrent(to: trimmed)
+        showRenameDialog = false
     }
 
     /// A short, tidy project title from the first prompt: strips a leading

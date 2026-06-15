@@ -271,6 +271,42 @@ struct ToastView: View {
     }
 }
 
+/// Dialog for renaming the current project (from the project menu's "Omdøb…").
+struct RenameDialogView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        @Bindable var model = model
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Omdøb projekt")
+                .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.ink)
+            TextField("Projektnavn", text: $model.renameText)
+                .textFieldStyle(.plain).font(.system(size: 15))
+                .foregroundStyle(Theme.ink).tint(Theme.accent)
+                .padding(12)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
+                .onSubmit { model.renameCurrentProject(to: model.renameText) }
+            HStack {
+                Button("Annuller") { dismiss() }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
+                Spacer()
+                Button { model.renameCurrentProject(to: model.renameText) } label: {
+                    Text("Gem").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                        .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 380)
+        .preferredColorScheme(model.colorScheme)
+    }
+}
+
 /// Plan / Build segmented toggle for the composer. Plan mode makes the agent
 /// propose a plan + ask questions instead of writing code.
 struct ModeToggle: View {
@@ -428,6 +464,10 @@ struct ProjectMenu: View {
             Divider()
             Button { model.newProject() } label: { Label("New project", systemImage: "plus") }
             if model.hasStarted {
+                Button {
+                    model.renameText = displayName(model.currentProject)
+                    model.showRenameDialog = true
+                } label: { Label("Omdøb…", systemImage: "pencil") }
                 Button { model.openInEditor() } label: {
                     Label("Open in editor", systemImage: "chevron.left.forwardslash.chevron.right")
                 }
