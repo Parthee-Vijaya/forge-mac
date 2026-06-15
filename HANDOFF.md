@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `9807b3a` 2026-06-15 — UI: roomier composer + slash commands
 - `f736a3d` 2026-06-15 — docs: comprehensive README with screenshot tour + v0.2.0 bump
 - `38a7005` 2026-06-15 — docs: ROADMAP status — full P2 sweep (B7/B8/B10/B11/B15/B18/B19/B20/C11/C17/A14/A15/A19 + rest)
 - `ae8ff20` 2026-06-15 — B19 (host side): HTTP status server for an iOS companion
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `f3ec311` 2026-06-15 — docs: mark B17 (.env editor), B16 (deploy history), A17 (legacy migration) built in ROADMAP
 - `0662421` 2026-06-15 — P2: .env editor (B17), Vercel deploy history + rollback (B16), legacy-project migration (A17)
 - `bff9e8f` 2026-06-15 — A16: app-layer unit tests for AppModel's decision helpers
-- `247d69a` 2026-06-15 — UI: shortcut cheat sheet (⌘/), resizable+persistent split, preview px label
 <!-- COMMITLOG:END -->

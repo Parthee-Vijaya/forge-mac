@@ -13,6 +13,53 @@ struct CodePane: View {
     }
 }
 
+fileprivate func fileIcon(_ path: String) -> String {
+    if path.hasSuffix(".tsx") || path.hasSuffix(".ts") { "curlybraces" }
+    else if path.hasSuffix(".css") { "paintbrush" }
+    else if path.hasSuffix(".json") { "doc.badge.gearshape" }
+    else if path.hasSuffix(".html") { "chevron.left.forwardslash.chevron.right" }
+    else { "doc" }
+}
+
+/// Editor tab strip — one tab per open file, click to switch, × to close.
+private struct EditorTabBar: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 1) {
+                ForEach(model.openTabs, id: \.self) { tab($0) }
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: 32)
+        .background(Theme.sidebar)
+    }
+
+    private func tab(_ path: String) -> some View {
+        let active = model.selectedFile == path
+        return HStack(spacing: 6) {
+            Image(systemName: fileIcon(path)).font(.system(size: 10))
+                .foregroundStyle(active ? Theme.accent : Theme.inkFaint)
+            Text((path as NSString).lastPathComponent)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(active ? Theme.ink : Theme.inkSoft).lineLimit(1)
+            Button { model.closeTab(path) } label: {
+                Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Theme.inkFaint).frame(width: 14, height: 14)
+            }
+            .buttonStyle(.plain).help("Luk fane")
+        }
+        .padding(.leading, 9).padding(.trailing, 4).padding(.vertical, 6)
+        .background(active ? Theme.canvas : .clear)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(active ? Theme.accent : .clear).frame(height: 2)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { if !active { Task { await model.openFile(path) } } }
+    }
+}
+
 private struct FileTreeView: View {
     @Environment(AppModel.self) private var model
 
@@ -37,7 +84,7 @@ private struct FileTreeView: View {
                 ForEach(model.projectFiles, id: \.self) { path in
                     Button { Task { await model.openFile(path) } } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: Self.icon(path))
+                            Image(systemName: fileIcon(path))
                                 .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
                                 .frame(width: 14)
                             Text(path)
@@ -64,14 +111,6 @@ private struct FileTreeView: View {
         .onKeyPress(.downArrow) { model.selectAdjacentFile(1); return .handled }
         .accessibilityLabel("Fil-træ — pil op/ned skifter fil")
     }
-
-    static func icon(_ path: String) -> String {
-        if path.hasSuffix(".tsx") || path.hasSuffix(".ts") { "curlybraces" }
-        else if path.hasSuffix(".css") { "paintbrush" }
-        else if path.hasSuffix(".json") { "doc.badge.gearshape" }
-        else if path.hasSuffix(".html") { "chevron.left.forwardslash.chevron.right" }
-        else { "doc" }
-    }
 }
 
 private struct CodeEditorView: View {
@@ -81,6 +120,10 @@ private struct CodeEditorView: View {
     var body: some View {
         @Bindable var model = model
         VStack(spacing: 0) {
+            if !model.openTabs.isEmpty {
+                EditorTabBar()
+                Divider().overlay(Theme.border)
+            }
             HStack(spacing: 8) {
                 Text(model.selectedFile ?? "No file selected")
                     .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.inkSoft)
@@ -139,7 +182,7 @@ struct CodeTextView: NSViewRepresentable {
     @Binding var text: String
     var autoScroll: Bool = false
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context: Context) -> NSView {
         let textView = NSTextView()
         textView.delegate = context.coordinator
         textView.isRichText = false
@@ -181,11 +224,15 @@ struct CodeTextView: NSViewRepresentable {
                        name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
         nc.addObserver(context.coordinator, selector: #selector(Coordinator.refreshRuler),
                        name: NSTextView.didChangeSelectionNotification, object: textView)
-        return scrollView
+
+        // Minimap pinned to the right of the editor (VS Code-style overview).
+        let minimap = MinimapView(textView: textView)
+        context.coordinator.minimap = minimap
+        return EditorContainer(scroll: scrollView, minimap: minimap)
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let textView = context.coordinator.textView else { return }
         if textView.string != text {
             textView.string = text
             if autoScroll {
@@ -195,6 +242,7 @@ struct CodeTextView: NSViewRepresentable {
                 textView.scrollRangeToVisible(end)
             }
             context.coordinator.scheduleHighlight()
+            context.coordinator.minimap?.needsDisplay = true
         }
     }
 
@@ -205,6 +253,7 @@ struct CodeTextView: NSViewRepresentable {
         private let text: Binding<String>
         weak var textView: NSTextView?
         weak var ruler: LineNumberRulerView?
+        weak var minimap: MinimapView?
         private var highlightWork: DispatchWorkItem?
 
         init(text: Binding<String>) { self.text = text }
@@ -340,5 +389,127 @@ final class LineNumberRulerView: NSRulerView {
         let end = min(idx, s.length)
         while i < end { if s.character(at: i) == 0x0A { count += 1 }; i += 1 }
         return count
+    }
+}
+
+/// A condensed overview of the file: one faint bar per line (width ∝ content
+/// length, x ∝ indentation) plus a translucent viewport indicator. Click/drag to
+/// jump. Approximates VS Code's minimap without rendering glyphs, so it's cheap;
+/// skipped for very large files.
+final class MinimapView: NSView {
+    weak var textView: NSTextView?
+
+    init(textView: NSTextView) {
+        self.textView = textView
+        super.init(frame: .zero)
+        wantsLayer = true
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(redraw), name: NSText.didChangeNotification, object: textView)
+        if let clip = textView.enclosingScrollView?.contentView {
+            clip.postsBoundsChangedNotifications = true
+            nc.addObserver(self, selector: #selector(redraw), name: NSView.boundsDidChangeNotification, object: clip)
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) not implemented") }
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    override var isFlipped: Bool { true }   // y grows downward → line index maps straight to y
+    @objc private func redraw() { needsDisplay = true }
+
+    private static func dyn(_ light: Int, _ dark: Int) -> NSColor {
+        NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? NSColor(hex: dark) : NSColor(hex: light) }
+    }
+    private let bgColor = dyn(0xF4F4F7, 0x0C0E14)
+    private let barColor = dyn(0xC4C4CE, 0x3A4150)
+    private let viewportColor = NSColor(hex: 0x7C6CFF).withAlphaComponent(0.16)
+
+    override func draw(_ dirtyRect: NSRect) {
+        bgColor.setFill(); bounds.fill()
+        guard let tv = textView else { return }
+        let s = tv.string as NSString
+        guard s.length > 0, s.length < 400_000 else { return }
+
+        let lines = Self.scanLines(s)
+        let count = max(lines.count, 1)
+        let rowH = max(0.8, min(3.0, bounds.height / CGFloat(count)))
+        let charW = max(0.7, (bounds.width - 6) / 90.0)
+
+        for (i, line) in lines.enumerated() where line.len > 0 {
+            let x = 3 + CGFloat(line.indent) * charW
+            let w = min(bounds.width - x - 2, CGFloat(line.len) * charW)
+            guard w > 0 else { continue }
+            barColor.setFill()
+            NSRect(x: x, y: CGFloat(i) * rowH, width: w, height: max(0.8, rowH - 0.6)).fill()
+        }
+
+        if let clip = tv.enclosingScrollView?.contentView, let lm = tv.layoutManager, let tc = tv.textContainer {
+            let totalH = lm.usedRect(for: tc).height
+            guard totalH > 0 else { return }
+            let lineH = totalH / CGFloat(count)
+            guard lineH > 0 else { return }
+            let visible = clip.bounds
+            let first = max(0, visible.minY / lineH)
+            let last = min(CGFloat(count), visible.maxY / lineH)
+            viewportColor.setFill()
+            NSRect(x: 0, y: first * rowH, width: bounds.width, height: max(rowH, (last - first) * rowH)).fill()
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) { jump(event) }
+    override func mouseDragged(with event: NSEvent) { jump(event) }
+
+    private func jump(_ event: NSEvent) {
+        guard let tv = textView, let lm = tv.layoutManager, let tc = tv.textContainer,
+              let clip = tv.enclosingScrollView?.contentView else { return }
+        let s = tv.string as NSString
+        let count = max(Self.scanLines(s).count, 1)
+        let rowH = max(0.8, min(3.0, bounds.height / CGFloat(count)))
+        let line = max(0, min(count - 1, Int(convert(event.locationInWindow, from: nil).y / rowH)))
+        let lineH = lm.usedRect(for: tc).height / CGFloat(count)
+        let clipH = clip.bounds.height
+        tv.scrollToVisible(NSRect(x: 0, y: max(0, CGFloat(line) * lineH - clipH / 2), width: 1, height: clipH))
+        needsDisplay = true
+    }
+
+    /// One (indent, content-length) pair per line — a single linear pass.
+    private static func scanLines(_ s: NSString) -> [(indent: Int, len: Int)] {
+        var result: [(indent: Int, len: Int)] = []
+        var indent = 0, contentLen = 0, seenNonSpace = false
+        var i = 0
+        while i < s.length {
+            let c = s.character(at: i)
+            if c == 0x0A {
+                result.append((indent, contentLen))
+                indent = 0; contentLen = 0; seenNonSpace = false
+            } else if !seenNonSpace, c == 0x20 || c == 0x09 {
+                indent += (c == 0x09 ? 2 : 1)
+            } else {
+                seenNonSpace = true; contentLen += 1
+            }
+            i += 1
+        }
+        result.append((indent, contentLen))
+        return result
+    }
+}
+
+/// Lays out the editor scroll view with the minimap pinned to the right.
+final class EditorContainer: NSView {
+    private let scroll: NSScrollView
+    private let minimap: MinimapView
+    private let minimapWidth: CGFloat = 74
+
+    init(scroll: NSScrollView, minimap: MinimapView) {
+        self.scroll = scroll; self.minimap = minimap
+        super.init(frame: .zero)
+        addSubview(scroll); addSubview(minimap)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) not implemented") }
+
+    override func layout() {
+        super.layout()
+        let w = max(0, bounds.width - minimapWidth)
+        scroll.frame = NSRect(x: 0, y: 0, width: w, height: bounds.height)
+        minimap.frame = NSRect(x: w, y: 0, width: minimapWidth, height: bounds.height)
     }
 }

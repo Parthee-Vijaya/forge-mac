@@ -1,7 +1,38 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import UserNotifications
 import ForgeKit
+
+/// Posts native macOS notifications for async milestones (build done, deploy
+/// live, build failed) via UserNotifications.
+enum Notifier {
+    /// Posts a notification, requesting authorization lazily the first time (so the
+    /// system prompt appears in context — at a real milestone — not on launch).
+    static func post(title: String, body: String) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional:
+                deliver(title: title, body: body, via: center)
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                    if granted { deliver(title: title, body: body, via: center) }
+                }
+            default:
+                break   // denied — respect the user's choice silently
+            }
+        }
+    }
+
+    private static func deliver(title: String, body: String, via center: UNUserNotificationCenter) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+    }
+}
 
 /// Root app state and the glue between the SwiftUI UI and the ForgeKit engine.
 @MainActor
@@ -90,9 +121,13 @@ final class AppModel {
     // Code view
     var projectFiles: [String] = []
     var selectedFile: String?
+    var openTabs: [String] = []         // editor tabs — open files, in order opened
     var editorText: String = ""
     var editorDirty: Bool = false
     var isStreamingFile: Bool = false   // C2: a file is being "typed" live into the editor
+
+    // Status bar: best-effort current git branch (nil until the project is a repo)
+    var gitBranch: String?
 
     // Deploy
     var isDeploying = false
@@ -463,8 +498,11 @@ final class AppModel {
         phase = .idle
         rightPaneMode = .preview
         selectedFile = nil
+        openTabs = []
         editorText = ""
         projectFiles = []
+        gitBranch = nil
+        Task { await refreshGitBranch() }
         serverLog = ProjectStore.loadLogs(for: project)   // console history survives a switch
         jsErrors = []                                      // live preview re-reports on reload
         statusText = "Ready."
@@ -633,6 +671,8 @@ final class AppModel {
                 await pushEnvToVercel(scopeFlag: scopeFlag)   // B17-rest
             }
         }
+        if let live = deployLiveURL { notifyIfBackgrounded("Deployet 🎉", live.absoluteString) }
+        await refreshGitBranch()   // deploy initialised/updated the project's git repo
     }
 
     /// B17-rest: after a Vercel deploy (which links the project), push the local
@@ -1051,12 +1091,33 @@ final class AppModel {
     }
 
     func openFile(_ path: String) async {
+        // Flush a pending edit in the current file before switching, so fast tab
+        // switches never drop the debounced autosave.
+        if editorDirty, let current = selectedFile, current != path {
+            try? await workspace.writeFile(current, contents: editorText)
+            lastLoadedText = editorText
+            editorDirty = false
+        }
         autosaveTask?.cancel()
         guard let text = try? await workspace.readFile(path) else { return }
         editorText = text
         lastLoadedText = text
         selectedFile = path
         editorDirty = false
+        if !openTabs.contains(path) { openTabs.append(path) }
+    }
+
+    /// Close an editor tab. If it was the active one, fall back to a neighbour.
+    func closeTab(_ path: String) {
+        guard let idx = openTabs.firstIndex(of: path) else { return }
+        openTabs.remove(at: idx)
+        guard selectedFile == path else { return }
+        if openTabs.isEmpty {
+            selectedFile = nil; editorText = ""; lastLoadedText = ""; editorDirty = false
+        } else {
+            let next = openTabs[min(idx, openTabs.count - 1)]
+            Task { await openFile(next) }
+        }
     }
 
     /// Debounced autosave: writing the file lets Vite HMR refresh the preview.
@@ -1636,6 +1697,13 @@ final class AppModel {
                 }
                 if role == .build, previewURL != nil { captureThumbnail() }
                 maybeAutoCopyPass(afterRole: role)
+                // Native notification when Forge is in the background.
+                if role == .build {
+                    if case .clean = phase { notifyIfBackgrounded("Forge", "Build færdig ✓") }
+                    else if case .failed(let reason) = phase {
+                        notifyIfBackgrounded("Build fejlede", Self.briefReason(reason))
+                    }
+                }
             }
         }
     }
@@ -1978,6 +2046,32 @@ final class AppModel {
             guard !Task.isCancelled else { return }
             toast = nil
         }
+    }
+
+    /// Post a native macOS notification for an async milestone, but only when
+    /// Forge isn't the active app — in the foreground the in-app toast suffices.
+    func notifyIfBackgrounded(_ title: String, _ body: String) {
+        guard !NSApp.isActive else { return }
+        Notifier.post(title: title, body: body)
+    }
+
+    /// Best-effort current git branch for the status bar (nil if not a repo).
+    func refreshGitBranch() async {
+        let dir = ProjectStore.dir(for: currentProject).path
+        gitBranch = await Task.detached { () -> String? in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD"]
+            let out = Pipe()
+            process.standardOutput = out
+            process.standardError = Pipe()
+            guard (try? process.run()) != nil else { return nil }
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            let branch = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (branch?.isEmpty == false && branch != "HEAD") ? branch : nil
+        }.value
     }
 
     func openInBrowser() {
