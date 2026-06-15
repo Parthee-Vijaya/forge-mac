@@ -59,9 +59,72 @@ struct DeployPanel: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            // B16: Vercel deploy history + one-click rollback (shown whenever the
+            // Vercel target is selected, so the rollback affordance is discoverable).
+            if model.preferences.deployTarget == "vercel", !model.isDeploying {
+                Divider().overlay(Theme.border)
+                HStack {
+                    Text("Tidligere deploys")
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                    Spacer()
+                    Button { model.fetchDeployHistory() } label: {
+                        if model.isFetchingDeploys { ProgressView().controlSize(.small) }
+                        else { Image(systemName: "arrow.clockwise").font(.system(size: 10)) }
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkSoft).disabled(model.isFetchingDeploys)
+                }
+                if model.deployHistory.isEmpty {
+                    Text(model.isFetchingDeploys ? "Henter…"
+                         : "Ingen deploys fundet — deploy først, eller tjek at `vercel` er logget ind.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 4) {
+                            ForEach(model.deployHistory) { deployment in
+                                deployHistoryRow(deployment)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 150)
+                }
+            }
         }
         .padding(16)
         .frame(width: 320)
+        .onAppear {
+            if model.preferences.deployTarget == "vercel",
+               model.deployLiveURL != nil, model.deployHistory.isEmpty {
+                model.fetchDeployHistory()
+            }
+        }
+    }
+
+    private func deployHistoryRow(_ d: AppModel.Deployment) -> some View {
+        let isCurrent = model.deployLiveURL?.absoluteString == d.url.absoluteString
+        return HStack(spacing: 8) {
+            Circle()
+                .fill(d.state == "Ready" ? Theme.positive : d.state == "Error" ? Color.red : Theme.inkFaint)
+                .frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(d.url.host ?? d.url.absoluteString)
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1).truncationMode(.middle)
+                Text(d.age.isEmpty ? d.state : "\(d.age) · \(d.state)")
+                    .font(.system(size: 9.5)).foregroundStyle(Theme.inkFaint)
+            }
+            Spacer(minLength: 0)
+            if isCurrent {
+                Text("nu").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Theme.positive)
+            } else {
+                Button { model.rollbackTo(d) } label: {
+                    Text("Rul tilbage").font(.system(size: 10, weight: .medium)).foregroundStyle(Theme.accent)
+                }
+                .buttonStyle(.plain).disabled(model.isDeploying)
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(isCurrent ? Theme.accent.opacity(0.10) : Theme.fill, in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var headline: String {

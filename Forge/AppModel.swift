@@ -96,6 +96,15 @@ final class AppModel {
     var deployGithubURL: URL?
     var deployLiveURL: URL?
     var showDeploy = false
+    // B16: Vercel deploy history + rollback
+    struct Deployment: Identifiable, Hashable {
+        let id: String      // the deployment URL (unique per deploy)
+        let url: URL
+        let age: String     // e.g. "2h", "3d" — as reported by `vercel ls`
+        let state: String   // Ready / Error / Building / —
+    }
+    var deployHistory: [Deployment] = []
+    var isFetchingDeploys = false
 
     // Visual editing
     var selectMode = false
@@ -197,6 +206,7 @@ final class AppModel {
         if !prefs.projectsRoot.isEmpty {
             ProjectStore.configuredRoot = URL(fileURLWithPath: prefs.projectsRoot)
         }
+        ProjectStore.migrateLegacyProjectIfNeeded()   // A17: import the old single project once
         var loaded = ProjectStore.loadProjects()
         // Open on the start screen (like Xcode/VS Code): the current canvas is a
         // fresh/empty project, while the worked-on projects stay as "Recent" in
@@ -624,6 +634,62 @@ final class AppModel {
         return output
     }
 
+    /// B16: list the project's recent Vercel deployments (`vercel ls`). Requires
+    /// the project to be linked (i.e. deployed at least once); otherwise the CLI
+    /// errors and we leave the history empty.
+    func fetchDeployHistory() {
+        guard hasStarted, !isFetchingDeploys else { return }
+        isFetchingDeploys = true
+        let scopeFlag = preferences.vercelScope.isEmpty ? "" : " --scope \(Self.shellQuote(preferences.vercelScope))"
+        Task {
+            let out = (try? await deployShell("vercel ls\(scopeFlag) 2>&1")) ?? ""
+            deployHistory = Self.parseVercelList(out)
+            isFetchingDeploys = false
+        }
+    }
+
+    /// B16: roll the production alias back to a chosen earlier deployment
+    /// (`vercel rollback <url>`). Best-effort — refreshes the list afterwards.
+    func rollbackTo(_ deployment: Deployment) {
+        guard !isDeploying else { return }
+        isDeploying = true
+        showDeploy = true
+        deployStatus = "Ruller tilbage…"
+        let scopeFlag = preferences.vercelScope.isEmpty ? "" : " --scope \(Self.shellQuote(preferences.vercelScope))"
+        let target = Self.shellQuote(deployment.url.absoluteString)
+        Task {
+            let out = (try? await deployShell("vercel rollback \(target)\(scopeFlag) 2>&1")) ?? ""
+            let lower = out.lowercased()
+            let ok = !lower.contains("error") && !lower.contains("not found") && !out.isEmpty
+            deployStatus = ok ? "Rullet tilbage." : "Tilbagerulning fejlede — tjek loggen."
+            if ok {
+                deployLiveURL = deployment.url
+                showToast("Rullet tilbage 🎉", icon: "arrow.uturn.backward.circle.fill")
+            }
+            isDeploying = false
+            fetchDeployHistory()
+        }
+    }
+
+    /// Parse `vercel ls` output into deployments: pull each line's vercel.app URL
+    /// + the leading age token + a coarse state. Tolerant of CLI format drift.
+    static func parseVercelList(_ output: String) -> [Deployment] {
+        var result: [Deployment] = []
+        var seen = Set<String>()
+        for rawLine in output.split(whereSeparator: \.isNewline) {
+            let line = String(rawLine)
+            guard let url = firstMatch(#"https://[^\s]+\.vercel\.app"#, in: line) else { continue }
+            guard seen.insert(url.absoluteString).inserted else { continue }
+            let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+            let age = tokens.first(where: { $0.range(of: #"^\d+[smhdwy]"#, options: .regularExpression) != nil }) ?? ""
+            let state = line.contains("Ready") ? "Ready"
+                : line.contains("Error") ? "Error"
+                : line.contains("Building") ? "Building" : "—"
+            result.append(Deployment(id: url.absoluteString, url: url, age: age, state: state))
+        }
+        return result
+    }
+
     func openURL(_ url: URL) { NSWorkspace.shared.open(url) }
 
     static func slug(_ name: String) -> String {
@@ -820,6 +886,39 @@ final class AppModel {
         try? await workspace.writeFile(path, contents: editorText)
         lastLoadedText = editorText
         editorDirty = false
+        // B17: Vite only reads .env files at startup, so applying a change means
+        // restarting the dev server. Do it on explicit save, not the debounced
+        // autosave, so it doesn't churn mid-typing.
+        if Self.isEnvFile(path) {
+            let server = devServer
+            showToast("Miljøvariabler anvendt — genstarter preview", icon: "key.fill")
+            Task { try? await server.restartForDependencyChange() }
+        }
+    }
+
+    static func isEnvFile(_ path: String) -> Bool { path == ".env" || path == ".env.local" }
+
+    /// B17: open the project's `.env.local` in the code editor, creating it with a
+    /// short template if it doesn't exist yet. Editing autosaves to disk; pressing
+    /// Gem (⌘S) restarts the dev server so Vite picks up the new values.
+    func openEnvEditor() async {
+        guard templateInstalled else { return }
+        let path = ".env.local"
+        if !(await workspace.fileExists(path)) {
+            let template = """
+            # Miljøvariabler til din app.
+            # Variabler med VITE_-præfiks er tilgængelige i frontend-koden via
+            # import.meta.env.VITE_NAVN. Denne fil committes ikke til git.
+            # Tryk Gem (⌘S) efter ændringer for at genstarte preview.
+
+            VITE_API_URL=
+
+            """
+            try? await workspace.writeFile(path, contents: template)
+        }
+        rightPaneMode = .code
+        await refreshFiles()
+        await openFile(path)
     }
 
     // MARK: - Start screen
@@ -1651,6 +1750,8 @@ final class AppModel {
                                     icon: "square.and.arrow.up") { self.shareLiveLink() })
             c.append(PaletteCommand(id: "supabase", title: "Tilføj backend (Supabase)…",
                                     icon: "cylinder.split.1x2") { self.showSupabaseDialog = true })
+            c.append(PaletteCommand(id: "env", title: "Miljøvariabler (.env)…",
+                                    icon: "key") { Task { await self.openEnvEditor() } })
         }
         if canCopyPass {
             c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",

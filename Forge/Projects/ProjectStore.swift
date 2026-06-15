@@ -92,6 +92,43 @@ enum ProjectStore {
         Project(name: name, folder: "p-" + UUID().uuidString.prefix(8).lowercased())
     }
 
+    /// A17: one-time import of the pre-multi-project single project that lived at
+    /// `~/Library/Application Support/Forge/project` (singular — orphaned once we
+    /// moved to `Forge/projects/<folder>`). If it holds a built app, move it in as
+    /// a normal Project; otherwise just delete the stale folder. Idempotent: the
+    /// legacy folder is gone afterward either way, so this no-ops on later launches.
+    /// Move (not copy) keeps it instant even with a large node_modules.
+    @discardableResult
+    static func migrateLegacyProjectIfNeeded() -> Project? {
+        let fm = FileManager.default
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let legacy = base.appendingPathComponent("Forge/project", isDirectory: true)
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: legacy.path, isDirectory: &isDir), isDir.boolValue else { return nil }
+        // Only import if it actually contains a built app; otherwise clean it up.
+        guard fm.fileExists(atPath: legacy.appendingPathComponent("src/App.tsx").path) else {
+            try? fm.removeItem(at: legacy); return nil
+        }
+        let project = makeProject(name: "Importeret projekt")
+        let dest = root.appendingPathComponent(project.folder, isDirectory: true)
+        do {
+            try? fm.removeItem(at: dest)            // fresh UUID dir shouldn't exist; be safe
+            try fm.moveItem(at: legacy, to: dest)   // fast rename on the same volume
+        } catch {
+            return nil
+        }
+        var projects = loadProjects()
+        projects.append(project)
+        saveProjects(projects)
+        // Seed a short note so it surfaces as a resumable entry in "Recent" rather
+        // than being silently adopted as the empty start canvas (which has no chat).
+        saveChat([AppModel.UIMessage(
+            role: .assistant,
+            text: "Importeret fra en tidligere version af Forge. Din kode er bevaret — "
+                + "skriv en besked for at bygge videre.")], for: project)
+        return project
+    }
+
     static func deleteDir(for project: Project) {
         try? FileManager.default.removeItem(at: dir(for: project))
     }

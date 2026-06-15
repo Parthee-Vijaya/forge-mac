@@ -19,6 +19,21 @@ private struct FileTreeView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 1) {
+                // B17: quick access to the project's .env editor (creates it if missing).
+                Button { Task { await model.openEnvEditor() } } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "key").font(.system(size: 11)).foregroundStyle(Theme.accent)
+                            .frame(width: 14)
+                        Text("Miljøvariabler")
+                            .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Rediger .env (miljøvariabler) for appen")
+                Divider().overlay(Theme.border).padding(.vertical, 3)
                 ForEach(model.projectFiles, id: \.self) { path in
                     Button { Task { await model.openFile(path) } } label: {
                         HStack(spacing: 6) {

@@ -90,6 +90,12 @@ public actor ProjectWorkspace {
             let isRegular = (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false
             if isRegular { results.append(rel) }
         }
+        // Surface .env / .env.local — they're hidden (skipped by .skipsHiddenFiles)
+        // but the user edits them via the code view (B17 — env editor).
+        for env in [".env", ".env.local"] where FileManager.default.fileExists(
+            atPath: base.appendingPathComponent(env).path) {
+            results.append(env)
+        }
         return results.sorted()
     }
 }

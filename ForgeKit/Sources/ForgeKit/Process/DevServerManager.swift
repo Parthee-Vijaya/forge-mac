@@ -421,6 +421,32 @@ public actor DevServerManager {
         env["PATH"] = "\(nodeBinDir.path):\(existingPATH)"
         env["CI"] = "1"                    // non-interactive installs
         env["NO_UPDATE_NOTIFIER"] = "1"
+        for (key, value) in loadDotEnv() { env[key] = value }   // B17: project env vars
         return env
+    }
+
+    /// Parse the project's `.env` then `.env.local` (local overrides base) into a
+    /// dict so the dev server's child process sees user-defined env vars. Vite
+    /// reads these files itself too, but injecting them also covers `vite.config`
+    /// and non-`VITE_`-prefixed vars. Tolerant of comments, blank lines, quotes.
+    private func loadDotEnv() -> [String: String] {
+        var out: [String: String] = [:]
+        for name in [".env", ".env.local"] {
+            let url = workspace.root.appendingPathComponent(name)
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            for rawLine in text.split(whereSeparator: \.isNewline) {
+                let line = rawLine.trimmingCharacters(in: .whitespaces)
+                guard !line.isEmpty, !line.hasPrefix("#"),
+                      let eq = line.firstIndex(of: "=") else { continue }
+                let key = String(line[..<eq]).trimmingCharacters(in: .whitespaces)
+                var val = String(line[line.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+                if val.count >= 2,
+                   (val.hasPrefix("\"") && val.hasSuffix("\"")) || (val.hasPrefix("'") && val.hasSuffix("'")) {
+                    val = String(val.dropFirst().dropLast())
+                }
+                if !key.isEmpty { out[key] = val }
+            }
+        }
+        return out
     }
 }
