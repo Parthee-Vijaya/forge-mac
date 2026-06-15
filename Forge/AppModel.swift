@@ -377,6 +377,7 @@ final class AppModel {
         switch preferences.cloudProvider {
         case "openai": return .openAI(key: key, model: model.isEmpty ? "gpt-4o" : model)
         case "anthropic": return .anthropic(key: key, model: model.isEmpty ? "claude-sonnet-4-6" : model)
+        case "gemini": return .gemini(key: key, model: model.isEmpty ? "gemini-2.0-flash" : model)
         default: return .nvidiaNIM(key: key, model: model.isEmpty ? "nvidia/llama-3.1-nemotron-70b-instruct" : model)
         }
     }

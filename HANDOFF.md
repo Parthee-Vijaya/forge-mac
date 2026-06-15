@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `ef19175` 2026-06-15 — Offer the guided tour on first run (final onboarding step)
 - `85f7a0a` 2026-06-15 — Turn the tutorial into an active, guided spotlight tour
 - `daefb9e` 2026-06-15 — Add Forge app icon (anvil mark) + matching in-app wordmark badge
 - `438c7e0` 2026-06-15 — Project management: delete/rename old projects + toggleable projects sidebar
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `f7978d2` 2026-06-15 — "Skift stil": one-click visual restyle presets (CAP3)
 - `4ab36f0` 2026-06-15 — ⌘K command palette
 - `493d09a` 2026-06-15 — Richer chat markdown: code blocks, lists, headings
-- `f464da9` 2026-06-15 — Rename a project from the project menu
 <!-- COMMITLOG:END -->

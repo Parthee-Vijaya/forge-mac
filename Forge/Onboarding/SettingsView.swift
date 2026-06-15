@@ -87,9 +87,16 @@ struct SettingsView: View {
             Section("Cloud-model (valgfri)") {
                 Picker("Udbyder", selection: $model.preferences.cloudProvider) {
                     Text("Ingen / lokal").tag("")
-                    Text("NVIDIA NIM").tag("nvidiaNIM")
+                    Text("Google Gemini (gratis niveau)").tag("gemini")
                     Text("OpenAI").tag("openai")
                     Text("Anthropic").tag("anthropic")
+                    Text("NVIDIA NIM").tag("nvidiaNIM")
+                }
+                if !model.preferences.cloudProvider.isEmpty {
+                    Button("Hent en API-nøgle hos \(OnboardingView.providerName(model.preferences.cloudProvider)) →") {
+                        SystemSetup.openURL(OnboardingView.getKeyURL(model.preferences.cloudProvider))
+                    }
+                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.accent)
                 }
                 TextField("Model-id", text: $model.preferences.cloudModel)
                     .font(.system(size: 12, design: .monospaced))

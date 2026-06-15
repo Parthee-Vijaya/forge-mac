@@ -13,6 +13,12 @@ struct OnboardingView: View {
     @State private var discovering = false
     @State private var githubLine = "Tjekker…"
     @State private var vercelLine = "Tjekker…"
+    // Local-runtime setup (model step)
+    @State private var probe = SetupProbe()
+    @State private var installingTarget: SystemSetup.Target?
+    @State private var installLog = ""
+    @State private var pulling = false
+    @State private var pullLog = ""
 
     private let lastStep = 9
     private let optionalSteps: Set<Int> = [4, 5, 6]
@@ -122,11 +128,13 @@ struct OnboardingView: View {
                 }
             }
         case 3:
-            stepShell("Vælg din standard-model", "Fundet lokalt på din maskine. Du kan altid skifte i appen.") {
-                modelList(model)
+            stepShell("Kør Forge lokalt — gratis og privat",
+                      "Forge bruger en AI-model til at skrive koden. En lokal model kører på din egen Mac — gratis, offline og privat. Jeg har fundet den bedste til din hardware.") {
+                localModelStep(model)
             }
         case 4:
-            stepShell("Cloud-model (valgfri)", "Tilføj en nøgle for at bruge NVIDIA NIM, OpenAI eller Anthropic. Kan springes over — alt virker lokalt.") {
+            stepShell("Eller brug en cloud-model (API-nøgle)",
+                      "Ingen stærk lokal model? Brug en cloud-model i stedet. Det kræver en API-nøgle fra udbyderens konsol — ikke dit ChatGPT/Claude/Gemini-abonnement (API'et er separat og afregnes pr. brug). Google Gemini har et gratis niveau. Kan springes over.") {
                 cloudStep(model)
             }
         case 5:
@@ -215,6 +223,118 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Local model step (install + recommend + discovered list)
+
+    private func localModelStep(_ model: Bindable<AppModel>) -> some View {
+        let hw = HardwareInfo.current
+        let rec = hw.recommendedModel
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "cpu").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Din Mac: \(hw.summary)").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink)
+                    Text("Anbefalet lokal model: \(rec.label)").font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: Theme.radiusM))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.accent.opacity(0.3)))
+
+            runtimeCard(title: "Ollama", subtitle: "Letvægts og hurtig — kører som baggrundstjeneste. Bedst til at starte.",
+                        installed: probe.ollama, target: .ollama, showPull: true, rec: rec, model: model)
+            runtimeCard(title: "LM Studio", subtitle: "App med grafisk model-bibliotek, hvis du vil browse og hente modeller visuelt.",
+                        installed: probe.lmStudio, target: .lmStudio, showPull: false, rec: rec, model: model)
+
+            Divider().overlay(Theme.border)
+            HStack {
+                Text("Fundne modeller").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink)
+                Spacer()
+                Button("Opdatér") { Task { probe = await SetupProbe.detect(); await loadModels(model) } }
+                    .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(Theme.accent)
+            }
+            modelList(model)
+        }
+    }
+
+    private func runtimeCard(title: String, subtitle: String, installed: Bool,
+                             target: SystemSetup.Target, showPull: Bool,
+                             rec: (pull: String, label: String), model: Bindable<AppModel>) -> some View {
+        let busy = installingTarget != nil || pulling
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle().fill(installed ? Theme.positive : Theme.inkFaint).frame(width: 7, height: 7)
+                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(installed ? "installeret" : "ikke fundet").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                Spacer(minLength: 0)
+            }
+            Text(subtitle).font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            if !installed {
+                HStack(spacing: 8) {
+                    smallButton("Hent \(title)", filled: true) { SystemSetup.openDownload(target) }
+                    if probe.homebrew {
+                        smallButton("Installér via Homebrew", filled: false) { Task { await installBrew(target, model) } }
+                            .disabled(busy)
+                    }
+                }
+                if target == .lmStudio, probe.homebrew {
+                    Text("Homebrew-installation kan bede om din adgangskode.")
+                        .font(.system(size: 10.5)).foregroundStyle(Theme.inkFaint)
+                }
+            } else if showPull {
+                smallButton("Hent anbefalet model: \(rec.pull)", filled: true) { Task { await pull(rec.pull, model) } }
+                    .disabled(busy)
+            }
+            if installingTarget == target { progressRow("Installerer \(title)…", installLog) }
+            if pulling, target == .ollama { progressRow("Henter \(rec.pull)…", pullLog) }
+        }
+        .padding(12)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
+    }
+
+    private func smallButton(_ title: String, filled: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 12, weight: .medium))
+                .foregroundStyle(filled ? Theme.onAccent : Theme.accent)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(filled ? Theme.accent : Theme.accent.opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func progressRow(_ label: String, _ log: String) -> some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.ink)
+                if !log.isEmpty {
+                    Text(log).font(.system(size: 10.5, design: .monospaced)).foregroundStyle(Theme.inkFaint)
+                        .lineLimit(1).truncationMode(.head)
+                }
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    @MainActor private func installBrew(_ target: SystemSetup.Target, _ model: Bindable<AppModel>) async {
+        installingTarget = target; installLog = "starter…"
+        let ok = await SystemSetup.installViaBrew(target) { installLog = $0 }
+        if ok, target == .ollama { SystemSetup.startOllamaServe() }
+        installingTarget = nil
+        probe = await SetupProbe.detect()
+        try? await Task.sleep(for: .seconds(1))   // give `ollama serve` a moment to bind :11434
+        await loadModels(model)
+    }
+
+    @MainActor private func pull(_ name: String, _ model: Bindable<AppModel>) async {
+        pulling = true; pullLog = "starter…"
+        let ok = await SystemSetup.pullModel(name) { pullLog = $0 }
+        pulling = false
+        if ok { await loadModels(model) }
+    }
+
     private func modelList(_ model: Bindable<AppModel>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if discovering {
@@ -248,20 +368,54 @@ struct OnboardingView: View {
     }
 
     private func cloudStep(_ model: Bindable<AppModel>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let provider = model.wrappedValue.preferences.cloudProvider.isEmpty
+            ? "gemini" : model.wrappedValue.preferences.cloudProvider
+        return VStack(alignment: .leading, spacing: 10) {
             Picker("Provider", selection: model.preferences.cloudProvider) {
-                Text("NVIDIA NIM").tag("nvidiaNIM")
+                Text("Google Gemini (gratis niveau)").tag("gemini")
                 Text("OpenAI").tag("openai")
                 Text("Anthropic").tag("anthropic")
+                Text("NVIDIA NIM").tag("nvidiaNIM")
             }
-            .pickerStyle(.segmented).labelsHidden()
-            textField("Model-id (fx nvidia/llama-3.1-nemotron-70b-instruct)", model.preferences.cloudModel)
+            .pickerStyle(.menu).labelsHidden()
+            Button {
+                SystemSetup.openURL(Self.getKeyURL(provider))
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "key").font(.system(size: 11))
+                    Text("Hent en API-nøgle hos \(Self.providerName(provider)) →").font(.system(size: 12, weight: .medium))
+                }.foregroundStyle(Theme.accent)
+            }
+            .buttonStyle(.plain)
+            textField("Model-id (valgfri — fx \(Self.modelHint(provider)))", model.preferences.cloudModel)
             SecureField("API-nøgle", text: $cloudKey)
                 .textFieldStyle(.plain).font(.system(size: 14)).foregroundStyle(Theme.ink).tint(Theme.accent)
                 .padding(12)
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
                 .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
-            Text("Nøglen gemmes sikkert i Keychain.").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+            Text("Nøglen gemmes sikkert i Keychain — aldrig i klartekst.")
+                .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+        }
+    }
+
+    static func getKeyURL(_ provider: String) -> String {
+        switch provider {
+        case "openai":    "https://platform.openai.com/api-keys"
+        case "anthropic": "https://console.anthropic.com/settings/keys"
+        case "gemini":    "https://aistudio.google.com/app/apikey"
+        default:          "https://build.nvidia.com/"
+        }
+    }
+    static func providerName(_ provider: String) -> String {
+        switch provider {
+        case "openai": "OpenAI"; case "anthropic": "Anthropic"
+        case "gemini": "Google AI Studio"; default: "NVIDIA"
+        }
+    }
+    static func modelHint(_ provider: String) -> String {
+        switch provider {
+        case "openai": "gpt-4o"; case "anthropic": "claude-sonnet-4-6"
+        case "gemini": "gemini-2.0-flash"; default: "nvidia/llama-3.1-nemotron-70b-instruct"
         }
     }
 
@@ -291,7 +445,10 @@ struct OnboardingView: View {
         if step == 1, model.wrappedValue.preferences.userName.isEmpty {
             model.wrappedValue.preferences.userName = NSFullUserName()
         }
-        if step == 3 { await loadModels(model) }
+        if step == 3 {
+            probe = await SetupProbe.detect()
+            await loadModels(model)
+        }
         if step == 5 {
             let login = await Shell.login("gh api user --jq .login 2>/dev/null").trimmingCharacters(in: .whitespacesAndNewlines)
             githubLine = login.isEmpty ? "Ikke logget ind (kør `gh auth login` i Terminal)" : "Logget ind som \(login)"

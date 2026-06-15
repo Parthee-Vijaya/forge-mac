@@ -76,4 +76,12 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
                     baseURL: URL(string: "https://api.anthropic.com/v1/messages")!,
                     apiKey: key, modelID: model, displayName: model, supportsLineReplace: true)
     }
+
+    /// Google Gemini via its OpenAI-compatible endpoint (has a free API tier), so
+    /// it rides the existing OpenAICompatProvider — no new provider class needed.
+    public static func gemini(key: String, model: String) -> ModelConfig {
+        ModelConfig(kind: .openAICompat, source: .cloud,
+                    baseURL: URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/")!,
+                    apiKey: key, modelID: model, displayName: model, supportsLineReplace: true)
+    }
 }
