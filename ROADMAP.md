@@ -12,6 +12,18 @@ qwen2.5-coder:14b lokalt.
 **Legende** — Effort: **S** <½ dag · **M** 1–2 dage · **L** 3–5 dage · **XL** uge+ ·
 Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 
+> **Status 2026-06-15 — hele P2 er nu fejet igennem.** Bygget + verificeret +
+> pushet i denne session: **B17** .env-editor, **B16** deploy-historik/rollback
+> (UI; Vercel-CLI uverificeret), **A17** legacy-migration, **B20** delbare bundles,
+> **A14** streaming-throttle, **B17-rest** Vercel-env-push (uverificeret), **A19**
+> WebView-genbrug, **C17** motion-sprog, **B8** terminal, **B10** Spørg-om-koden,
+> **C11** dashboard-grid, **B7** Next.js (basal), **B15** stemme-diktering (mic
+> uverificeret), **A15** tastatur-nav (Dynamic Type bevidst fravalgt), **B11**
+> pluggbar engine-seam, **B18** forge-mcp MCP-server, **B19** iOS-companion
+> *host-side* (HTTP-status-server — selve iOS-app'en er det udestående XL-stykke).
+> Se commits 8411318…ae8ff20. Tilbage: notarisering (udskudt til Developer-konto),
+> de uverificerede CLI/mic-stykker, og B19's iOS-app-target.
+
 ---
 
 ## 0. ONBOARDING & KONFIGURATION (first-run)
