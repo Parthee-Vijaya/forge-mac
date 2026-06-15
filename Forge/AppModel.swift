@@ -36,6 +36,13 @@ final class AppModel {
             case .phone: "iphone"
             }
         }
+        var accessibilityName: String {
+            switch self {
+            case .full: "Fuld bredde"
+            case .tablet: "Tablet-bredde"
+            case .phone: "Telefon-bredde"
+            }
+        }
     }
 
     enum RightPaneMode { case preview, code }

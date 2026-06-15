@@ -68,10 +68,13 @@ private struct PreviewToolbar: View {
                 }
                 .buttonStyle(.plain).disabled(model.previewURL == nil)
                 .help("Select an element to edit")
+                .accessibilityLabel("Vælg element at redigere")
                 Button { model.reloadPreview() } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+                    .help("Genindlæs preview").accessibilityLabel("Genindlæs preview")
                 Button { model.openInBrowser() } label: { Image(systemName: "arrow.up.forward.square") }
                     .buttonStyle(IconButtonStyle()).disabled(model.previewURL == nil)
+                    .help("Åbn i browser").accessibilityLabel("Åbn preview i browser")
                 Button { model.showDeploy = true } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "arrowtriangle.up.circle.fill").font(.system(size: 11))
@@ -118,6 +121,8 @@ private struct PreviewToolbar: View {
                                     in: RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(width.accessibilityName)
+                .accessibilityAddTraits(model.previewWidth == width ? [.isSelected] : [])
             }
         }
         .padding(3)

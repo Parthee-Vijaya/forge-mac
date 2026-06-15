@@ -110,6 +110,7 @@ struct Composer: View {
                 }
                 .buttonStyle(.plain)
                 .help("Vedhæft et billede / mockup")
+                .accessibilityLabel("Vedhæft billede")
                 .disabled(isBusy)
             }
             if let onAttachLink {
@@ -126,6 +127,7 @@ struct Composer: View {
                 }
                 .buttonStyle(.plain)
                 .help("Kopiér design fra et link — Forge tager et skærmbillede af siden")
+                .accessibilityLabel("Kopiér design fra link")
                 .disabled(isBusy || isCapturing)
             }
             if let onEnhance {
@@ -142,6 +144,7 @@ struct Composer: View {
                 }
                 .buttonStyle(.plain)
                 .help("Forbedr prompt — udvid til en detaljeret spec")
+                .accessibilityLabel("Forbedr prompt")
                 .disabled(isBusy || isEnhancing || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             TextField(placeholder, text: $text, axis: .vertical)
@@ -166,6 +169,7 @@ struct Composer: View {
                 }
                 .buttonStyle(.plain)
                 .help("Stop generation")
+                .accessibilityLabel("Stop generering")
             } else {
                 Button(action: onSubmit) {
                     Group {
@@ -182,6 +186,7 @@ struct Composer: View {
                 .buttonStyle(.plain)
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(!canSend)
+                .accessibilityLabel("Send")
             }
         }
     }

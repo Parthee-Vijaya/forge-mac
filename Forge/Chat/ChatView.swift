@@ -121,12 +121,14 @@ struct ChatView: View {
                 }
                 .buttonStyle(IconButtonStyle())
                 .help("Ordbog — forklaring af fagudtryk")
+                .accessibilityLabel("Ordbog")
             }
             Button { model.showConsole.toggle() } label: {
                 Image(systemName: "terminal")
             }
             .buttonStyle(IconButtonStyle())
             .help("Dev server console")
+            .accessibilityLabel("Dev server-konsol")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
         .background(Theme.sidebar)

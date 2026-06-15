@@ -100,6 +100,7 @@ struct StartScreen: View {
                     Button { model.showGlossary = true } label: { Image(systemName: "book") }
                         .buttonStyle(IconButtonStyle())
                         .help("Ordbog — forklaring af fagudtryk")
+                        .accessibilityLabel("Ordbog")
                 }
             }
             .padding(14)
