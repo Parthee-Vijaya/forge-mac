@@ -768,6 +768,117 @@ final class AppModel {
         return process.terminationStatus == 0
     }
 
+    // MARK: - Shareable bundles (B20)
+
+    struct BundleManifest: Codable { var name: String; var framework: String }
+
+    /// B20: export the project as a shareable `.forge` bundle — source + chat
+    /// history + a manifest, but NOT node_modules/.git/dist or secrets (.env*).
+    /// Re-importable via `importBundle()`.
+    func exportBundle() {
+        guard hasStarted else { return }
+        let dir = ProjectStore.dir(for: currentProject)
+        let panel = NSSavePanel()
+        panel.title = "Eksportér delbar bundle"
+        panel.nameFieldStringValue = "\(Self.slug(currentProject.name)).forge"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let out = panel.url else { return }
+        let manifest = BundleManifest(name: currentProject.name, framework: currentProject.framework)
+        statusText = "Pakker bundle…"
+        Task {
+            try? await workspace.ensureDirectory(".forge")
+            if let data = try? JSONEncoder().encode(manifest) {
+                try? await workspace.writeFile(".forge/bundle.json", data: data)
+            }
+            let ok = await Self.zipBundle(at: dir, to: out)
+            statusText = ok ? "Eksporterede \(out.lastPathComponent)." : "Eksport fejlede."
+            if ok {
+                NSWorkspace.shared.activateFileViewerSelecting([out])
+                showToast("Delbar bundle gemt 📦", icon: "shippingbox.fill")
+            }
+        }
+    }
+
+    /// B20: import a `.forge` bundle as a new project — unzip, read the manifest +
+    /// any chat history, then npm install + start (node_modules isn't bundled).
+    func importBundle() {
+        guard !isBusy else { return }
+        let panel = NSOpenPanel()
+        panel.title = "Importér Forge-bundle"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let src = panel.url else { return }
+        persistCurrentChat()
+        let project = ProjectStore.makeProject(name: "Importeret projekt")
+        let dir = ProjectStore.dir(for: project)
+        projects.insert(project, at: 0)
+        ProjectStore.saveProjects(projects)
+        activate(project, freshState: true)
+        hasStarted = true
+        isBusy = true
+        phase = .applying
+        statusText = "Pakker bundle ud…"
+        messages = [UIMessage(role: .assistant, text: "Importerer bundle…")]
+        Task {
+            let unzipped = await Self.unzipBundle(src, into: dir)
+            var name = "Importeret projekt"
+            var framework = "react"
+            if let text = try? await workspace.readFile(".forge/bundle.json"),
+               let data = text.data(using: .utf8),
+               let m = try? JSONDecoder().decode(BundleManifest.self, from: data) {
+                if !m.name.isEmpty { name = m.name }
+                if !m.framework.isEmpty { framework = m.framework }
+            }
+            if let i = projects.firstIndex(where: { $0.id == project.id }) {
+                projects[i].name = name
+                projects[i].framework = framework
+                if currentProject.id == project.id { currentProject = projects[i] }
+                ProjectStore.saveProjects(projects)
+            }
+            let importedChat = ProjectStore.loadChat(for: project)   // chat the bundle carried
+            let hasApp = await workspace.fileExists("package.json")
+            if unzipped, hasApp {
+                statusText = "Installerer afhængigheder…"
+                await runCloneShell("npm install 2>&1")
+                templateInstalled = true
+                let server = devServer
+                Task { try? await server.start() }
+            }
+            messages = !importedChat.isEmpty ? importedChat : [UIMessage(role: .assistant, text:
+                unzipped && hasApp ? "Importerede **\(name)** og er ved at starte den."
+                : unzipped ? "Importerede **\(name)**, men fandt ingen package.json — se Kode-visningen."
+                : "Kunne ikke pakke bundlen ud — er filen en gyldig .forge-bundle?")]
+            await refreshFiles()
+            statusText = "Ready."
+            isBusy = false
+            persistCurrentChat()
+        }
+    }
+
+    nonisolated static func zipBundle(at dir: URL, to out: URL) async -> Bool {
+        try? FileManager.default.removeItem(at: out)
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        p.currentDirectoryURL = dir
+        // Source + .forge/chat.json + .forge/bundle.json; drop heavy/private bits.
+        p.arguments = ["-r", "-q", "-X", out.path, ".",
+                       "-x", "node_modules/*", "*/node_modules/*", ".git/*", "dist/*",
+                       ".forge/logs.json", ".forge/thumb.png", ".forge/checkpoints/*",
+                       ".env", ".env.local", "*.log", ".DS_Store"]
+        do { try p.run() } catch { return false }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
+    }
+
+    nonisolated static func unzipBundle(_ src: URL, into dir: URL) async -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        p.arguments = ["-q", "-o", src.path, "-d", dir.path]
+        do { try p.run() } catch { return false }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
+    }
+
     // MARK: - Visual editing
 
     func toggleSelectMode() {
@@ -1725,6 +1836,8 @@ final class AppModel {
         }
         c.append(PaletteCommand(id: "design", title: "Kopiér design fra link…",
                                 icon: "link") { self.showLinkDialog = true })
+        c.append(PaletteCommand(id: "import-bundle", title: "Importér bundle…",
+                                icon: "square.and.arrow.down") { self.importBundle() })
         if !hasStarted {
             c.append(PaletteCommand(id: "clone", title: "Klon fra Git…",
                                     icon: "arrow.triangle.branch") { self.showCloneDialog = true })
@@ -1744,6 +1857,8 @@ final class AppModel {
             c.append(PaletteCommand(id: "finder", title: "Vis i Finder", icon: "folder") { self.revealInFinder() })
             c.append(PaletteCommand(id: "zip", title: "Eksportér som zip…",
                                     icon: "archivebox") { self.exportZip() })
+            c.append(PaletteCommand(id: "export-bundle", title: "Eksportér delbar bundle…",
+                                    icon: "shippingbox.and.arrow.backward") { self.exportBundle() })
             c.append(PaletteCommand(id: "deps", title: "Afhængigheder…",
                                     icon: "shippingbox") { self.showDependencies = true })
             c.append(PaletteCommand(id: "share", title: "Del live-link",

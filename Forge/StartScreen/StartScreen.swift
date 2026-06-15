@@ -64,6 +64,7 @@ struct StartScreen: View {
 
             sectionLabel("KOM I GANG").padding(.top, 18)
             SidebarRow(title: "Klon fra Git", icon: "arrow.triangle.branch") { model.showCloneDialog = true }
+            SidebarRow(title: "Importér bundle", icon: "square.and.arrow.down") { model.importBundle() }
             SidebarRow(title: "Kopiér design fra link", icon: "link") { model.showLinkDialog = true }
             SidebarRow(title: "Start tutorial", icon: "graduationcap") { model.startTutorial() }
             SidebarRow(title: "Prøv et eksempel", icon: "sparkles") { model.tryExample() }
