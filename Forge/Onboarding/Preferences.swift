@@ -19,6 +19,12 @@ struct Preferences: Codable, Equatable {
     /// available regardless).
     var autoFix = false
 
+    /// Functional smoke test: when a build is otherwise clean, exercise the running
+    /// preview offscreen (type/click) to catch interaction-triggered runtime
+    /// crashes the static checks miss. On by default; adds a few seconds at the
+    /// clean decision point only.
+    var functionalSmokeTest = true
+
     /// Multi-model roles (B25). Each holds a ModelConfig.id; empty = fall back to
     /// the currently-selected model. The copy model localizes user-facing text to
     /// Danish in a post-build pass; an empty `copyModelID` means no copy-pass.
@@ -69,7 +75,7 @@ struct Preferences: Codable, Equatable {
 extension Preferences {
     enum CodingKeys: String, CodingKey {
         case onboarded, userName, projectsRoot, defaultModelID, cloudProvider
-        case cloudModel, githubOwner, vercelScope, memory, rulesTemplate, autoFix
+        case cloudModel, githubOwner, vercelScope, memory, rulesTemplate, autoFix, functionalSmokeTest
         case planModelID, buildModelID, copyModelID, autoCopyPass
         case learningMode, learnedLessons
         case preferredName, askedPreferredName
@@ -90,6 +96,7 @@ extension Preferences {
         memory = (try? c.decode(String.self, forKey: .memory)) ?? memory
         rulesTemplate = (try? c.decode(String.self, forKey: .rulesTemplate)) ?? rulesTemplate
         autoFix = (try? c.decode(Bool.self, forKey: .autoFix)) ?? autoFix
+        functionalSmokeTest = (try? c.decode(Bool.self, forKey: .functionalSmokeTest)) ?? functionalSmokeTest
         planModelID = (try? c.decode(String.self, forKey: .planModelID)) ?? planModelID
         buildModelID = (try? c.decode(String.self, forKey: .buildModelID)) ?? buildModelID
         copyModelID = (try? c.decode(String.self, forKey: .copyModelID)) ?? copyModelID

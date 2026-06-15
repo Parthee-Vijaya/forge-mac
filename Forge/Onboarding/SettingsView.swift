@@ -142,6 +142,9 @@ struct SettingsView: View {
                 Toggle("Auto-fix runtime-fejl", isOn: $model.preferences.autoFix)
                 Text("Når slået til retter Forge automatisk en fejl i den kørende app uden du beder om det. Kan altid rulles tilbage via checkpoints. ‘Fix it’-knappen er tilgængelig uanset.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
+                Toggle("Funktionel røgtest af preview", isOn: $model.preferences.functionalSmokeTest)
+                Text("Når en build ellers er ren, afprøver Forge automatisk den kørende app (skriver i felter, klikker på knapper) i en skjult fane for at fange fejl der først opstår ved interaktion. Tilføjer et par sekunder ved den rene build.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
 
             Section {

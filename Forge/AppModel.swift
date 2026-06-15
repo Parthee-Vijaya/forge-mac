@@ -1281,7 +1281,7 @@ final class AppModel {
             process: processLayer,
             systemPrompt: systemPrompt,
             projectContext: { [workspace] in await AppModel.buildContext(workspace, touched: touched) },
-            collectErrors: { [errorCollector] in await errorCollector.collect() },
+            collectErrors: { [weak self] in await self?.collectWithSmokeTest() ?? ErrorReport() },
             onTurnStart: { [errorCollector] in await errorCollector.reset() },
             readFile: { [workspace] path in try? await workspace.readFile(path) },
             settleDelay: .seconds(2),
@@ -1317,6 +1317,22 @@ final class AppModel {
         endStreaming()
         await refreshFiles()
         persistCurrentChat()
+    }
+
+    /// Error collection for the loop, plus a FINAL functional gate: when the
+    /// static checks (build logs + type-check) come back clean, load the running
+    /// preview in an isolated offscreen WebView and auto-exercise it. An
+    /// interaction-triggered crash (a handler that throws, a bad click) then shows
+    /// up as a runtime issue and triggers a repair, instead of shipping as "clean".
+    /// Only runs at the clean decision point, so repair iterations stay fast; a
+    /// no-op when disabled or when there's no preview yet.
+    private func collectWithSmokeTest() async -> ErrorReport {
+        let report = await errorCollector.collect()
+        guard report.isClean, preferences.functionalSmokeTest, let url = previewURL else { return report }
+        let issues = await PreviewSmokeTester().run(url)
+        guard !issues.isEmpty else { return report }
+        await errorCollector.submit(issues)
+        return await errorCollector.collect()
     }
 
     /// C2 — stream the file being written into the editor: auto-switch to Code,
