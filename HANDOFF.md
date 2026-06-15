@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `f464da9` 2026-06-15 — Rename a project from the project menu
 - `bea57a2` 2026-06-15 — Accessibility: VoiceOver labels on icon-only buttons
 - `9bbaef4` 2026-06-15 — Roadmap: mark token counter, delete-confirm, thumbnails done
 - `f3cf0a3` 2026-06-15 — Fix: emit token usage from the build loop too (not just plan)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `ef0e202` 2026-06-14 — Address the user by their preferred name in the AI system prompt
 - `b8c9d17` 2026-06-14 — Open Forge on the start screen instead of resuming last project
 - `3e97ded` 2026-06-14 — Start screen: sidebar + prompt-first, name popup, clone from Git (B27)
-- `f31ead8` 2026-06-14 — Default to qwen3.6, retire qwen2.5-coder
 <!-- COMMITLOG:END -->

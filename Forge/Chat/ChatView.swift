@@ -208,9 +208,7 @@ private struct MessageView: View {
                     ThinkingView(reasoning: message.reasoning, answerStarted: !message.text.isEmpty)
                 }
                 if !message.text.isEmpty {
-                    Text(Self.render(message.text))
-                        .font(.system(size: 13.5))
-                        .foregroundStyle(Theme.ink)
+                    MarkdownView(text: message.text)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if message.reasoning.isEmpty {
@@ -252,16 +250,6 @@ private struct MessageView: View {
         }
     }
 
-    static func render(_ text: String) -> AttributedString {
-        let cleaned = text.replacingOccurrences(
-            of: "(?m)^#{1,6}[ \\t]*", with: "", options: .regularExpression)
-        if let attributed = try? AttributedString(
-            markdown: cleaned,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            return attributed
-        }
-        return AttributedString(cleaned)
-    }
 }
 
 /// The approve-and-build affordance shown under a finished plan.

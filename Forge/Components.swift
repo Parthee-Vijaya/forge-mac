@@ -271,6 +271,117 @@ struct ToastView: View {
     }
 }
 
+/// A lightweight Markdown block renderer for assistant chat messages: fenced
+/// code blocks become monospace cards, list items get bullets/numbers, headings
+/// are bold, and paragraphs use SwiftUI's inline markdown (bold/italic/`code`).
+/// Good enough for the model's typical output without a full Markdown engine.
+struct MarkdownView: View {
+    let text: String
+
+    enum Block: Equatable {
+        case paragraph(String), code(String), bullet([String]), ordered([String]), heading(String)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(Self.blocks(from: text).enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .code(let code):
+                    Text(code)
+                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.ink)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(Theme.fill, in: RoundedRectangle(cornerRadius: Theme.radiusS))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).strokeBorder(Theme.border, lineWidth: 1))
+                case .bullet(let items):
+                    listView(items) { _ in "•" }
+                case .ordered(let items):
+                    listView(items) { "\($0 + 1)." }
+                case .heading(let h):
+                    Text(inline(h)).font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(Theme.ink).frame(maxWidth: .infinity, alignment: .leading)
+                case .paragraph(let p):
+                    Text(inline(p)).font(.system(size: 13.5))
+                        .foregroundStyle(Theme.ink).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private func listView(_ items: [String], marker: @escaping (Int) -> String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, item in
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(marker(i)).font(.system(size: 13.5)).foregroundStyle(Theme.inkFaint).monospacedDigit()
+                    Text(inline(item)).font(.system(size: 13.5)).foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private func inline(_ s: String) -> AttributedString {
+        (try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(s)
+    }
+
+    static func blocks(from text: String) -> [Block] {
+        var blocks: [Block] = []
+        let lines = text.components(separatedBy: "\n")
+        var i = 0
+        var paragraph: [String] = []
+        func flush() {
+            let joined = paragraph.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !joined.isEmpty { blocks.append(.paragraph(joined)) }
+            paragraph = []
+        }
+        while i < lines.count {
+            let line = lines[i]
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix("```") {                                   // fenced code
+                flush(); i += 1
+                var code: [String] = []
+                while i < lines.count, !lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                    code.append(lines[i]); i += 1
+                }
+                i += 1
+                blocks.append(.code(code.joined(separator: "\n")))
+                continue
+            }
+            if t.hasPrefix("#") {                                     // heading
+                flush()
+                blocks.append(.heading(String(t.drop(while: { $0 == "#" })).trimmingCharacters(in: .whitespaces)))
+                i += 1; continue
+            }
+            if t.hasPrefix("- ") || t.hasPrefix("* ") {               // bullet list
+                flush()
+                var items: [String] = []
+                while i < lines.count {
+                    let li = lines[i].trimmingCharacters(in: .whitespaces)
+                    guard li.hasPrefix("- ") || li.hasPrefix("* ") else { break }
+                    items.append(String(li.dropFirst(2))); i += 1
+                }
+                blocks.append(.bullet(items)); continue
+            }
+            if t.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil {   // ordered list
+                flush()
+                var items: [String] = []
+                while i < lines.count {
+                    let li = lines[i].trimmingCharacters(in: .whitespaces)
+                    guard let r = li.range(of: #"^\d+\.\s"#, options: .regularExpression) else { break }
+                    items.append(String(li[r.upperBound...])); i += 1
+                }
+                blocks.append(.ordered(items)); continue
+            }
+            if t.isEmpty { flush() } else { paragraph.append(line) }
+            i += 1
+        }
+        flush()
+        return blocks
+    }
+}
+
 /// Dialog for renaming the current project (from the project menu's "Omdøb…").
 struct RenameDialogView: View {
     @Environment(AppModel.self) private var model
