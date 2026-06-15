@@ -25,8 +25,12 @@ struct PreviewPane: View {
     }
 
     @ViewBuilder private var previewLayer: some View {
-        if let url = model.previewURL {
-            WebView(url: url, reloadToken: model.reloadToken, selectMode: model.selectMode,
+        ZStack {
+            // A19: keep the WebView mounted even with no URL yet, so a project
+            // switch / dev-server restart reuses the same (warm) instance and just
+            // loads a new URL — instead of remounting. BuildingView overlays it
+            // until a URL is ready.
+            WebView(url: model.previewURL, reloadToken: model.reloadToken, selectMode: model.selectMode,
                     onRuntimeIssue: { model.handleRuntimeIssue($0) },
                     onElementSelected: { model.handleElementSelected(tag: $0, text: $1, className: $2, selector: $3) })
                 .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
@@ -34,11 +38,13 @@ struct PreviewPane: View {
                 .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
                         radius: 16, y: 4)
                 .padding(model.previewWidth == .full ? 0 : 24)
-        } else {
-            BuildingView(statusText: model.displayStatus,
-                         lastLog: model.serverLog.last?.text,
-                         isBusy: model.isBusy || model.isStartingPreview,
-                         onRestart: model.previewServerDown ? { model.restartDevServer() } : nil)
+                .opacity(model.previewURL == nil ? 0 : 1)
+            if model.previewURL == nil {
+                BuildingView(statusText: model.displayStatus,
+                             lastLog: model.serverLog.last?.text,
+                             isBusy: model.isBusy || model.isStartingPreview,
+                             onRestart: model.previewServerDown ? { model.restartDevServer() } : nil)
+            }
         }
     }
 }

@@ -13,6 +13,10 @@ struct WebView: NSViewRepresentable {
     let onRuntimeIssue: (RuntimeIssue) -> Void
     let onElementSelected: (String, String, String, String) -> Void
 
+    /// A19: one shared web-content process pool, so switching projects (or a dev-
+    /// server restart) reuses a warm process instead of cold-spawning a new one.
+    @MainActor static let sharedProcessPool = WKProcessPool()
+
     func makeCoordinator() -> Coordinator {
         Coordinator(onRuntimeIssue: onRuntimeIssue, onElementSelected: onElementSelected)
     }
@@ -27,6 +31,7 @@ struct WebView: NSViewRepresentable {
 
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = controller
+        configuration.processPool = Self.sharedProcessPool   // A19: warm, shared web-content process
         #if DEBUG
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         #endif

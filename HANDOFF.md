@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `124795e` 2026-06-15 — B17-rest: push .env.local to Vercel env after deploy
 - `06c4aa6` 2026-06-15 — A14: coalesce streaming UI updates (chat tokens + dev-server log)
 - `8411318` 2026-06-15 — B20: shareable project bundles (export + import)
 - `f3ec311` 2026-06-15 — docs: mark B17 (.env editor), B16 (deploy history), A17 (legacy migration) built in ROADMAP
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `438c7e0` 2026-06-15 — Project management: delete/rename old projects + toggleable projects sidebar
 - `24d80da` 2026-06-15 — Add a functional smoke test of the generated app (interaction-level gate)
 - `83f7b88` 2026-06-15 — Extend the type-error gate to Svelte (svelte-check) and Vue (vue-tsc)
-- `01ca1fc` 2026-06-15 — Catch TypeScript errors in the build loop (real tsc --noEmit gate)
 <!-- COMMITLOG:END -->
