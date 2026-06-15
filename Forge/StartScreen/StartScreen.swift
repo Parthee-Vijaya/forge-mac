@@ -143,6 +143,8 @@ struct StartScreen: View {
                     isCapturing: model.isCapturing,
                     isEnhancing: model.isEnhancing,
                     onEnhance: { model.enhancePrompt() },
+                    isDictating: model.isDictating,
+                    onMic: { model.toggleDictation() },
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 560)

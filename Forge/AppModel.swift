@@ -71,6 +71,8 @@ final class AppModel {
     var statusText: String = "Ready."
     var chatMode: AgentLoop.Mode = .build   // Plan vs Build toggle in the composer
     var askMode = false                     // B10: read-only "ask about the code" mode
+    var isDictating = false                 // B15: live voice dictation into the composer
+    @ObservationIgnored private let dictation = Dictation()
 
     // Layout: the preview pane only appears once the first build has started.
     var hasStarted: Bool = false
@@ -1080,6 +1082,20 @@ final class AppModel {
     }
 
     static func isEnvFile(_ path: String) -> Bool { path == ".env" || path == ".env.local" }
+
+    /// B15: toggle push-to-talk dictation. Partial transcripts append to the
+    /// current draft; errors (no mic / denied) surface as a toast and stop it.
+    func toggleDictation() {
+        if isDictating { dictation.stop(); isDictating = false; return }
+        let base = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        isDictating = true
+        dictation.start(onPartial: { [weak self] transcript in
+            self?.draft = base.isEmpty ? transcript : base + " " + transcript
+        }, onError: { [weak self] message in
+            self?.isDictating = false
+            self?.showToast(message, icon: "mic.slash")
+        })
+    }
 
     /// B17: open the project's `.env.local` in the code editor, creating it with a
     /// short template if it doesn't exist yet. Editing autosaves to disk; pressing

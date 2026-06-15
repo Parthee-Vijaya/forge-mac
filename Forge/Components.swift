@@ -20,6 +20,8 @@ struct Composer: View {
     var isCapturing: Bool = false                    // a page is being screenshotted
     var isEnhancing: Bool = false                    // B14: expanding the prompt
     var onEnhance: (() -> Void)? = nil               // ✨ → expand prompt into a brief
+    var isDictating: Bool = false                    // B15: voice dictation active
+    var onMic: (() -> Void)? = nil                   // 🎙 → toggle dictation
     var onSubmit: () -> Void
     var onStop: (() -> Void)? = nil
 
@@ -146,6 +148,20 @@ struct Composer: View {
                 .help("Forbedr prompt — udvid til en detaljeret spec")
                 .accessibilityLabel("Forbedr prompt")
                 .disabled(isBusy || isEnhancing || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            if let onMic {
+                Button(action: onMic) {
+                    Image(systemName: isDictating ? "mic.fill" : "mic")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(isDictating ? Theme.accent : Theme.inkSoft)
+                        .frame(width: 28, height: 28)
+                        .background(isDictating ? Theme.accent.opacity(0.12) : .clear,
+                                    in: RoundedRectangle(cornerRadius: Theme.radiusS))
+                }
+                .buttonStyle(.plain)
+                .help(isDictating ? "Stop diktering" : "Diktér med stemmen")
+                .accessibilityLabel(isDictating ? "Stop diktering" : "Diktér prompt")
+                .disabled(isBusy)
             }
             TextField(placeholder, text: $text, axis: .vertical)
                 .textFieldStyle(.plain)

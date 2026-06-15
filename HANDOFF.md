@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `2fb7b87` 2026-06-15 — B7: Next.js as a 4th framework (basic support)
 - `fa7f732` 2026-06-15 — C11: project dashboard grid
 - `b285ddb` 2026-06-15 — B10: read-only "Spørg om koden" mode (chat with the codebase)
 - `6f385bc` 2026-06-15 — B8: built-in terminal (command field + output log)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `8b43ac9` 2026-06-15 — A6: fuzz + edge tests for the streaming artifact parser
 - `dc2af80` 2026-06-15 — Onboarding: richer welcome hero + fuller copy on every step
 - `11b95e6` 2026-06-15 — Guided model setup in onboarding: hardware recommendation, one-click install, cloud keys
-- `ef19175` 2026-06-15 — Offer the guided tour on first run (final onboarding step)
 <!-- COMMITLOG:END -->
