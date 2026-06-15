@@ -178,4 +178,75 @@ final class StreamingArtifactParserTests: XCTestCase {
         let written = files(parse(input, chunkSize: 1))
         XCTAssertTrue(written.isEmpty, "partial line-replace must not be applied")
     }
+
+    // MARK: - Fuzz / edge cases (A6)
+
+    /// Exhaustively feed the sample at EVERY chunk size 1…len. This stresses the
+    /// suffix-holdback at every possible split point of every delimiter — the
+    /// result must be identical regardless of where chunks break.
+    func testEveryChunkBoundaryParsesIdentically() {
+        for size in 1...sample.count {
+            let events = parse(sample, chunkSize: size)
+            let written = files(events)
+            XCTAssertEqual(written.count, 1, "chunk \(size): exactly one file")
+            XCTAssertEqual(written.first?.0, "src/App.tsx", "chunk \(size)")
+            let c = written.first?.1 ?? ""
+            XCTAssertTrue(c.contains("export default function App()"), "chunk \(size)")
+            XCTAssertTrue(c.contains("</not-a-real-close>"), "chunk \(size)")
+            XCTAssertFalse(c.contains("forgeAction"), "chunk \(size): no tag leak")
+            XCTAssertEqual(inlineActions(events),
+                           [.addDependency(package: "clsx"), .start(command: "npm run dev")],
+                           "chunk \(size)")
+        }
+    }
+
+    /// Stream cut off right after the artifact opens: artifactOpen is emitted, but
+    /// finish() must not crash or fabricate a file.
+    func testUnterminatedArtifactOpenAtEOF() {
+        let events = parse("<forgeArtifact id=\"x\" title=\"X\">", chunkSize: 3)
+        let opens = events.filter { if case .artifactOpen = $0 { return true }; return false }.count
+        XCTAssertEqual(opens, 1)
+        XCTAssertTrue(files(events).isEmpty)
+    }
+
+    /// A fragment that is only the START of the open marker at EOF is surfaced as
+    /// text, never silently swallowed.
+    func testPartialOpenMarkerAtEOFBecomesText() {
+        let events = parse("hello <forgeArti", chunkSize: 1)
+        let text = events.compactMap { if case .text(let t) = $0 { return t }; return nil }.joined()
+        XCTAssertEqual(text, "hello <forgeArti")
+        XCTAssertTrue(files(events).isEmpty)
+    }
+
+    /// TSX generics, comparisons, and a LITERAL `<forgeArtifact>` inside the body
+    /// survive verbatim — only `</forgeAction>` closes a file body.
+    func testJSXAndLiteralTagsInBodySurvive() {
+        let input = """
+        <forgeArtifact id="x" title="X">
+        <forgeAction type="file" filePath="src/App.tsx">
+        function id<T,>(x: T): T { return x }
+        const ok = 2 < 3 && 5 > 1
+        // a literal <forgeArtifact> and </div> survive
+        </forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [1, 7, Int.max] {
+            let written = files(parse(input, chunkSize: chunk))
+            XCTAssertEqual(written.count, 1, "chunk \(chunk)")
+            let c = written.first?.1 ?? ""
+            XCTAssertTrue(c.contains("function id<T,>(x: T): T"), "chunk \(chunk)")
+            XCTAssertTrue(c.contains("2 < 3 && 5 > 1"), "chunk \(chunk)")
+            XCTAssertTrue(c.contains("<forgeArtifact>"), "chunk \(chunk): literal tag kept verbatim")
+        }
+    }
+
+    /// An empty file body yields a fileClose with empty contents (not dropped).
+    func testEmptyFileBody() {
+        let input = "<forgeArtifact id=\"x\" title=\"X\"><forgeAction type=\"file\" filePath=\"a.ts\"></forgeAction></forgeArtifact>"
+        for chunk in [1, Int.max] {
+            let written = files(parse(input, chunkSize: chunk))
+            XCTAssertEqual(written.map(\.0), ["a.ts"], "chunk \(chunk)")
+            XCTAssertEqual(written.first?.1, "", "chunk \(chunk)")
+        }
+    }
 }
