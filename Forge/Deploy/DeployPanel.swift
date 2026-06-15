@@ -5,21 +5,31 @@ struct DeployPanel: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        @Bindable var model = model
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 if model.isDeploying {
                     ProgressView().controlSize(.small)
                 } else {
-                    Image(systemName: model.deployVercelURL != nil ? "checkmark.circle.fill" : "arrowtriangle.up.circle")
-                        .foregroundStyle(model.deployVercelURL != nil ? Theme.positive : Theme.ink)
+                    Image(systemName: model.deployLiveURL != nil ? "checkmark.circle.fill" : "arrowtriangle.up.circle")
+                        .foregroundStyle(model.deployLiveURL != nil ? Theme.positive : Theme.ink)
                 }
                 Text(headline).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+            }
+
+            if !model.isDeploying {
+                Picker("", selection: $model.preferences.deployTarget) {
+                    Text("Vercel").tag("vercel")
+                    Text("Netlify").tag("netlify")
+                }
+                .pickerStyle(.segmented).labelsHidden()
+                .onChange(of: model.preferences.deployTarget) { model.savePreferences() }
             }
 
             if let github = model.deployGithubURL {
                 linkRow(label: "GitHub repo", url: github, icon: "chevron.left.forwardslash.chevron.right")
             }
-            if let vercel = model.deployVercelURL {
+            if let vercel = model.deployLiveURL {
                 linkRow(label: "Live URL", url: vercel, icon: "globe")
             }
 
@@ -41,7 +51,7 @@ struct DeployPanel: View {
 
             if !model.isDeploying {
                 Button { model.deploy() } label: {
-                    Text(model.deployVercelURL != nil ? "Redeploy" : "Deploy")
+                    Text(model.deployLiveURL != nil ? "Redeploy" : "Deploy")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.onAccent)
                         .frame(maxWidth: .infinity).padding(.vertical, 9)
@@ -56,8 +66,8 @@ struct DeployPanel: View {
 
     private var headline: String {
         if model.isDeploying { return model.deployStatus.isEmpty ? "Deploying…" : model.deployStatus }
-        if model.deployVercelURL != nil { return "Deployed 🎉" }
-        return "Deploy to GitHub + Vercel"
+        if model.deployLiveURL != nil { return "Deployed 🎉" }
+        return "Deploy → GitHub + \(model.preferences.deployTarget == "netlify" ? "Netlify" : "Vercel")"
     }
 
     private func linkRow(label: String, url: URL, icon: String) -> some View {

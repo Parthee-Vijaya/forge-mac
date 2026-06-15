@@ -86,7 +86,7 @@ final class AppModel {
     var deployStatus = ""
     var deployLog: [String] = []
     var deployGithubURL: URL?
-    var deployVercelURL: URL?
+    var deployLiveURL: URL?
     var showDeploy = false
 
     // Visual editing
@@ -488,7 +488,7 @@ final class AppModel {
         showDeploy = true
         deployLog = []
         deployGithubURL = nil
-        deployVercelURL = nil
+        deployLiveURL = nil
         let repo = "forge-" + Self.slug(currentProject.name)
         Task {
             await runDeploy(repo: repo)
@@ -514,11 +514,22 @@ final class AppModel {
         deployGithubURL = Self.firstMatch(#"https://github\.com/[^\s]+"#, in: githubOutput)
             ?? URL(string: "https://github.com/\(owner)/\(repo)")
 
-        deployStatus = "Deploying to Vercel…"
-        let vercelOutput = (try? await deployShell("vercel deploy --prod --yes\(scopeFlag) 2>&1")) ?? ""
-        deployVercelURL = Self.firstMatch(#"https://[^\s]+\.vercel\.app"#, in: vercelOutput)
-        deployStatus = deployVercelURL != nil ? "Live on Vercel." : "Finished — check the log."
-        if deployVercelURL != nil { showToast("Live på Vercel 🎉", icon: "checkmark.seal.fill") }
+        if preferences.deployTarget == "netlify" {
+            deployStatus = "Bygger til Netlify…"
+            _ = try? await deployShell("npm run build 2>&1")
+            deployStatus = "Deployer til Netlify…"
+            let out = (try? await deployShell("netlify deploy --prod --dir=dist 2>&1")) ?? ""
+            deployLiveURL = Self.firstMatch(#"https://[^\s]+\.netlify\.app"#, in: out)
+            deployStatus = deployLiveURL != nil
+                ? "Live på Netlify." : "Færdig — tjek loggen (Netlify kræver `netlify login` + et linket site)."
+            if deployLiveURL != nil { showToast("Live på Netlify 🎉", icon: "checkmark.seal.fill") }
+        } else {
+            deployStatus = "Deployer til Vercel…"
+            let out = (try? await deployShell("vercel deploy --prod --yes\(scopeFlag) 2>&1")) ?? ""
+            deployLiveURL = Self.firstMatch(#"https://[^\s]+\.vercel\.app"#, in: out)
+            deployStatus = deployLiveURL != nil ? "Live på Vercel." : "Færdig — tjek loggen."
+            if deployLiveURL != nil { showToast("Live på Vercel 🎉", icon: "checkmark.seal.fill") }
+        }
     }
 
     @discardableResult
