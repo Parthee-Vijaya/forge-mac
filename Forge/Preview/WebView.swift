@@ -46,6 +46,7 @@ struct WebView: NSViewRepresentable {
         if context.coordinator.loadedURL != url {
             context.coordinator.loadedURL = url
             context.coordinator.retryCount = 0
+            context.coordinator.blankReloads = 0
             webView.load(URLRequest(url: url))
         } else if context.coordinator.lastReloadToken != reloadToken {
             context.coordinator.lastReloadToken = reloadToken
@@ -72,6 +73,7 @@ struct WebView: NSViewRepresentable {
         var retryCount = 0
         var lastReloadToken = 0
         var selectMode = false
+        var blankReloads = 0   // A10: at most one auto-reload on a blank render
 
         init(onRuntimeIssue: @escaping (RuntimeIssue) -> Void,
              onElementSelected: @escaping (String, String, String, String) -> Void) {
@@ -91,6 +93,20 @@ struct WebView: NSViewRepresentable {
                     body["text"] as? String ?? "",
                     body["className"] as? String ?? "",
                     body["selector"] as? String ?? "")
+                return
+            }
+            if kind == "blankScreen" {
+                // A transient blank (slow HMR) often clears on a reload; try once,
+                // then treat a persistent blank as a real runtime failure.
+                if blankReloads < 1 {
+                    blankReloads += 1
+                    webView?.reload()
+                } else {
+                    onRuntimeIssue(RuntimeIssue(
+                        kind: .consoleError,
+                        message: "Preview er tom — appen renderede ikke (muligt crash ved mount).",
+                        source: nil, line: nil))
+                }
                 return
             }
             let issueKind = RuntimeIssue.Kind(rawValue: kind) ?? .consoleError
@@ -162,6 +178,27 @@ struct WebView: NSViewRepresentable {
         } catch (_) {}
         return original.apply(console, arguments);
       };
+
+      // Preserve scroll position across full reloads (HMR keeps it; an explicit
+      // reload would otherwise jump to the top), and flag a blank render — an
+      // empty mount point a beat after load usually means the app crashed on mount.
+      try {
+        var SCROLL_KEY = '__forge_scroll';
+        window.addEventListener('beforeunload', function () {
+          try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY)); } catch (e) {}
+        });
+        window.addEventListener('load', function () {
+          try {
+            var y = sessionStorage.getItem(SCROLL_KEY);
+            if (y) window.scrollTo(0, parseInt(y, 10) || 0);
+          } catch (e) {}
+          setTimeout(function () {
+            var root = document.getElementById('root') || document.getElementById('app') || document.body;
+            var empty = !root || (root.children.length === 0 && (root.innerText || '').trim() === '');
+            if (empty) post({ kind: 'blankScreen', message: 'Preview rendered blank', source: null, line: null });
+          }, 1500);
+        });
+      } catch (e) {}
 
       // Visual select mode
       var selecting = false, hovered = null;
