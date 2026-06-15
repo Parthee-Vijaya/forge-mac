@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `0662421` 2026-06-15 — P2: .env editor (B17), Vercel deploy history + rollback (B16), legacy-project migration (A17)
 - `bff9e8f` 2026-06-15 — A16: app-layer unit tests for AppModel's decision helpers
 - `247d69a` 2026-06-15 — UI: shortcut cheat sheet (⌘/), resizable+persistent split, preview px label
 - `ec568d8` 2026-06-15 — A10: preserve scroll across HMR + recover from a blank render
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `de705cb` 2026-06-15 — Harden: parser cancel-flush, keychain, preview bridge, error cap, prompt-injection
 - `3cfcead` 2026-06-15 — Harden: deploy shell-quoting, safe checkpoint restore, shell-probe timeout
 - `4b3b307` 2026-06-15 — Roadmap: Supabase + multi-framework + syntax-highlight done
-- `5ef3f95` 2026-06-15 — Supabase backend integration (XL)
 <!-- COMMITLOG:END -->

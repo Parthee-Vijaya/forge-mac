@@ -85,7 +85,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 16. **App-lags-tests** — kun `ForgeKit` er testet; `AppModel`-logik (auto-navn, projekt-skift, visual-edit-prompt) er uafprøvet. *Sådan:* udtræk ren logik (slug, projectName, prompt-bygning) til testbare funktioner; ViewInspector/snapshot for nøgle-views. **M · P2**
 
-17. **Migrér det gamle single-projekt** — `~/Library/.../Forge/project` er nu forældreløst efter multi-projekt. *Sådan:* engangs-migration ved opstart der importerer det som et `Project` hvis det findes; ellers ryd op. **S · P2**
+17. **Migrér det gamle single-projekt** — ✅ *bygget.* `ProjectStore.migrateLegacyProjectIfNeeded()` kører ved opstart (`AppModel.init`): hvis det forældreløse `~/Library/.../Forge/project` (ental) findes med en bygget app, **flyttes** det ind som et `Project` ("Importeret projekt") med en seed-chat så det dukker op i "Seneste"; ellers ryddes det op. Idempotent (move, ikke copy → øjeblikkeligt + væk bagefter). Verificeret end-to-end med en fixture. **S · P2**
 
 18. **Bekræft-dialog før destruktive handlinger** — ✅ *bygget.* "Slet projekt" beder nu om bekræftelse via `.confirmationDialog` (navngiver projektet + advarer om at kode/chat/historik slettes permanent). **S · P1**
 
@@ -131,9 +131,9 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 15. **Stemme-input** — diktér prompts (du har Saga/CanaryKit). *Sådan:* genbrug CanaryKit-CoreML (lokal dansk ASR) → tekst i composer; push-to-talk-knap. **M · P2**
 
-16. **Deploy-historik + rollback** — vis tidligere Vercel-deploys + rul tilbage. *Sådan:* `vercel ls`/`vercel rollback` via `runShellCommand`; udvid `DeployPanel` med en liste. **M · P2**
+16. **Deploy-historik + rollback** — ✅ *bygget (UI verificeret, CLI uverificeret).* `AppModel.fetchDeployHistory` parser `vercel ls`; `rollbackTo` kører `vercel rollback <url>`; `DeployPanel` viser en "Tidligere deploys"-liste (alder, status-dot, "Rul tilbage") + tom-tilstand når Vercel er valgt. ⚠️ Selve `vercel ls`/`rollback`-kaldene kræver et live, linket Vercel-projekt og er **ikke** verificeret endnu — kun UI'en er GUI-tjekket. **M · P2**
 
-17. **Miljøvariabler-editor** — `.env` for genererede apps (til API-nøgler i apps). *Sådan:* en editor i kode-visningen for `.env`; injicér i dev-server-env + Vercel-env (`vercel env`). **M · P2**
+17. **Miljøvariabler-editor** — ✅ *bygget (lokal del).* `.env`/`.env.local` injiceres i dev-serverens barn-proces (`DevServerManager.loadDotEnv`) og vises i kode-træet (`fileMap`). En "Miljøvariabler"-knap (kode-træ + ⌘K) opretter `.env.local` fra en skabelon hvis den mangler og åbner den; Gem (⌘S) genstarter dev-serveren så Vite henter værdierne. *Udestår:* push til Vercel-env (`vercel env`) ved deploy. **M · P2**
 
 18. **MCP-server-eksponering** — eksponér filsystem/terminal/preview som MCP-værktøjer, så eksterne agenter (Claude Code, Cline) kan styre Forge. *Sådan:* en lille MCP-server (stdio) oven på `ProjectWorkspace` + `DevServerManager`. **L · P2**
 
