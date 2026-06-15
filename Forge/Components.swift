@@ -23,6 +23,7 @@ struct Composer: View {
     var onEnhance: (() -> Void)? = nil               // ✨ → expand prompt into a brief
     var isDictating: Bool = false                    // B15: voice dictation active
     var onMic: (() -> Void)? = nil                   // 🎙 → toggle dictation
+    var onClone: (() -> Void)? = nil                 // /klon → open the Clone-from-Git dialog
     var onSubmit: () -> Void
     var onStop: (() -> Void)? = nil
 
@@ -247,7 +248,7 @@ struct Composer: View {
     /// A "/" command surfaced in the composer. `mode` commands flip Build/Plan;
     /// `insert` commands prefill the prompt with a ready-made brief.
     struct SlashCommand: Identifiable {
-        enum Action { case mode(AgentLoop.Mode); case insert(String) }
+        enum Action { case mode(AgentLoop.Mode); case insert(String); case clone }
         let id: String
         let triggers: [String]   // first entry is the canonical label shown in the menu
         let hint: String
@@ -256,6 +257,8 @@ struct Composer: View {
     }
 
     static let slashCommands: [SlashCommand] = [
+        .init(id: "clone", triggers: ["klon", "clone"], hint: "Klon et Git-repo til et nyt projekt",
+              icon: "arrow.triangle.branch", action: .clone),
         .init(id: "build", triggers: ["build", "byg"], hint: "Byg appen med det samme",
               icon: "hammer", action: .mode(.build)),
         .init(id: "plan", triggers: ["plan", "planlæg"], hint: "Læg en plan før koden skrives",
@@ -284,6 +287,7 @@ struct Composer: View {
         guard let q = slashQuery else { return [] }
         return Self.slashCommands.filter { cmd in
             if case .mode = cmd.action, mode == nil { return false }   // no Build/Plan binding here
+            if case .clone = cmd.action, onClone == nil { return false }  // no clone target here
             return q.isEmpty || cmd.triggers.contains { $0.hasPrefix(q) }
         }
     }
@@ -300,6 +304,7 @@ struct Composer: View {
         switch cmd.action {
         case .mode(let m): mode?.wrappedValue = m; text = ""
         case .insert(let template): text = template
+        case .clone: text = ""; onClone?()
         }
         slashSelection = 0
         slashSuppressed = false
@@ -314,10 +319,16 @@ struct Composer: View {
         guard text.hasPrefix("/"),
               let sep = text.firstIndex(where: { $0 == " " || $0 == "\n" }) else { return }
         let token = text[text.index(after: text.startIndex)..<sep].lowercased()
-        guard let cmd = Self.slashCommands.first(where: { $0.triggers.contains(token) }),
-              case .mode(let m) = cmd.action, mode != nil else { return }
-        mode?.wrappedValue = m
-        text = String(text[text.index(after: sep)...])
+        guard let cmd = Self.slashCommands.first(where: { $0.triggers.contains(token) }) else { return }
+        switch cmd.action {
+        case .mode(let m) where mode != nil:
+            mode?.wrappedValue = m
+            text = String(text[text.index(after: sep)...])   // keep the rest as the prompt
+        case .clone where onClone != nil:
+            text = ""; onClone?()
+        default:
+            break   // insert-templates are chosen from the menu, not inline
+        }
     }
 
     @ViewBuilder private var slashMenu: some View {
@@ -1006,9 +1017,10 @@ struct ShortcutsView: View {
         ("Kode & preview", [("⌘\\", "Skift kode / preview"), ("⌘S", "Gem fil"),
                             ("⌘R", "Genindlæs preview"), ("⌘/", "Vis denne genvejsoversigt")]),
         ("Slash-kommandoer (skriv / i prompten)",
-            [("/byg", "Byg appen direkte"), ("/plan", "Læg en plan først"),
-             ("/ret", "Find og ret fejl"), ("/stil", "Skift tema / udseende"),
-             ("/mobil", "Gør appen responsiv"), ("/forklar", "Forklar koden")]),
+            [("/klon", "Klon et Git-repo"), ("/byg", "Byg appen direkte"),
+             ("/plan", "Læg en plan først"), ("/ret", "Find og ret fejl"),
+             ("/stil", "Skift tema / udseende"), ("/mobil", "Gør appen responsiv"),
+             ("/forklar", "Forklar koden")]),
     ]
 
     var body: some View {

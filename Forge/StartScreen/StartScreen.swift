@@ -146,6 +146,7 @@ struct StartScreen: View {
                     onEnhance: { model.enhancePrompt() },
                     isDictating: model.isDictating,
                     onMic: { model.toggleDictation() },
+                    onClone: { model.showCloneDialog = true },
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 600)
