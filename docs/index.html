@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forge — local-first app builder for macOS</title>
-<meta name="description" content="A native SwiftUI take on Lovable/Bolt: type a prompt, an AI agent writes a real React/Svelte/Vue/Next.js project on your Mac and shows a live preview. Local-first, open-source.">
-<meta property="og:title" content="Forge — local-first app builder for macOS">
-<meta property="og:description" content="Type a prompt; an AI agent builds a real web app on your Mac. Local models or your own API key. No cloud account required.">
+<title>Forge — gratis, lokal app-bygger til vibecoding-nybegyndere</title>
+<meta name="description" content="Forge er en gratis, open-source macOS-app lavet til dig der er ny i vibecoding. Skriv hvad du vil bygge — en AI-agent bygger en rigtig app på din egen Mac. Både app og modeller er gratis og open source.">
+<meta property="og:title" content="Forge — kom i gang med vibecoding, gratis og lokalt">
+<meta property="og:description" content="Skriv en prompt; en AI-agent bygger en rigtig app på din Mac. Gratis, open source, og lokalt — uden abonnement eller API-regninger.">
 <meta property="og:image" content="screenshots/03-preview.png">
 <meta property="og:type" content="website">
 <style>
@@ -46,9 +46,12 @@
     box-shadow:0 6px 20px rgba(124,108,255,.35);
   }
   .brand b{font-size:18px;letter-spacing:.2px}
-  .hero h1{font-size:clamp(34px,5vw,56px);line-height:1.08;letter-spacing:-.02em;max-width:16ch}
+  .pill{display:inline-block;font-size:13px;font-weight:600;color:var(--accent-2);
+    background:rgba(124,108,255,.12);border:1px solid rgba(124,108,255,.3);
+    padding:5px 12px;border-radius:999px;margin-bottom:18px}
+  .hero h1{font-size:clamp(34px,5vw,56px);line-height:1.08;letter-spacing:-.02em;max-width:18ch}
   .hero h1 .grad{background:linear-gradient(110deg,var(--accent-2),#C9BFFF);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p.sub{margin-top:20px;font-size:clamp(16px,2vw,19px);max-width:62ch;color:var(--ink-soft)}
+  .hero p.sub{margin-top:20px;font-size:clamp(16px,2vw,19px);max-width:64ch;color:var(--ink-soft)}
   .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px;align-items:center}
   .btn{
     display:inline-flex;align-items:center;gap:8px;
@@ -66,7 +69,7 @@
   }
   .shot img{display:block;width:100%;height:auto}
 
-  /* Sections */
+  /* Sektioner */
   section{padding:64px 0;border-bottom:1px solid var(--border)}
   h2{font-size:clamp(24px,3vw,32px);letter-spacing:-.01em;margin-bottom:8px}
   .lead{color:var(--ink-soft);max-width:64ch;margin-bottom:36px}
@@ -81,6 +84,16 @@
   .card h3{font-size:16px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
   .card .ic{font-size:18px}
   .card p{font-size:14.5px;color:var(--ink-soft)}
+  .card code{font-size:13px}
+
+  /* Free/open-source banner */
+  .free{background:
+      radial-gradient(600px 300px at 85% 0%, rgba(63,207,142,.12), transparent 60%),
+      var(--bg2);}
+  .free .badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .free .badge{font-size:13.5px;color:var(--ink);background:var(--surface);
+    border:1px solid var(--border);border-radius:999px;padding:7px 14px}
+  .free .badge b{color:var(--positive)}
 
   /* Tour */
   .tour{display:flex;flex-direction:column;gap:56px}
@@ -120,58 +133,71 @@
 <header class="hero">
   <div class="wrap">
     <div class="brand"><span class="mark">⚒️</span><b>Forge</b></div>
-    <h1>Type a prompt. Get a <span class="grad">real app</span> — built on your own Mac.</h1>
-    <p class="sub">Forge is a local-first, open-source app builder for macOS — a native SwiftUI take on the Lovable / Bolt pattern. An AI agent writes a real React, Svelte, Vue or Next.js project to your disk, runs it, and shows a live preview with hot-reload. The model runs on <em>your</em> Mac. No cloud account required, no code leaves your machine.</p>
+    <span class="pill">Gratis · open source · til nybegyndere</span>
+    <h1>Kom i gang med <span class="grad">vibecoding</span> — gratis og på din egen Mac.</h1>
+    <p class="sub">Forge er en macOS-app lavet til dig, der er <b>ny i vibecoding</b>. Skriv i almindeligt sprog hvad du vil bygge, så skriver en AI-agent en rigtig app — React, Svelte, Vue eller Next.js — direkte på din Mac og viser et live-preview. Tanken er enkel: både <b>appen og de AI-modeller</b> du bruger er primært <b>open source og gratis</b>, så du kan bygge til dit eget formål uden at tænke på abonnementer, API-regninger eller skjulte omkostninger.</p>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">↓ Download for macOS (.dmg)</a>
-      <a class="btn ghost" href="https://github.com/Parthee-Vijaya/forge-mac">View on GitHub</a>
-      <span class="note">Apple Silicon · macOS 26 · ad-hoc signed (right-click → Open on first launch)</span>
+      <a class="btn primary" href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">↓ Hent til macOS (.dmg)</a>
+      <a class="btn ghost" href="https://github.com/Parthee-Vijaya/forge-mac">Se på GitHub</a>
+      <span class="note">Apple Silicon · macOS 26 · ad-hoc-signeret (højreklik → Åbn første gang)</span>
     </div>
-    <div class="shot"><img src="screenshots/03-preview.png" alt="Forge: chat on the left, live app preview on the right" loading="eager"></div>
+    <div class="shot"><img src="screenshots/03-preview.png" alt="Forge: chat til venstre, live app-preview til højre" loading="eager"></div>
   </div>
 </header>
 
-<section>
+<section class="free">
   <div class="wrap">
-    <h2>Why Forge</h2>
-    <p class="lead">The same vibe-coding loop as the cloud tools — but private, native, and yours.</p>
-    <div class="grid cols-2">
-      <div class="card"><h3><span class="ic">🔒</span> Local-first &amp; private</h3><p>Point it at Ollama or LM Studio and the whole loop — prompt → code → preview — happens on-device. Your prompts and source never leave the Mac.</p></div>
-      <div class="card"><h3><span class="ic">📁</span> Real files, not a sandbox</h3><p>Every project is a normal folder you can open in any editor, commit to git, and run with <code style="font-size:13px">npm</code> yourself. Forge is a front-end to the toolchain you already use.</p></div>
-      <div class="card"><h3><span class="ic">⚡</span> Native, not Electron</h3><p>A genuine SwiftUI app with a WKWebView preview — fast cold start, low memory, proper macOS window and menu behaviour.</p></div>
-      <div class="card"><h3><span class="ic">🧠</span> Bring your own model</h3><p>Local models for free, private work — or plug in a cloud API key (OpenAI, Anthropic, Google Gemini, NVIDIA) when you want a bigger model.</p></div>
+    <h2>Gratis hele vejen — også modellerne</h2>
+    <p class="lead">De fleste vibecoding-værktøjer kører i skyen og koster penge pr. besked. Forge vender det om: kør gratis, open-source modeller <b>lokalt på din egen maskine</b>, så der ikke er noget der tikker op imens du lærer og eksperimenterer.</p>
+    <div class="grid cols-3">
+      <div class="card"><h3><span class="ic">🧠</span> Gratis lokale modeller</h3><p>Kør open-source modeller som Qwen, Llama, Mistral eller Gemma lokalt via <a href="https://ollama.com">Ollama</a> eller <a href="https://lmstudio.ai">LM Studio</a>. Ingen konto, ingen kvote, ingen regning.</p></div>
+      <div class="card"><h3><span class="ic">📂</span> Appen er open source</h3><p>Forge er selv open source og gratis. Hent den, kig i koden, og byg videre til dit eget formål — helt uden binding.</p></div>
+      <div class="card"><h3><span class="ic">☁️</span> Cloud er valgfrit</h3><p>Vil du have en større model, kan du <em>valgfrit</em> tilføje din egen API-nøgle (OpenAI, Anthropic, Google Gemini, NVIDIA) — men det er aldrig nødvendigt for at komme i gang.</p></div>
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2>A guided tour</h2>
-    <p class="lead">From an empty prompt to a deployed app.</p>
+    <h2>Derfor Forge</h2>
+    <p class="lead">Den samme vibecoding-oplevelse som sky-værktøjerne — bare privat, gratis og lavet til at lære i.</p>
+    <div class="grid cols-2">
+      <div class="card"><h3><span class="ic">🎓</span> Lavet til nybegyndere</h3><p>En guidet tutorial peger på hver del af appen og forklarer den i almindeligt sprog, og en learning-mode forklarer fagudtryk undervejs med en altid-åben ordbog. Du behøver ikke kunne kode.</p></div>
+      <div class="card"><h3><span class="ic">🔒</span> Lokalt &amp; privat</h3><p>Hele løkken — prompt → kode → preview — sker på din Mac. Dine prompts og din kode forlader aldrig maskinen.</p></div>
+      <div class="card"><h3><span class="ic">📁</span> Rigtige filer, ikke en sandkasse</h3><p>Hvert projekt er en helt almindelig mappe, du selv kan åbne i en editor, køre med <code>npm</code> og committe til git.</p></div>
+      <div class="card"><h3><span class="ic">⚡</span> Native, ikke Electron</h3><p>En ægte SwiftUI-app med WKWebView-preview — hurtig opstart, lavt forbrug, og rigtig macOS-opførsel.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Sådan virker det</h2>
+    <p class="lead">Fra en tom prompt til en app, der kører.</p>
     <div class="tour">
       <div class="step">
-        <div class="copy"><div class="kicker">Start</div><h3>Describe what you want</h3><p>Type a prompt, pick a framework (React / Svelte / Vue / Next.js), or start from a template. Toggle <b>Build</b> vs <b>Plan</b>, attach a screenshot, or type <b>/</b> for slash commands.</p></div>
-        <div class="frame"><img src="screenshots/01-start.png" alt="Start screen" loading="lazy"></div>
+        <div class="copy"><div class="kicker">Start</div><h3>Beskriv hvad du vil bygge</h3><p>Skriv en prompt, vælg et framework (React / Svelte / Vue / Next.js), eller start fra en skabelon. Skift mellem <b>Build</b> og <b>Plan</b>, vedhæft et skærmbillede, eller skriv <b>/</b> for kommandoer.</p></div>
+        <div class="frame"><img src="screenshots/01-start.png" alt="Startskærm" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="kicker">Slash commands</div><h3>Drive the prompt from the keyboard</h3><p>Type <b>/</b> for a filterable menu. <code style="font-size:13px">/build</code>·<code style="font-size:13px">/byg</code> and <code style="font-size:13px">/plan</code> flip the mode; <code style="font-size:13px">/fix</code>, <code style="font-size:13px">/style</code>, <code style="font-size:13px">/responsive</code> and <code style="font-size:13px">/explain</code> prefill a ready-made brief.</p></div>
-        <div class="frame"><img src="screenshots/08-slash.png" alt="Slash command menu" loading="lazy"></div>
+        <div class="copy"><div class="kicker">Slash-kommandoer</div><h3>Styr prompten fra tastaturet</h3><p>Skriv <b>/</b> for en menu. <code>/byg</code> og <code>/plan</code> skifter tilstand; <code>/ret</code>, <code>/stil</code>, <code>/mobil</code> og <code>/forklar</code> udfylder en færdig prompt for dig.</p></div>
+        <div class="frame"><img src="screenshots/08-slash.png" alt="Slash-kommando-menu" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="kicker">Build &amp; preview</div><h3>Chat on the left, live app on the right</h3><p>The agent streams its edits while the preview renders against a local dev server with hot-reload. A status bar shows dev-server state, the active model, and token usage. Every turn is checkpointed — restore or diff any state.</p></div>
+        <div class="copy"><div class="kicker">Byg &amp; preview</div><h3>Chat til venstre, live app til højre</h3><p>Agenten streamer sine rettelser mens preview'et opdaterer via hot-reload. En statusbar viser dev-server, aktiv model og forbrug. Hver tur gemmes som et checkpoint — gendan eller se forskelle når som helst.</p></div>
         <div class="frame"><img src="screenshots/03-preview.png" alt="Live preview" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="kicker">Code</div><h3>Inspect everything the agent wrote</h3><p>A keyboard-navigable file tree, a syntax-highlighted editor with line numbers, open-file <b>tabs</b>, and a <b>minimap</b>. Watch files stream in live, copy any file, or open the whole project in your editor.</p></div>
-        <div class="frame"><img src="screenshots/04-code.png" alt="Code view with tabs and minimap" loading="lazy"></div>
+        <div class="copy"><div class="kicker">Kode</div><h3>Se alt hvad agenten skrev</h3><p>Et fil-træ du kan navigere med tastaturet, en editor med syntaksfarvning og linjenumre, <b>faner</b> for åbne filer, og et <b>minimap</b>. Se filer blive skrevet live, kopiér en fil, eller åbn hele projektet i din egen editor.</p></div>
+        <div class="frame"><img src="screenshots/04-code.png" alt="Kode-visning med faner og minimap" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="kicker">Deploy</div><h3>Ship it</h3><p>Deploy from the toolbar to Vercel, Netlify or GitHub Pages, plus push-to-GitHub. Deploy history is tracked per project, <code style="font-size:13px">.env</code> vars are pushed to the host, and you get a shareable live link back.</p></div>
-        <div class="frame"><img src="screenshots/06-deploy.png" alt="Deploy menu" loading="lazy"></div>
+        <div class="copy"><div class="kicker">Deploy</div><h3>Sæt den online</h3><p>Deploy fra værktøjslinjen til Vercel, Netlify eller GitHub Pages, plus push til GitHub. Deploy-historik gemmes pr. projekt, <code>.env</code>-værdier sendes med, og du får et delbart live-link tilbage.</p></div>
+        <div class="frame"><img src="screenshots/06-deploy.png" alt="Deploy-menu" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="kicker">Learn as you go</div><h3>A guided tutorial &amp; learning mode</h3><p>New to vibe-coding? A spotlight walkthrough explains each part of the UI in plain language, and learning mode surfaces one-time explainer cards at milestones with an always-open glossary.</p></div>
-        <div class="frame"><img src="screenshots/09-tutorial.png" alt="Guided tutorial" loading="lazy"></div>
+        <div class="copy"><div class="kicker">Lær undervejs</div><h3>Guidet tutorial &amp; learning-mode</h3><p>Ny i vibecoding? En spotlight-gennemgang forklarer hver del af appen i almindeligt sprog, og learning-mode viser forklaringskort ved milepæle — med en altid-åben ordbog over fagudtryk.</p></div>
+        <div class="frame"><img src="screenshots/09-tutorial.png" alt="Guidet tutorial" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -179,42 +205,42 @@
 
 <section>
   <div class="wrap">
-    <h2>Everything in the box</h2>
-    <p class="lead">Feature-complete through its backlog — engine, workflow and platform.</p>
+    <h2>Alt i kassen</h2>
+    <p class="lead">Færdigbygget hele vejen igennem — motor, workflow og platform.</p>
     <ul class="feat-list">
-      <li><b>Self-correcting agent</b> — runs <code style="font-size:13px">tsc</code> + a smoke test and fixes its own errors before handing back.</li>
-      <li><b>Line-replace / diff edits</b>, not just whole-file rewrites.</li>
-      <li><b>Per-turn checkpoints</b> (shadow git) with restore &amp; diff.</li>
-      <li><b>Chat-with-codebase</b> — ask read-only questions about the project.</li>
-      <li><b>Multi-framework</b> — React / Svelte / Vue (Vite) + Next.js.</li>
-      <li><b>Image → UI</b>, design-from-link, and shareable project bundles.</li>
-      <li><b>Visual editing</b> + "change the style" palette injection.</li>
-      <li><b>Voice dictation</b>, command palette, and slash commands.</li>
-      <li><b>VS Code-style status bar</b>, editor tabs, and a minimap.</li>
-      <li><b>MCP server</b> — expose a project to external agents.</li>
-      <li><b>Light / midnight-dark</b> themes; native macOS notifications.</li>
-      <li><b>Keychain-stored</b> cloud keys, never in plain text.</li>
+      <li><b>Selv-rettende agent</b> — kører <code>tsc</code> + en røgtest og retter sine egne fejl, før den er færdig.</li>
+      <li><b>Line-replace / diff-rettelser</b>, ikke kun hele filer.</li>
+      <li><b>Checkpoint pr. tur</b> (skygge-git) med gendan &amp; diff.</li>
+      <li><b>Spørg om koden</b> — stil read-only spørgsmål om projektet.</li>
+      <li><b>Flere frameworks</b> — React / Svelte / Vue (Vite) + Next.js.</li>
+      <li><b>Billede → UI</b>, design-fra-link, og delbare projekt-bundles.</li>
+      <li><b>Visuel redigering</b> + "skift stil"-palette.</li>
+      <li><b>Stemme-diktering</b>, kommando-palette og slash-kommandoer.</li>
+      <li><b>Statusbar</b> i VS Code-stil, editor-faner og minimap.</li>
+      <li><b>MCP-server</b> — eksponér et projekt til eksterne agenter.</li>
+      <li><b>Lyst / mørkt</b> tema; native macOS-notifikationer.</li>
+      <li><b>Nøgler i Keychain</b> (hvis du bruger cloud), aldrig i klartekst.</li>
     </ul>
   </div>
 </section>
 
 <section class="install">
   <div class="wrap">
-    <h2>Install</h2>
-    <p class="lead">Requires macOS 26 on Apple Silicon, plus a model backend (the onboarding wizard helps you install one).</p>
+    <h2>Installér</h2>
+    <p class="lead">Kræver macOS 26 på Apple Silicon, samt en model-backend (onboarding-guiden hjælper dig med at installere en gratis lokal model).</p>
     <ol>
-      <li>Download <b>Forge-&lt;version&gt;.dmg</b> from the <a href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">latest release</a>.</li>
-      <li>Open the DMG and drag <b>Forge</b> to <b>Applications</b>.</li>
-      <li>On first launch, <b>right-click → Open</b> and confirm (the build is ad-hoc signed, not yet notarised). After that it opens normally.</li>
+      <li>Hent <b>Forge-&lt;version&gt;.dmg</b> fra <a href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">seneste release</a>.</li>
+      <li>Åbn DMG'en og træk <b>Forge</b> over i <b>Programmer</b>.</li>
+      <li>Første gang: <b>højreklik → Åbn</b> og bekræft (appen er ad-hoc-signeret, endnu ikke notariseret). Derefter åbner den normalt.</li>
     </ol>
-    <div class="callout"><b>Heads up:</b> Forge is an actively-developed personal project. It's Apple Silicon + macOS 26 only and not notarised yet, so the first launch needs right-click → Open. Cloud-deploy targets need their CLIs installed and authenticated.</div>
+    <div class="callout"><b>Bemærk:</b> Forge er et aktivt personligt projekt. Det kører kun på Apple Silicon + macOS 26 og er ikke notariseret endnu, så første start kræver højreklik → Åbn. Cloud-deploy (Vercel/Netlify) kræver at deres CLI er installeret og logget ind.</div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <p>Open-source · <a href="https://github.com/Parthee-Vijaya/forge-mac">github.com/Parthee-Vijaya/forge-mac</a></p>
-    <p class="faint" style="margin-top:6px">Built with SwiftUI + ForgeKit. This page lives in the repo's <code style="font-size:12px">/docs</code> and is served by GitHub Pages.</p>
+    <p>Open source · <a href="https://github.com/Parthee-Vijaya/forge-mac">github.com/Parthee-Vijaya/forge-mac</a></p>
+    <p class="faint" style="margin-top:6px">Bygget med SwiftUI + ForgeKit. Denne side ligger i repoets <code style="font-size:12px">/docs</code> og serveres af GitHub Pages.</p>
   </div>
 </footer>
 
