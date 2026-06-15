@@ -27,6 +27,9 @@ struct ForgeApp: App {
                     .keyboardShortcut("\\", modifiers: .command)
                 Button("Terminal") { if appDelegate.model.hasStarted { appDelegate.model.showTerminal = true } }
                     .keyboardShortcut("t", modifiers: .command)
+                Button(appDelegate.model.remoteSharing ? "Stop iPhone-deling" : "Del til iPhone (companion)") {
+                    appDelegate.model.toggleRemoteSharing()
+                }
                 Divider()
                 Button("Stop generering") { appDelegate.model.cancelGeneration() }
                     .keyboardShortcut(".", modifiers: .command)

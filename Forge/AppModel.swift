@@ -73,6 +73,8 @@ final class AppModel {
     var askMode = false                     // B10: read-only "ask about the code" mode
     var isDictating = false                 // B15: live voice dictation into the composer
     @ObservationIgnored private let dictation = Dictation()
+    var remoteSharing = false               // B19: serve project status to the iOS companion
+    @ObservationIgnored private let remoteServer = RemoteServer()
 
     // Layout: the preview pane only appears once the first build has started.
     var hasStarted: Bool = false
@@ -1092,6 +1094,30 @@ final class AppModel {
 
     static func isEnvFile(_ path: String) -> Bool { path == ".env" || path == ".env.local" }
 
+    /// B19: toggle the host status server the iOS companion polls (LAN/Tailscale).
+    func toggleRemoteSharing() {
+        remoteSharing.toggle()
+        if remoteSharing {
+            remoteServer.start()
+            updateRemoteStatus()
+            showToast("Deler til iPhone på port 7842", icon: "iphone")
+        } else {
+            remoteServer.stop()
+            showToast("Stoppede iPhone-deling", icon: "iphone.slash")
+        }
+    }
+
+    /// Push the current project snapshot to the remote server (no-op when off).
+    func updateRemoteStatus() {
+        guard remoteSharing else { return }
+        remoteServer.setStatus([
+            "projectName": currentProject.name.isEmpty ? "Untitled" : currentProject.name,
+            "framework": currentProject.framework,
+            "previewURL": previewURL?.absoluteString ?? "",
+            "hasStarted": hasStarted,
+        ])
+    }
+
     /// B15: toggle push-to-talk dictation. Partial transcripts append to the
     /// current draft; errors (no mic / denied) surface as a toast and stop it.
     func toggleDictation() {
@@ -2046,6 +2072,8 @@ final class AppModel {
                                     icon: "terminal") { self.showTerminal = true })
             c.append(PaletteCommand(id: "ask", title: "Spørg om koden (read-only)",
                                     icon: "questionmark.bubble") { self.askMode = true })
+            c.append(PaletteCommand(id: "remote", title: remoteSharing ? "Stop iPhone-deling" : "Del til iPhone (companion)…",
+                                    icon: "iphone") { self.toggleRemoteSharing() })
         }
         if canCopyPass {
             c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",
@@ -2196,6 +2224,7 @@ final class AppModel {
                 case .ready(let url):
                     self.previewURL = url
                     self.serverPhase = .running(url: url)
+                    self.updateRemoteStatus()   // B19: share the live preview URL
                 case .phase(let phase):
                     self.serverPhase = phase
                 case .exited:

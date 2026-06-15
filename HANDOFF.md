@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `6d47895` 2026-06-15 — B18: forge-mcp — MCP stdio server exposing a project to external agents
 - `dedd058` 2026-06-15 — B11: pluggable agent-backend seam (ForgeEngine protocol)
 - `52a1dbb` 2026-06-15 — A15: keyboard navigation in the code-view file tree
 - `fdaeb17` 2026-06-15 — B15: voice dictation into the composer (Apple Speech)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `ec568d8` 2026-06-15 — A10: preserve scroll across HMR + recover from a blank render
 - `20b3e40` 2026-06-15 — C1: line-number gutter + active-line in the code editor
 - `eeef6d7` 2026-06-15 — A9: persist the dev-server console log per project
-- `ff32892` 2026-06-15 — A8: reuse node_modules across projects (APFS clone cache)
 <!-- COMMITLOG:END -->
