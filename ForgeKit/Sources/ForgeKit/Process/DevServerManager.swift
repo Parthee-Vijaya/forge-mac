@@ -72,8 +72,12 @@ public actor DevServerManager {
         let env = childEnvironment(nodeBinDir: nodeDir)
         let root = workspace.root
 
-        // 1. Install dependencies.
+        // 1. Install dependencies. First reuse a cached node_modules for this exact
+        //    package.json if we have one (APFS clone — near-instant) so the install
+        //    becomes a quick reconcile instead of a full download. Off-actor so the
+        //    clone/copy doesn't block.
         setPhase(.installingDependencies)
+        let restored = await Task.detached { DependencyCache.restore(into: root) }.value
         let installCode = try await runToCompletion(
             executableURL: managerURL,
             arguments: packageManager.installArgs,
@@ -85,6 +89,8 @@ public actor DevServerManager {
             setPhase(.failed(reason: "Dependency install failed (\(installCode))"))
             throw DevServerError.installFailed(exitCode: installCode, tail: tail)
         }
+        // Cache this dependency set for the next project (only on a cold install).
+        if !restored { Task.detached { DependencyCache.populate(from: root) } }
 
         // 2. Start the dev server.
         setPhase(.startingServer)
