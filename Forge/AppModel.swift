@@ -617,8 +617,42 @@ final class AppModel {
             let out = (try? await deployShell("vercel deploy --prod --yes\(scopeFlag) 2>&1")) ?? ""
             deployLiveURL = Self.firstMatch(#"https://[^\s]+\.vercel\.app"#, in: out)
             deployStatus = deployLiveURL != nil ? "Live på Vercel." : "Færdig — tjek loggen."
-            if deployLiveURL != nil { showToast("Live på Vercel 🎉", icon: "checkmark.seal.fill") }
+            if deployLiveURL != nil {
+                showToast("Live på Vercel 🎉", icon: "checkmark.seal.fill")
+                await pushEnvToVercel(scopeFlag: scopeFlag)   // B17-rest
+            }
         }
+    }
+
+    /// B17-rest: after a Vercel deploy (which links the project), push the local
+    /// `.env.local` vars to the Vercel project's production env so the hosted build
+    /// can use them. Best-effort + logged; values take effect on the NEXT deploy.
+    /// Both key and value are shell-quoted (the file is user-controlled).
+    private func pushEnvToVercel(scopeFlag: String) async {
+        guard let text = try? await workspace.readFile(".env.local") else { return }
+        var pairs: [(String, String)] = []
+        for raw in text.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty, !line.hasPrefix("#"), let eq = line.firstIndex(of: "=") else { continue }
+            let key = String(line[..<eq]).trimmingCharacters(in: .whitespaces)
+            var val = String(line[line.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+            if val.count >= 2,
+               (val.hasPrefix("\"") && val.hasSuffix("\"")) || (val.hasPrefix("'") && val.hasSuffix("'")) {
+                val = String(val.dropFirst().dropLast())
+            }
+            if !key.isEmpty, !val.isEmpty { pairs.append((key, val)) }
+        }
+        guard !pairs.isEmpty else { return }
+        deployStatus = "Synkroniserer miljøvariabler til Vercel…"
+        for (key, val) in pairs {
+            let qk = Self.shellQuote(key)
+            // Replace any existing value (ignore "not found"), then add for production.
+            _ = try? await deployShell(
+                "vercel env rm \(qk) production --yes\(scopeFlag) 2>/dev/null; "
+                + "printf %s \(Self.shellQuote(val)) | vercel env add \(qk) production\(scopeFlag) 2>&1")
+        }
+        showToast("Synkroniserede \(pairs.count) miljøvariabler — redeploy for at bruge dem i build'et",
+                  icon: "key.fill")
     }
 
     @discardableResult
