@@ -59,15 +59,23 @@ struct OnboardingView: View {
             if optionalSteps.contains(step) {
                 Button("Spring over") { step += 1 }.buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
             }
-            Button(step == lastStep ? "Byg dit første projekt" : "Næste") {
-                if step == lastStep { finish() } else { step += 1 }
+            if step == lastStep {
+                Button("Nej tak — byg løs") { finish(startTour: false) }
+                    .buttonStyle(.plain).font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                primaryButton("Ja tak — vis mig rundt") { finish(startTour: true) }
+            } else {
+                primaryButton("Næste") { step += 1 }
             }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private func primaryButton(_ title: String, _ action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
             .buttonStyle(.plain)
             .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.onAccent)
             .padding(.horizontal, 16).padding(.vertical, 8)
             .background(Theme.accent, in: Capsule())
-        }
-        .padding(.horizontal, 16).padding(.vertical, 12)
     }
 
     // MARK: - Steps
@@ -147,8 +155,29 @@ struct OnboardingView: View {
             stepShell("Alt klar, \(model.wrappedValue.preferences.userName.isEmpty ? "kom i gang" : model.wrappedValue.preferences.userName)! 🎉",
                       "Du kan ændre alt senere i Indstillinger (⌘,).") {
                 summary(model)
+                tourOffer
             }
         }
+    }
+
+    /// First-run offer for the guided tour, shown on the final onboarding step.
+    /// "Ja tak" / "Nej tak" live in the footer; this card explains the choice and
+    /// makes clear the tour is always available later.
+    private var tourOffer: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "sparkles").font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Vil du have en hurtig rundvisning?")
+                    .font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ink)
+                Text("Jeg fremhæver og forklarer hvert trin — hvor du beskriver din app, vælger teknologi, og finder ordbogen. Du kan altid starte den senere via “Start tutorial” i sidebaren.")
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
     }
 
     private func stepShell<Inner: View>(_ title: String, _ subtitle: String, @ViewBuilder _ inner: () -> Inner) -> some View {
@@ -297,13 +326,16 @@ struct OnboardingView: View {
         }
     }
 
-    private func finish() {
+    private func finish(startTour: Bool = false) {
         let key = cloudKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty {
             KeychainStore.set(key, account: KeychainStore.cloudKeyAccount)
             if model.preferences.cloudProvider.isEmpty { model.preferences.cloudProvider = "nvidiaNIM" }
         }
         model.completeOnboarding()
+        // Launch the guided spotlight tour on the start screen if the user opted
+        // in. Either way the tour stays available later via "Start tutorial".
+        if startTour { model.startTutorial() }
     }
 
     private func dotColor(_ source: ModelConfig.Source) -> Color {
