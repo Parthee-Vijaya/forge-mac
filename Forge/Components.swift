@@ -537,6 +537,56 @@ struct DependenciesView: View {
     }
 }
 
+/// Dialog to wire a Supabase backend (DB + auth) into the project: the user
+/// pastes their project URL + public anon key; Forge scaffolds the client.
+struct SupabaseDialogView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        @Bindable var model = model
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tilføj backend (Supabase)")
+                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text("Forge sætter en Supabase-klient op til database + login. Indsæt dit projekts URL og **anon**-nøgle (Supabase → Project Settings → API). Anon-nøglen er offentlig — ikke service-role-nøglen.")
+                    .font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            field("Project URL", "https://xxxxx.supabase.co", $model.supabaseURL)
+            field("Anon key", "eyJhbGciOi…", $model.supabaseAnonKey)
+            HStack {
+                Button("Annuller") { dismiss() }
+                    .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
+                Spacer()
+                Button { model.addSupabaseBackend() } label: {
+                    Text("Tilføj backend").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 18).padding(.vertical, 8).background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isManagingDeps
+                          || model.supabaseURL.trimmingCharacters(in: .whitespaces).isEmpty
+                          || model.supabaseAnonKey.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 440)
+        .preferredColorScheme(model.colorScheme)
+    }
+
+    private func field(_ label: String, _ placeholder: String, _ text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.inkFaint)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain).font(.system(size: 13, design: .monospaced))
+                .foregroundStyle(Theme.ink).tint(Theme.accent)
+                .padding(10)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusS))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).strokeBorder(Theme.border))
+        }
+    }
+}
+
 /// Dialog for renaming the current project (from the project menu's "Omdøb…").
 struct RenameDialogView: View {
     @Environment(AppModel.self) private var model
@@ -741,6 +791,9 @@ struct ProjectMenu: View {
                 Button { model.exportZip() } label: { Label("Export as Zip…", systemImage: "archivebox") }
                 Button { model.showDependencies = true } label: {
                     Label("Afhængigheder…", systemImage: "shippingbox")
+                }
+                Button { model.showSupabaseDialog = true } label: {
+                    Label("Tilføj backend (Supabase)…", systemImage: "cylinder.split.1x2")
                 }
             }
             if model.projects.count > 1 {

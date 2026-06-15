@@ -135,6 +135,23 @@ public enum SystemPrompt {
         }
     }
 
+    /// Appended when the project has Supabase wired up (src/lib/supabase.ts
+    /// exists), so the model uses the configured client for data + auth.
+    public static let supabaseNote = """
+    <supabase>
+    This project has Supabase configured. A ready client is exported from `src/lib/supabase.ts` as \
+    `supabase` — import it (`import { supabase } from "@/lib/supabase"` in React; a relative path in \
+    Svelte/Vue). The env vars VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are already set in \
+    `.env.local`; NEVER hardcode keys. `@supabase/supabase-js` is already installed.
+    - Data: `const { data, error } = await supabase.from('todos').select('*')`; insert/update/delete \
+      likewise. ALWAYS handle `error` and show loading/empty/error states.
+    - Auth: `supabase.auth.signUp(...)`, `signInWithPassword(...)`, `signOut()`, `getUser()`, \
+      `onAuthStateChange(...)`.
+    The user creates matching tables in their Supabase dashboard, so write code that fails gracefully \
+    when a table or row is missing rather than crashing.
+    </supabase>
+    """
+
     /// Prompt-enhancement (B14): expand a short app idea into a clear, detailed
     /// build brief that the build model then implements — better first-pass
     /// results, fewer iterations.

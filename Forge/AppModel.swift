@@ -123,6 +123,11 @@ final class AppModel {
     var newDependency = ""
     var isManagingDeps = false
 
+    // Supabase backend
+    var showSupabaseDialog = false
+    var supabaseURL = ""
+    var supabaseAnonKey = ""
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -351,6 +356,9 @@ final class AppModel {
         // salience at the end).
         if role != .copy, let note = SystemPrompt.frameworkNote(currentProject.framework) {
             parts.append(note)
+        }
+        if role != .copy, await workspace.fileExists("src/lib/supabase.ts") {
+            parts.append(SystemPrompt.supabaseNote)
         }
         return parts.joined(separator: "\n\n")
     }
@@ -982,6 +990,44 @@ final class AppModel {
         }
     }
 
+    // MARK: - Supabase backend
+
+    static let supabaseClientFile = """
+    import { createClient } from '@supabase/supabase-js'
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+
+    export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    """
+
+    /// Scaffold a Supabase backend into the project: a configured client at
+    /// src/lib/supabase.ts, env vars in .env.local, the npm package, and a dev
+    /// restart so Vite picks up the new env. The system prompt then includes
+    /// Supabase guidance (gated on src/lib/supabase.ts existing).
+    func addSupabaseBackend() {
+        guard !isManagingDeps, templateInstalled else { return }
+        let url = supabaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = supabaseAnonKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        showSupabaseDialog = false
+        isManagingDeps = true
+        statusText = "Tilføjer Supabase…"
+        Task {
+            try? await workspace.writeFile("src/lib/supabase.ts", contents: Self.supabaseClientFile)
+            try? await workspace.writeFile(
+                ".env.local", contents: "VITE_SUPABASE_URL=\(url)\nVITE_SUPABASE_ANON_KEY=\(key)\n")
+            await runCloneShell("npm install @supabase/supabase-js 2>&1")
+            await loadDependencies()
+            let server = devServer
+            try? await server.restartForDependencyChange()
+            await refreshFiles()
+            isManagingDeps = false
+            statusText = "Ready."
+            showToast("Supabase tilføjet — bed mig om login eller at gemme data",
+                      icon: "cylinder.split.1x2")
+        }
+    }
+
     // MARK: - Image attachments (B4)
 
     /// Open a file picker and attach the chosen image(s) to the next turn.
@@ -1505,6 +1551,8 @@ final class AppModel {
                                     icon: "shippingbox") { self.showDependencies = true })
             c.append(PaletteCommand(id: "share", title: "Del live-link",
                                     icon: "square.and.arrow.up") { self.shareLiveLink() })
+            c.append(PaletteCommand(id: "supabase", title: "Tilføj backend (Supabase)…",
+                                    icon: "cylinder.split.1x2") { self.showSupabaseDialog = true })
         }
         if canCopyPass {
             c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",

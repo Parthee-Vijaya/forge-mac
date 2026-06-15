@@ -98,6 +98,7 @@ struct ChatView: View {
         .sheet(isPresented: $model.showLinkDialog) { LinkDialogView() }
         .sheet(isPresented: $model.showRenameDialog) { RenameDialogView() }
         .sheet(isPresented: $model.showDependencies) { DependenciesView() }
+        .sheet(isPresented: $model.showSupabaseDialog) { SupabaseDialogView() }
     }
 
     private func header(_ model: AppModel) -> some View {

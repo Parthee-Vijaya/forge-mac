@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `83b8ea2` 2026-06-15 — Multi-framework: React, Svelte or Vue (XL)
 - `b308f85` 2026-06-15 — Share live link over LAN/Tailscale
 - `4cb0bc7` 2026-06-15 — Deploy targets: Vercel or Netlify
 - `aa0bdac` 2026-06-15 — Syntax highlighting in the code editor
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `5d5dc0c` 2026-06-15 — Friendliness: delete confirmation, keyboard shortcuts, copy-code
 - `6758a32` 2026-06-15 — Fix production build / deploy: drop tsc from the template build script
 - `9f610e9` 2026-06-15 — Roadmap: mark Midnat theme, link→design, orphan sweep, template gallery done
-- `ae70170` 2026-06-15 — Template gallery on the launch screen (B6)
 <!-- COMMITLOG:END -->
