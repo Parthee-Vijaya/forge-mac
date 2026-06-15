@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `11b95e6` 2026-06-15 — Guided model setup in onboarding: hardware recommendation, one-click install, cloud keys
 - `ef19175` 2026-06-15 — Offer the guided tour on first run (final onboarding step)
 - `85f7a0a` 2026-06-15 — Turn the tutorial into an active, guided spotlight tour
 - `daefb9e` 2026-06-15 — Add Forge app icon (anvil mark) + matching in-app wordmark badge
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `1b4f8a0` 2026-06-15 — Roadmap: mark a11y (partial), theme-picker (C16) done
 - `f7978d2` 2026-06-15 — "Skift stil": one-click visual restyle presets (CAP3)
 - `4ab36f0` 2026-06-15 — ⌘K command palette
-- `493d09a` 2026-06-15 — Richer chat markdown: code blocks, lists, headings
 <!-- COMMITLOG:END -->

@@ -47,7 +47,7 @@ struct OnboardingView: View {
 
     private var header: some View {
         HStack(spacing: 9) {
-            Circle().fill(Theme.accent).frame(width: 9, height: 9)
+            ForgeBadge(size: 18)
             Text("Forge").font(Theme.wordmark(16)).foregroundStyle(Theme.ink)
             Spacer()
             Text("Trin \(min(step + 1, lastStep)) / \(lastStep)")
@@ -90,26 +90,15 @@ struct OnboardingView: View {
     private func content(_ model: Bindable<AppModel>) -> some View {
         switch step {
         case 0:
-            stepShell("Velkommen til Forge", "Beskriv en app, og se den blive bygget — live. Lad os sætte dig op (et minut).") {
-                Toggle(isOn: model.preferences.learningMode) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Jeg er ny til at kode")
-                            .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ink)
-                        Text("Slå learning mode til: Forge forklarer hvad der sker undervejs, har en ordbog over fagudtryk, og guider dig gennem build, fejl, kode og deployment til GitHub.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .toggleStyle(.switch).tint(Theme.accent)
-                .padding(12)
-                .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
-            }
+            welcomeStep(model)
         case 1:
-            stepShell("Hvad skal vi kalde dig?", "Bruges i appen og fortæller agenten hvem den hjælper.") {
+            stepShell("Hvad skal vi kalde dig?",
+                      "Dit navn bruges i hilsener i appen (“Hvad vil du bygge, P?”) og fortæller AI-agenten hvem den hjælper. Du kan altid ændre det i Indstillinger.") {
                 textField("Dit navn", model.preferences.userName)
             }
         case 2:
-            stepShell("Hvor skal dine projekter ligge?", "Standard er app-mappen. Vælg en anden hvis du vil have dem et bestemt sted.") {
+            stepShell("Hvor skal dine projekter ligge?",
+                      "Hvert projekt er en mappe med din kode, chat-historik og checkpoints. Standard er app-mappen — vælg en anden (fx ~/Projekter) hvis du vil kunne finde dem i Finder eller have dem i din egen Git-mappe.") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text(model.wrappedValue.preferences.projectsRoot.isEmpty
@@ -138,21 +127,24 @@ struct OnboardingView: View {
                 cloudStep(model)
             }
         case 5:
-            stepShell("GitHub", "Bruges til at pushe genererede apps. Du kan springe over og gøre det senere.") {
+            stepShell("GitHub (valgfri)",
+                      "Forge kan gemme din kode på GitHub — så du har en sikkerhedskopi i skyen og kan deploye. Log ind med `gh auth login` i Terminal; så finder Forge automatisk dit brugernavn herunder. Kan springes over og sættes op senere.") {
                 VStack(alignment: .leading, spacing: 10) {
                     statusRow(githubLine)
                     textField("GitHub-bruger/org (owner)", model.preferences.githubOwner)
                 }
             }
         case 6:
-            stepShell("Vercel (valgfri)", "Bruges til at deploye. Spring over hvis du ikke deployer endnu.") {
+            stepShell("Vercel (valgfri)",
+                      "Vercel lægger din app på en rigtig webadresse, så andre kan åbne den. Log ind med `vercel login` i Terminal. Spring over hvis du ikke deployer endnu — du kan altid gøre det senere fra projekt-menuen.") {
                 VStack(alignment: .leading, spacing: 10) {
                     statusRow(vercelLine)
                     textField("Vercel team/scope (valgfri)", model.preferences.vercelScope)
                 }
             }
         case 7:
-            stepShell("Global memory", "Hvad skal Forge altid huske om dig? Injiceres i hver tur (fx “TypeScript strict, minimale deps, dansk UI-tekst”).") {
+            stepShell("Global memory (valgfri)",
+                      "Ting Forge altid skal huske om dig og dine præferencer — det føjes til hver eneste build-tur, så du ikke skal gentage det. Fx: “TypeScript strict, minimale dependencies, dansk UI-tekst, undgå inline styles”.") {
                 editor(model.preferences.memory, height: 150)
             }
         case 8:
@@ -186,6 +178,65 @@ struct OnboardingView: View {
         .padding(12)
         .background(Theme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: Theme.radiusM))
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
+    }
+
+    // MARK: - Welcome (hero)
+
+    private func welcomeStep(_ model: Bindable<AppModel>) -> some View {
+        VStack(alignment: .leading, spacing: 22) {
+            HStack(spacing: 14) {
+                ForgeBadge(size: 56)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Velkommen til Forge")
+                        .font(.system(size: 27, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text("Byg apps ved at beskrive dem — på almindeligt dansk.")
+                        .font(.system(size: 14)).foregroundStyle(Theme.inkSoft)
+                }
+            }
+            Text("Forge er en lokal app-bygger: du skriver hvad du vil have, en AI skriver koden, og du ser den køre live med det samme. Du behøver ikke kunne kode. Lad os sætte dig op — det tager cirka et minut.")
+                .font(.system(size: 13.5)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 14) {
+                featureRow("text.bubble", "Beskriv din idé",
+                           "Skriv en prompt i almindeligt sprog — fx “en todo-app med tilføj og slet”.")
+                featureRow("hammer", "Se den blive bygget",
+                           "AI'en skriver koden og retter fejl selv, mens du følger med live i preview.")
+                featureRow("globe", "Del eller deploy",
+                           "Læg din app på nettet med ét klik via GitHub + Vercel — eller del et live-link.")
+            }
+            .padding(16)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
+
+            Toggle(isOn: model.preferences.learningMode) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Jeg er ny til at kode")
+                        .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ink)
+                    Text("Slå learning mode til: Forge forklarer hvad der sker undervejs, har en ordbog over fagudtryk, og guider dig gennem build, fejl, kode og deployment.")
+                        .font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .toggleStyle(.switch).tint(Theme.accent)
+            .padding(12)
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.border))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func featureRow(_ icon: String, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accent)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ink)
+                Text(body).font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private func stepShell<Inner: View>(_ title: String, _ subtitle: String, @ViewBuilder _ inner: () -> Inner) -> some View {
