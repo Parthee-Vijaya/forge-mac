@@ -107,6 +107,10 @@ final class AppModel {
     var jsErrors: [RuntimeIssue] = []
     var showConsole: Bool = false
 
+    // Toasts (transient success/info confirmations)
+    var toast: ToastMessage?
+    @ObservationIgnored private var toastTask: Task<Void, Never>?
+
     // Model selection
     var availableModels: [ModelConfig] = []
     var selectedModelID: String = ""
@@ -454,6 +458,7 @@ final class AppModel {
         let vercelOutput = (try? await deployShell("vercel deploy --prod --yes\(scopeFlag) 2>&1")) ?? ""
         deployVercelURL = Self.firstMatch(#"https://[^\s]+\.vercel\.app"#, in: vercelOutput)
         deployStatus = deployVercelURL != nil ? "Live on Vercel." : "Finished — check the log."
+        if deployVercelURL != nil { showToast("Live på Vercel 🎉", icon: "checkmark.seal.fill") }
     }
 
     @discardableResult
@@ -893,6 +898,7 @@ final class AppModel {
                 if let dataURL = Self.encodeImageDataURL(from: image), attachedImages.count < 4 {
                     attachedImages.append(dataURL)
                     statusText = "Design hentet fra \(host) — beskriv evt. ændringer, eller send for at genskabe det."
+                    showToast("Design hentet fra \(host)", icon: "photo")
                 } else {
                     statusText = "Kunne ikke behandle skærmbilledet."
                 }
@@ -1022,7 +1028,12 @@ final class AppModel {
             }
             isBusy = false
             agentTask = nil
-            if !cancelled { maybeAutoCopyPass(afterRole: role) }
+            if !cancelled {
+                if role == .copy, phase == .clean {
+                    showToast("Dansk oversættelse færdig", icon: "character.bubble")
+                }
+                maybeAutoCopyPass(afterRole: role)
+            }
         }
     }
 
@@ -1188,6 +1199,7 @@ final class AppModel {
             await refreshFiles()
             reloadPreview()
             statusText = "Restored to checkpoint."
+            showToast("Gendannet til tidligere version", icon: "arrow.uturn.backward")
         }
     }
 
@@ -1242,6 +1254,19 @@ final class AppModel {
     }
 
     func reloadPreview() { reloadToken += 1 }
+
+    /// Show a transient toast confirmation (auto-dismisses after a few seconds).
+    /// Used for async successes that would otherwise change state silently.
+    func showToast(_ text: String, icon: String = "checkmark.circle.fill",
+                   style: ToastMessage.Style = .success) {
+        toast = ToastMessage(text: text, icon: icon, style: style)
+        toastTask?.cancel()
+        toastTask = Task {
+            try? await Task.sleep(for: .seconds(2.6))
+            guard !Task.isCancelled else { return }
+            toast = nil
+        }
+    }
 
     func openInBrowser() {
         if let url = previewURL { NSWorkspace.shared.open(url) }

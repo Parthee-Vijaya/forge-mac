@@ -24,6 +24,14 @@ struct ContentView: View {
         .frame(minWidth: 1040, minHeight: 680)
         .background(Theme.canvas)
         .preferredColorScheme(model.colorScheme) // Midnat dark by default; light via Settings
+        .overlay(alignment: .top) {
+            if let toast = model.toast {
+                ToastView(toast: toast)
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth(duration: 0.3), value: model.toast)
         .animation(.smooth(duration: 0.35), value: model.hasStarted)
         .animation(.smooth(duration: 0.35), value: model.preferences.onboarded)
     }

@@ -230,6 +230,42 @@ struct LinkDialogView: View {
     }
 }
 
+/// A transient confirmation shown as a floating pill (created via
+/// `AppModel.showToast`). Gives visible feedback for async successes that would
+/// otherwise change state silently — deploy live, Danish copy done, etc.
+struct ToastMessage: Identifiable, Equatable {
+    enum Style { case success, info, warning }
+    let id = UUID()
+    var text: String
+    var icon: String
+    var style: Style
+}
+
+struct ToastView: View {
+    let toast: ToastMessage
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: toast.icon)
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(tint)
+            Text(toast.text)
+                .font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink)
+        }
+        .padding(.horizontal, 15).padding(.vertical, 10)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.22), radius: 16, y: 5)
+    }
+
+    private var tint: Color {
+        switch toast.style {
+        case .success: Theme.positive
+        case .info: Theme.accent
+        case .warning: Theme.warning
+        }
+    }
+}
+
 /// Plan / Build segmented toggle for the composer. Plan mode makes the agent
 /// propose a plan + ask questions instead of writing code.
 struct ModeToggle: View {
