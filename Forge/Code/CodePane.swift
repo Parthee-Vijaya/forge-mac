@@ -57,6 +57,12 @@ private struct FileTreeView: View {
             .padding(8)
         }
         .background(Theme.sidebar)
+        // A15: arrow-key file navigation when the tree has keyboard focus. (When
+        // the editor is focused, these don't fire, so editor arrows are untouched.)
+        .focusable()
+        .onKeyPress(.upArrow) { model.selectAdjacentFile(-1); return .handled }
+        .onKeyPress(.downArrow) { model.selectAdjacentFile(1); return .handled }
+        .accessibilityLabel("Fil-træ — pil op/ned skifter fil")
     }
 
     static func icon(_ path: String) -> String {

@@ -1039,6 +1039,15 @@ final class AppModel {
         projectFiles = await workspace.fileMap()
     }
 
+    /// A15: move the open file up/down the tree by `delta` (keyboard navigation).
+    func selectAdjacentFile(_ delta: Int) {
+        guard !projectFiles.isEmpty else { return }
+        let current = selectedFile.flatMap { projectFiles.firstIndex(of: $0) } ?? -1
+        let next = max(0, min(projectFiles.count - 1, current + delta))
+        guard next != current else { return }
+        Task { await openFile(projectFiles[next]) }
+    }
+
     func openFile(_ path: String) async {
         autosaveTask?.cancel()
         guard let text = try? await workspace.readFile(path) else { return }
