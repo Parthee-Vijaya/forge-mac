@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `247d69a` 2026-06-15 — UI: shortcut cheat sheet (⌘/), resizable+persistent split, preview px label
 - `ec568d8` 2026-06-15 — A10: preserve scroll across HMR + recover from a blank render
 - `20b3e40` 2026-06-15 — C1: line-number gutter + active-line in the code editor
 - `eeef6d7` 2026-06-15 — A9: persist the dev-server console log per project
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `4b3b307` 2026-06-15 — Roadmap: Supabase + multi-framework + syntax-highlight done
 - `5ef3f95` 2026-06-15 — Supabase backend integration (XL)
 - `83b8ea2` 2026-06-15 — Multi-framework: React, Svelte or Vue (XL)
-- `b308f85` 2026-06-15 — Share live link over LAN/Tailscale
 <!-- COMMITLOG:END -->

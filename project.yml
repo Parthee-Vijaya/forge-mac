@@ -18,8 +18,12 @@ schemes:
     build:
       targets:
         Forge: all
+        ForgeTests: [test]
     run:
       config: Debug
+    test:
+      targets:
+        - ForgeTests
     archive:
       config: Release
 
@@ -52,3 +56,23 @@ targets:
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         DEAD_CODE_STRIPPING: YES
+
+  ForgeTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: ForgeTests
+    dependencies:
+      - target: Forge
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pavi.ForgeTests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Forge.app/Contents/MacOS/Forge"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
