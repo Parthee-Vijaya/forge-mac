@@ -23,7 +23,7 @@ hot-module-reload. No cloud account required, no code leaves your machine.
 
 ## Install
 
-1. Download **`Forge-0.2.0.dmg`** from the
+1. Download **`Forge-0.2.1.dmg`** from the
    [latest release](https://github.com/Parthee-Vijaya/forge-mac/releases/latest).
 2. Open the DMG and drag **Forge** to **Applications**.
 3. The build is ad-hoc signed (not yet notarised — that's deferred until a paid Apple
@@ -44,8 +44,10 @@ Forge guides you from an empty prompt to a deployed app. Here's the full loop.
 The home screen is the launchpad. Type what you want in the prompt box ("*Hvad vil du
 bygge?*"), or pick a starting point:
 
-- **Build / Plan toggle** — *Build* generates straight away; *Plan* makes the agent draft
-  a step-by-step plan and ask clarifying questions first, before writing any code.
+- **Build / Plan toggle** (bottom-right of the composer) — *Build* generates straight away;
+  *Plan* makes the agent draft a step-by-step plan and ask clarifying questions first,
+  before writing any code.
+- **Slash commands** — type `/` in the prompt for a quick menu (see the [Slash commands](#8--slash-commands--drive-the-prompt-from-the-keyboard) step below).
 - **Framework picker** — React, Svelte, Vue (all Vite) or **Next.js** (App Router). The
   agent scaffolds the chosen stack.
 - **Template gallery** — one-click starters (Landing page, Dashboard, Todo, Portfolio,
@@ -73,7 +75,8 @@ while the **live preview** renders on the right against a local Vite/Next dev se
 hot-reload. The preview has browser-style chrome — a real URL bar
 (`http://localhost:…`), reload, and a responsive-size selector. Keep iterating in the
 chat box ("*Describe a change…*"); each turn is checkpointed so you can restore or diff
-any previous state.
+any previous state. A **status bar** runs along the bottom — dev-server state + port, git
+branch, active model, and the project's running token total, always in view.
 
 ### 4 · Code — read and inspect everything the agent wrote
 
@@ -81,8 +84,10 @@ any previous state.
 
 Flip the **Preview / Code** toggle to see the actual source. A file tree (keyboard-
 navigable) sits next to a syntax-highlighted editor with line numbers and an active-line
-highlight. You can watch files being written live as the agent works, copy any file, or
-open the whole project in your editor / Finder.
+highlight. Open files become **tabs** (switch, or close with ×), and a **minimap** down
+the right edge gives a bird's-eye overview with click/drag-to-scroll. You can watch files
+being written live as the agent works, copy any file, or open the whole project in your
+editor / Finder.
 
 ### 5 · Terminal — drop down to the shell
 
@@ -106,7 +111,29 @@ in your `.env` are pushed to the host, and you get a shareable live link back.
 
 Press `⌘/` for the cheat sheet, or `⌘K` for the command palette. Everything has a
 shortcut — new project, settings, stop generation, toggle code/preview, reload, terminal —
-so you rarely need to reach for the mouse.
+so you rarely need to reach for the mouse. The cheat sheet also lists the slash commands.
+
+### 8 · Slash commands — drive the prompt from the keyboard
+
+![Slash commands](docs/screenshots/08-slash.png)
+
+Type `/` in the prompt for a filterable menu (↑/↓ to move, Enter or Tab to pick, Esc to
+dismiss). Danish and English aliases both work:
+
+- `/build` · `/byg` and `/plan` · `/planlæg` flip the agent mode (also applied inline when
+  you type the token + space, e.g. "`/plan `").
+- `/fix` · `/ret`, `/style` · `/stil`, `/responsive` · `/mobil`, and `/explain` · `/forklar`
+  prefill a ready-made brief so you can fire off a common request in two keystrokes.
+
+### 9 · Guided tutorial — learn vibecoding as you go
+
+![Guided tutorial](docs/screenshots/09-tutorial.png)
+
+New to this? **Start tutorial** (start-screen sidebar) runs a spotlight walkthrough that
+points at each part of the UI and explains it in plain language — what a *prompt* is,
+*Build vs Plan*, where the code and preview live. Paired with **Learning mode** (a toggle
+in Settings), Forge surfaces one-time explainer cards at milestones (first build, an
+auto-fix, first deploy) and keeps an always-open glossary of the technical terms.
 
 ## Features at a glance
 
@@ -132,7 +159,10 @@ so you rarely need to reach for the mouse.
 **Platform**
 - Native SwiftUI + `WKWebView`; reused WebView + process pool for fast cold start.
 - Light / midnight-dark themes with a motion language of subtle micro-interactions.
+- VS Code-style **status bar** (dev-server/port, git branch, active model, token total),
+  **editor tabs**, and an editor **minimap**.
 - Resizable, persistent split panels.
+- Native macOS notifications (build done / deploy live / failed) when backgrounded.
 - Optional HTTP status server to pair with an iOS companion.
 
 ## Models
