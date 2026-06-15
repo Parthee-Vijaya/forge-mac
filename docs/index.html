@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — local-first app builder for macOS</title>
+<meta name="description" content="A native SwiftUI take on Lovable/Bolt: type a prompt, an AI agent writes a real React/Svelte/Vue/Next.js project on your Mac and shows a live preview. Local-first, open-source.">
+<meta property="og:title" content="Forge — local-first app builder for macOS">
+<meta property="og:description" content="Type a prompt; an AI agent builds a real web app on your Mac. Local models or your own API key. No cloud account required.">
+<meta property="og:image" content="screenshots/03-preview.png">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --bg:#0B0D13; --bg2:#0F1117; --surface:#161922; --border:#20242F;
+    --ink:#E6E8EE; --ink-soft:#9AA0AE; --ink-faint:#6B7180;
+    --accent:#7C6CFF; --accent-2:#9A86FF; --positive:#3FCF8E;
+    --radius:14px; --maxw:1080px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent-2); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+  .muted{color:var(--ink-soft)}
+  .faint{color:var(--ink-faint)}
+
+  /* Hero */
+  header.hero{
+    position:relative; overflow:hidden;
+    padding:84px 0 64px;
+    background:
+      radial-gradient(900px 420px at 70% -10%, rgba(124,108,255,.22), transparent 60%),
+      radial-gradient(700px 360px at 10% 0%, rgba(124,108,255,.10), transparent 55%);
+    border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:30px}
+  .brand .mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(150deg,var(--accent),#5B49E0);
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+    box-shadow:0 6px 20px rgba(124,108,255,.35);
+  }
+  .brand b{font-size:18px;letter-spacing:.2px}
+  .hero h1{font-size:clamp(34px,5vw,56px);line-height:1.08;letter-spacing:-.02em;max-width:16ch}
+  .hero h1 .grad{background:linear-gradient(110deg,var(--accent-2),#C9BFFF);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.sub{margin-top:20px;font-size:clamp(16px,2vw,19px);max-width:62ch;color:var(--ink-soft)}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px;align-items:center}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:12px 20px;border-radius:11px;font-weight:600;font-size:15px;
+    border:1px solid transparent;transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover{text-decoration:none;transform:translateY(-1px)}
+  .btn.primary{background:var(--accent);color:#fff;box-shadow:0 8px 24px rgba(124,108,255,.32)}
+  .btn.primary:hover{box-shadow:0 10px 30px rgba(124,108,255,.45)}
+  .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--border)}
+  .cta .note{font-size:13px;color:var(--ink-faint)}
+  .shot{
+    margin-top:52px;border-radius:var(--radius);border:1px solid var(--border);
+    box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden;background:var(--bg2);
+  }
+  .shot img{display:block;width:100%;height:auto}
+
+  /* Sections */
+  section{padding:64px 0;border-bottom:1px solid var(--border)}
+  h2{font-size:clamp(24px,3vw,32px);letter-spacing:-.01em;margin-bottom:8px}
+  .lead{color:var(--ink-soft);max-width:64ch;margin-bottom:36px}
+
+  .grid{display:grid;gap:18px}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px;
+  }
+  .card h3{font-size:16px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+  .card .ic{font-size:18px}
+  .card p{font-size:14.5px;color:var(--ink-soft)}
+
+  /* Tour */
+  .tour{display:flex;flex-direction:column;gap:56px}
+  .step{display:grid;grid-template-columns:1fr 1.25fr;gap:32px;align-items:center}
+  .step:nth-child(even){grid-template-columns:1.25fr 1fr}
+  .step:nth-child(even) .copy{order:2}
+  .step .frame{border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);background:var(--bg2)}
+  .step .frame img{display:block;width:100%;height:auto}
+  .step .kicker{color:var(--accent-2);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+  .step h3{font-size:21px;margin-bottom:10px;letter-spacing:-.01em}
+  .step p{color:var(--ink-soft);font-size:15px}
+
+  .feat-list{columns:2;column-gap:32px}
+  .feat-list li{margin:0 0 11px 0;list-style:none;padding-left:24px;position:relative;color:var(--ink-soft);font-size:14.5px;break-inside:avoid}
+  .feat-list li::before{content:"";position:absolute;left:0;top:8px;width:8px;height:8px;border-radius:3px;background:var(--accent)}
+  .feat-list b{color:var(--ink);font-weight:600}
+
+  .install ol{margin:0 0 0 20px;color:var(--ink-soft)}
+  .install li{margin-bottom:10px}
+  .install code{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:13px;color:var(--ink)}
+  .callout{margin-top:22px;background:rgba(224,163,58,.08);border:1px solid rgba(224,163,58,.35);border-radius:12px;padding:16px 18px;font-size:14px;color:var(--ink-soft)}
+  .callout b{color:#E0A33A}
+
+  footer{padding:44px 0 64px;color:var(--ink-faint);font-size:14px;text-align:center;border-bottom:none}
+  footer a{color:var(--ink-soft)}
+
+  @media (max-width:760px){
+    .grid.cols-2,.grid.cols-3{grid-template-columns:1fr}
+    .step,.step:nth-child(even){grid-template-columns:1fr}
+    .step:nth-child(even) .copy{order:0}
+    .feat-list{columns:1}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><span class="mark">⚒️</span><b>Forge</b></div>
+    <h1>Type a prompt. Get a <span class="grad">real app</span> — built on your own Mac.</h1>
+    <p class="sub">Forge is a local-first, open-source app builder for macOS — a native SwiftUI take on the Lovable / Bolt pattern. An AI agent writes a real React, Svelte, Vue or Next.js project to your disk, runs it, and shows a live preview with hot-reload. The model runs on <em>your</em> Mac. No cloud account required, no code leaves your machine.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">↓ Download for macOS (.dmg)</a>
+      <a class="btn ghost" href="https://github.com/Parthee-Vijaya/forge-mac">View on GitHub</a>
+      <span class="note">Apple Silicon · macOS 26 · ad-hoc signed (right-click → Open on first launch)</span>
+    </div>
+    <div class="shot"><img src="screenshots/03-preview.png" alt="Forge: chat on the left, live app preview on the right" loading="eager"></div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Why Forge</h2>
+    <p class="lead">The same vibe-coding loop as the cloud tools — but private, native, and yours.</p>
+    <div class="grid cols-2">
+      <div class="card"><h3><span class="ic">🔒</span> Local-first &amp; private</h3><p>Point it at Ollama or LM Studio and the whole loop — prompt → code → preview — happens on-device. Your prompts and source never leave the Mac.</p></div>
+      <div class="card"><h3><span class="ic">📁</span> Real files, not a sandbox</h3><p>Every project is a normal folder you can open in any editor, commit to git, and run with <code style="font-size:13px">npm</code> yourself. Forge is a front-end to the toolchain you already use.</p></div>
+      <div class="card"><h3><span class="ic">⚡</span> Native, not Electron</h3><p>A genuine SwiftUI app with a WKWebView preview — fast cold start, low memory, proper macOS window and menu behaviour.</p></div>
+      <div class="card"><h3><span class="ic">🧠</span> Bring your own model</h3><p>Local models for free, private work — or plug in a cloud API key (OpenAI, Anthropic, Google Gemini, NVIDIA) when you want a bigger model.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>A guided tour</h2>
+    <p class="lead">From an empty prompt to a deployed app.</p>
+    <div class="tour">
+      <div class="step">
+        <div class="copy"><div class="kicker">Start</div><h3>Describe what you want</h3><p>Type a prompt, pick a framework (React / Svelte / Vue / Next.js), or start from a template. Toggle <b>Build</b> vs <b>Plan</b>, attach a screenshot, or type <b>/</b> for slash commands.</p></div>
+        <div class="frame"><img src="screenshots/01-start.png" alt="Start screen" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="kicker">Slash commands</div><h3>Drive the prompt from the keyboard</h3><p>Type <b>/</b> for a filterable menu. <code style="font-size:13px">/build</code>·<code style="font-size:13px">/byg</code> and <code style="font-size:13px">/plan</code> flip the mode; <code style="font-size:13px">/fix</code>, <code style="font-size:13px">/style</code>, <code style="font-size:13px">/responsive</code> and <code style="font-size:13px">/explain</code> prefill a ready-made brief.</p></div>
+        <div class="frame"><img src="screenshots/08-slash.png" alt="Slash command menu" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="kicker">Build &amp; preview</div><h3>Chat on the left, live app on the right</h3><p>The agent streams its edits while the preview renders against a local dev server with hot-reload. A status bar shows dev-server state, the active model, and token usage. Every turn is checkpointed — restore or diff any state.</p></div>
+        <div class="frame"><img src="screenshots/03-preview.png" alt="Live preview" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="kicker">Code</div><h3>Inspect everything the agent wrote</h3><p>A keyboard-navigable file tree, a syntax-highlighted editor with line numbers, open-file <b>tabs</b>, and a <b>minimap</b>. Watch files stream in live, copy any file, or open the whole project in your editor.</p></div>
+        <div class="frame"><img src="screenshots/04-code.png" alt="Code view with tabs and minimap" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="kicker">Deploy</div><h3>Ship it</h3><p>Deploy from the toolbar to Vercel, Netlify or GitHub Pages, plus push-to-GitHub. Deploy history is tracked per project, <code style="font-size:13px">.env</code> vars are pushed to the host, and you get a shareable live link back.</p></div>
+        <div class="frame"><img src="screenshots/06-deploy.png" alt="Deploy menu" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="kicker">Learn as you go</div><h3>A guided tutorial &amp; learning mode</h3><p>New to vibe-coding? A spotlight walkthrough explains each part of the UI in plain language, and learning mode surfaces one-time explainer cards at milestones with an always-open glossary.</p></div>
+        <div class="frame"><img src="screenshots/09-tutorial.png" alt="Guided tutorial" loading="lazy"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Everything in the box</h2>
+    <p class="lead">Feature-complete through its backlog — engine, workflow and platform.</p>
+    <ul class="feat-list">
+      <li><b>Self-correcting agent</b> — runs <code style="font-size:13px">tsc</code> + a smoke test and fixes its own errors before handing back.</li>
+      <li><b>Line-replace / diff edits</b>, not just whole-file rewrites.</li>
+      <li><b>Per-turn checkpoints</b> (shadow git) with restore &amp; diff.</li>
+      <li><b>Chat-with-codebase</b> — ask read-only questions about the project.</li>
+      <li><b>Multi-framework</b> — React / Svelte / Vue (Vite) + Next.js.</li>
+      <li><b>Image → UI</b>, design-from-link, and shareable project bundles.</li>
+      <li><b>Visual editing</b> + "change the style" palette injection.</li>
+      <li><b>Voice dictation</b>, command palette, and slash commands.</li>
+      <li><b>VS Code-style status bar</b>, editor tabs, and a minimap.</li>
+      <li><b>MCP server</b> — expose a project to external agents.</li>
+      <li><b>Light / midnight-dark</b> themes; native macOS notifications.</li>
+      <li><b>Keychain-stored</b> cloud keys, never in plain text.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lead">Requires macOS 26 on Apple Silicon, plus a model backend (the onboarding wizard helps you install one).</p>
+    <ol>
+      <li>Download <b>Forge-&lt;version&gt;.dmg</b> from the <a href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">latest release</a>.</li>
+      <li>Open the DMG and drag <b>Forge</b> to <b>Applications</b>.</li>
+      <li>On first launch, <b>right-click → Open</b> and confirm (the build is ad-hoc signed, not yet notarised). After that it opens normally.</li>
+    </ol>
+    <div class="callout"><b>Heads up:</b> Forge is an actively-developed personal project. It's Apple Silicon + macOS 26 only and not notarised yet, so the first launch needs right-click → Open. Cloud-deploy targets need their CLIs installed and authenticated.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Open-source · <a href="https://github.com/Parthee-Vijaya/forge-mac">github.com/Parthee-Vijaya/forge-mac</a></p>
+    <p class="faint" style="margin-top:6px">Built with SwiftUI + ForgeKit. This page lives in the repo's <code style="font-size:12px">/docs</code> and is served by GitHub Pages.</p>
+  </div>
+</footer>
+
+</body>
+</html>

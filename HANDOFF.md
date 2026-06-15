@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `3fc881e` 2026-06-15 — docs: refresh screenshots for v0.2.1 + add slash/tutorial steps
 - `8c2069d` 2026-06-15 — UI-polish: status bar, editor tabs, minimap, native notifications
 - `9807b3a` 2026-06-15 — UI: roomier composer + slash commands
 - `f736a3d` 2026-06-15 — docs: comprehensive README with screenshot tour + v0.2.0 bump
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `06c4aa6` 2026-06-15 — A14: coalesce streaming UI updates (chat tokens + dev-server log)
 - `8411318` 2026-06-15 — B20: shareable project bundles (export + import)
 - `f3ec311` 2026-06-15 — docs: mark B17 (.env editor), B16 (deploy history), A17 (legacy migration) built in ROADMAP
-- `0662421` 2026-06-15 — P2: .env editor (B17), Vercel deploy history + rollback (B16), legacy-project migration (A17)
 <!-- COMMITLOG:END -->
