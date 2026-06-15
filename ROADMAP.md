@@ -65,7 +65,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 6. **Hærdet streaming-parser (fuzz + edge cases)** — robust mod delte tags i dag, men ikke fuzz-testet for nested/ufuldstændige artefakter, kæmpe filer, `<`-tunge filer. *Sådan:* property-based/fuzz-tests i `StreamingArtifactParserTests`; eksplicit håndtering af uafsluttet artefakt ved stream-slut. **M · P1**
 
-7. **Token- og omkostnings-tælling** — providerne returnerer `prompt_eval_count`/`eval_count` (Ollama) og kan returnere usage (cloud), men det vises ikke. *Sådan:* surface `ChatStreamEvent.done(promptTokens,completionTokens)` i `AgentEvent`; vis pr.-tur + pr.-projekt total i en status-pille. **S · P1**
+7. **Token- og omkostnings-tælling** — ✅ *bygget.* OpenAI-compat-provideren sender `stream_options.include_usage` og parser usage-chunken; `ChatStreamEvent.done` → `AgentEvent.usage` → `AppModel` akkumulerer `turnTokens` (pr. tur) + `projectTokens` (pr. projekt), vist i en pille i chat-headeren (denne tur + total på hover). Ollama rapporterede allerede; cloud-providere parser endnu ikke usage. **S · P1**
 
 8. **Cache node_modules på tværs af projekter** — hvert nyt projekt kører fuld `npm install`. *Sådan:* skift til `pnpm` med delt store (`PackageManager.pnpm` findes), eller en forvarmet template med node_modules pre-installeret + `npm ci`. Markant hurtigere første-build. **M · P1**
 
@@ -87,7 +87,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 17. **Migrér det gamle single-projekt** — `~/Library/.../Forge/project` er nu forældreløst efter multi-projekt. *Sådan:* engangs-migration ved opstart der importerer det som et `Project` hvis det findes; ellers ryd op. **S · P2**
 
-18. **Bekræft-dialog før destruktive handlinger** — "Delete project" sletter mappen straks uden bekræftelse. *Sådan:* `.confirmationDialog` med projektnavn + antal filer. **S · P1**
+18. **Bekræft-dialog før destruktive handlinger** — ✅ *bygget.* "Slet projekt" beder nu om bekræftelse via `.confirmationDialog` (navngiver projektet + advarer om at kode/chat/historik slettes permanent). **S · P1**
 
 19. **Genbrug af WebView-instans + hurtigere kold start** — preview-WebView genmonteres ved visse skift. *Sådan:* hold én pulje af WKWebView pr. projekt; forvarm `WKProcessPool`; mål og reducér tid-til-første-render. **M · P2**
 
@@ -179,7 +179,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 10. **Onboarding-wizard (first-run)** — fuld multi-step setup ved første launch (se **§0**): navn, placering, model, cloud-nøgle, GitHub, Vercel, global memory, default `AI_RULES.md` — med spring-over hvor relevant. *Sådan:* en `OnboardingView` kort-sekvens der skriver `PreferencesStore` (A22) + Keychain (A4); vises når ingen `Preferences` findes; setup-tjek pinger `ModelDiscovery`/`gh`/`vercel`. **L · P0**
 
-11. **Projekt-dashboard m/ thumbnails** — grid/liste over alle projekter med screenshot-thumbnail, sidst-redigeret, deploy-status. *Sådan:* `WKWebView.takeSnapshot` pr. projekt gemt i `.forge/thumb.png`; et dashboard-view tilgået fra `ProjectMenu`. **L · P2**
+11. **Projekt-dashboard m/ thumbnails** — ◑ *delvist bygget.* Efter et build snapshottes preview'et offscreen (via `DesignCapture`) til `.forge/thumb.png`, og "SENESTE"-listen på startskærmen viser miniaturen pr. projekt (folder-ikon indtil første build). *Udestår:* et fuldt dashboard-grid med sidst-redigeret + deploy-status. **L · P2**
 
 12. **Formaliseret design-system + dark mode** — ✅ *bygget (dark mode-delen).* Forge er redesignet i “Midnat” (mørk pro) som standard med en lys variant bag en toggle i Settings. *Sådan:* `Theme.dyn(light:dark:)` via `NSColor(name:dynamicProvider:)` resolver pr. effektiv appearance; `Preferences.appearance` styrer `AppModel.colorScheme` → `.preferredColorScheme` på hvert vindue/sheet; `CodePane`/editor bruger dynamiske `NSColor`. Skifter øjeblikkeligt uden genstart. Verificeret i begge temaer på tværs af startskærm, chat, galleri, dialoger. *(Token-skala/elevation-formalisering udestår stadig.)* **M · P1**
 

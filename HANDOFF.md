@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `f3cf0a3` 2026-06-15 — Fix: emit token usage from the build loop too (not just plan)
 - `2359175` 2026-06-15 — Project thumbnails in the recent-projects list
 - `d87a65a` 2026-06-15 — Token usage counter per turn + project
 - `4ee03c9` 2026-06-15 — Tidier project names from the first prompt
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `f31ead8` 2026-06-14 — Default to qwen3.6, retire qwen2.5-coder
 - `7cd5896` 2026-06-14 — Learning mode: guide beginners through vibecoding (B26)
 - `22041a0` 2026-06-14 — Fix "[object Event]" in runtime-error capture (B12 self-correction)
-- `dc6c725` 2026-06-14 — B4: image / screenshot → UI (multimodal)
 <!-- COMMITLOG:END -->
