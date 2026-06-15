@@ -4,7 +4,8 @@ struct ContentView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Group {
+        @Bindable var model = model
+        return Group {
             if !model.preferences.onboarded {
                 OnboardingView()
                     .transition(.opacity)
@@ -34,5 +35,6 @@ struct ContentView: View {
         .animation(.smooth(duration: 0.3), value: model.toast)
         .animation(.smooth(duration: 0.35), value: model.hasStarted)
         .animation(.smooth(duration: 0.35), value: model.preferences.onboarded)
+        .sheet(isPresented: $model.showCommandPalette) { CommandPaletteView() }
     }
 }

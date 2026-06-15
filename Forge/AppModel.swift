@@ -113,6 +113,9 @@ final class AppModel {
     var showRenameDialog = false
     var renameText = ""
 
+    // ⌘K command palette
+    var showCommandPalette = false
+
     // Diagnostics
     var serverLog: [LogLine] = []
     var jsErrors: [RuntimeIssue] = []
@@ -1328,6 +1331,48 @@ final class AppModel {
 
     func openInBrowser() {
         if let url = previewURL { NSWorkspace.shared.open(url) }
+    }
+
+    /// Actions for the ⌘K command palette, filtered to what's available in the
+    /// current state. Each `run` closure is executed after the palette dismisses.
+    func paletteCommands() -> [PaletteCommand] {
+        var c: [PaletteCommand] = [
+            PaletteCommand(id: "new", title: "Nyt projekt", icon: "plus") { self.newProject() }
+        ]
+        for p in projects where p.id != currentProject.id && !p.name.isEmpty && p.name != "Untitled" {
+            c.append(PaletteCommand(id: "switch-\(p.id)", title: "Skift til \(p.name)",
+                                    icon: "folder") { self.switchTo(p) })
+        }
+        c.append(PaletteCommand(id: "design", title: "Kopiér design fra link…",
+                                icon: "link") { self.showLinkDialog = true })
+        if !hasStarted {
+            c.append(PaletteCommand(id: "clone", title: "Klon fra Git…",
+                                    icon: "arrow.triangle.branch") { self.showCloneDialog = true })
+        }
+        if hasStarted {
+            c.append(PaletteCommand(id: "code", title: "Skift kode / preview",
+                                    icon: "chevron.left.forwardslash.chevron.right") { self.toggleRightPane() })
+            c.append(PaletteCommand(id: "reload", title: "Genindlæs preview",
+                                    icon: "arrow.clockwise") { self.reloadPreview() })
+            c.append(PaletteCommand(id: "deploy", title: "Deploy",
+                                    icon: "arrowtriangle.up.circle.fill") { self.showDeploy = true })
+            c.append(PaletteCommand(id: "rename", title: "Omdøb projekt…", icon: "pencil") {
+                self.renameText = self.currentProject.name; self.showRenameDialog = true
+            })
+            c.append(PaletteCommand(id: "editor", title: "Åbn i ekstern editor",
+                                    icon: "arrow.up.forward.app") { self.openInEditor() })
+            c.append(PaletteCommand(id: "finder", title: "Vis i Finder", icon: "folder") { self.revealInFinder() })
+            c.append(PaletteCommand(id: "zip", title: "Eksportér som zip…",
+                                    icon: "archivebox") { self.exportZip() })
+        }
+        if canCopyPass {
+            c.append(PaletteCommand(id: "copy", title: "Dansk copy-pass",
+                                    icon: "character.bubble") { self.runCopyPass() })
+        }
+        if preferences.learningMode {
+            c.append(PaletteCommand(id: "glossary", title: "Ordbog", icon: "book") { self.showGlossary = true })
+        }
+        return c
     }
 
     /// Snapshot the live preview into the project's `.forge/thumb.png` so the

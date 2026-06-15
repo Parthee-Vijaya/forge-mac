@@ -382,6 +382,94 @@ struct MarkdownView: View {
     }
 }
 
+/// One ⌘K command palette action. `run` executes after the palette dismisses.
+struct PaletteCommand: Identifiable {
+    let id: String
+    let title: String
+    let icon: String
+    let run: () -> Void
+}
+
+/// ⌘K command palette: a searchable list of actions with arrow-key navigation
+/// and Enter to run. Filters by title; runs the selected command after closing.
+struct CommandPaletteView: View {
+    @Environment(AppModel.self) private var model
+    @State private var query = ""
+    @State private var selection = 0
+    @FocusState private var focused: Bool
+
+    private var matches: [PaletteCommand] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let all = model.paletteCommands()
+        return q.isEmpty ? all : all.filter { $0.title.lowercased().contains(q) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 9) {
+                Image(systemName: "magnifyingglass").font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
+                TextField("Søg handlinger…", text: $query)
+                    .textFieldStyle(.plain).font(.system(size: 15)).foregroundStyle(Theme.ink).tint(Theme.accent)
+                    .focused($focused)
+                    .onKeyPress(.downArrow) { move(1); return .handled }
+                    .onKeyPress(.upArrow) { move(-1); return .handled }
+                    .onKeyPress(.return) { runSelected(); return .handled }
+                    .onKeyPress(.escape) { model.showCommandPalette = false; return .handled }
+            }
+            .padding(14)
+            Divider().overlay(Theme.border)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(Array(matches.enumerated()), id: \.element.id) { idx, cmd in
+                            HStack(spacing: 10) {
+                                Image(systemName: cmd.icon).font(.system(size: 13))
+                                    .foregroundStyle(idx == selection ? Theme.onAccent : Theme.inkSoft).frame(width: 18)
+                                Text(cmd.title).font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(idx == selection ? Theme.onAccent : Theme.ink)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 7)
+                            .background(idx == selection ? Theme.accent : .clear,
+                                        in: RoundedRectangle(cornerRadius: 7))
+                            .contentShape(Rectangle())
+                            .id(idx)
+                            .onTapGesture { selection = idx; runSelected() }
+                        }
+                        if matches.isEmpty {
+                            Text("Ingen handlinger").font(.system(size: 12)).foregroundStyle(Theme.inkFaint)
+                                .frame(maxWidth: .infinity).padding(.vertical, 16)
+                        }
+                    }
+                    .padding(6)
+                }
+                .frame(maxHeight: 320)
+                .onChange(of: selection) { proxy.scrollTo(selection, anchor: .center) }
+            }
+        }
+        .frame(width: 460)
+        .background(Theme.surface)
+        .preferredColorScheme(model.colorScheme)
+        .onAppear { focused = true }
+        .onChange(of: query) { selection = 0 }
+        .onExitCommand { model.showCommandPalette = false }   // Esc closes (robust)
+    }
+
+    private func move(_ delta: Int) {
+        let count = matches.count
+        guard count > 0 else { return }
+        selection = max(0, min(selection + delta, count - 1))
+    }
+
+    private func runSelected() {
+        let cmds = matches
+        guard cmds.indices.contains(selection) else { return }
+        let cmd = cmds[selection]
+        model.showCommandPalette = false
+        DispatchQueue.main.async { cmd.run() }   // run after the palette closes
+    }
+}
+
 /// Dialog for renaming the current project (from the project menu's "Omdøb…").
 struct RenameDialogView: View {
     @Environment(AppModel.self) private var model

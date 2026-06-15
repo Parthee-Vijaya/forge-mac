@@ -16,6 +16,9 @@ struct ForgeApp: App {
                     .keyboardShortcut("n", modifiers: .command)
             }
             CommandMenu("Forge") {
+                Button("Kommando-palette…") { appDelegate.model.showCommandPalette = true }
+                    .keyboardShortcut("k", modifiers: .command)
+                Divider()
                 Button("Genindlæs preview") { appDelegate.model.reloadPreview() }
                     .keyboardShortcut("r", modifiers: .command)
                 Button("Skift kode / preview") { appDelegate.model.toggleRightPane() }
