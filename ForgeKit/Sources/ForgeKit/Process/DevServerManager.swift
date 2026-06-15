@@ -143,31 +143,66 @@ public actor DevServerManager {
     /// no `tsconfig.json` or no locally-installed `tsc` (e.g. the Svelte/Vue
     /// scaffolds, which would need svelte-check / vue-tsc instead). A watchdog
     /// terminates a tsc that runs past `timeout` so the loop can't stall.
-    public func typeCheck(timeout: Duration = .seconds(45)) async -> [LogLine] {
+    public func typeCheck(timeout: Duration = .seconds(60)) async -> [LogLine] {
         let fm = FileManager.default
-        let tsconfig = workspace.root.appendingPathComponent("tsconfig.json")
-        let tscBin = workspace.root.appendingPathComponent("node_modules/.bin/tsc")
-        guard fm.fileExists(atPath: tsconfig.path), fm.fileExists(atPath: tscBin.path) else { return [] }
+        let bin = workspace.root.appendingPathComponent("node_modules/.bin")
+        func has(_ tool: String) -> Bool { fm.fileExists(atPath: bin.appendingPathComponent(tool).path) }
+        let hasTSConfig = fm.fileExists(atPath: workspace.root.appendingPathComponent("tsconfig.json").path)
 
+        // Pick the framework's checker. vue-tsc/svelte-check both depend on tsc,
+        // so probe the framework-specific tools first. All emit `file:line:col`
+        // diagnostics the ErrorClassifier already parses (svelte-check via its
+        // line-oriented machine format).
+        let command: String
+        if has("vue-tsc"), hasTSConfig {
+            command = "node_modules/.bin/vue-tsc --noEmit --pretty false"
+        } else if has("svelte-check") {
+            command = "node_modules/.bin/svelte-check --output machine --threshold error"
+        } else if has("tsc"), hasTSConfig {
+            command = "node_modules/.bin/tsc --noEmit --pretty false"
+        } else {
+            return []   // not a type-checkable project (or deps not installed)
+        }
+
+        let isSvelteCheck = command.contains("svelte-check")
         do {
-            // `--pretty false` forces the plain, parseable diagnostic format and
-            // strips ANSI colour codes; the relative bin resolves against cwd.
-            let (events, process) = try await runShellCommand("node_modules/.bin/tsc --noEmit --pretty false")
+            // The relative bin resolves against cwd (the project root).
+            let (events, process) = try await runShellCommand(command)
             let watchdog = Task {
                 try? await Task.sleep(for: timeout)
                 if process.isRunning { await process.terminate() }
             }
             defer { watchdog.cancel() }
-            // Consume privately (do NOT broadcast): tsc output belongs in the
+            // Consume privately (do NOT broadcast): checker output belongs in the
             // error report, not the live dev-server log pane.
             var lines: [LogLine] = []
             for await event in events {
                 if case .log(let line) = event { lines.append(line) }
             }
-            return lines
+            // tsc/vue-tsc already emit the `file(line,col): error TSxxxx` form the
+            // classifier parses; svelte-check's machine format needs reshaping.
+            return isSvelteCheck ? lines.compactMap(Self.normalizeSvelteCheckLine) : lines
         } catch {
             return []
         }
+    }
+
+    /// Reshape one `svelte-check --output machine` line into the tsc-style
+    /// `file(line,col): error: message` the `ErrorClassifier` parses structurally.
+    /// Real diagnostics look like `<epochMs> ERROR "src/App.svelte" 67:7 "msg"`.
+    /// Returns nil for everything else — crucially the trailing
+    /// `<epochMs> COMPLETED … 1 ERRORS …` summary, which contains the word
+    /// "ERRORS" and would otherwise surface as a phantom error.
+    nonisolated static func normalizeSvelteCheckLine(_ line: LogLine) -> LogLine? {
+        let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let re = try? NSRegularExpression(
+            pattern: #"^\d+\s+ERROR\s+"([^"]+)"\s+(\d+):(\d+)\s+"(.*)"\s*$"#),
+              let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let file = m.text(at: 1, in: text),
+              let row = m.text(at: 2, in: text),
+              let col = m.text(at: 3, in: text),
+              let message = m.text(at: 4, in: text) else { return nil }
+        return LogLine(stream: line.stream, text: "\(file)(\(row),\(col)): error: \(message)")
     }
 
     /// Graceful stop + cleanup. Safe to call multiple times.

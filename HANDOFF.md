@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `01ca1fc` 2026-06-15 — Catch TypeScript errors in the build loop (real tsc --noEmit gate)
 - `de705cb` 2026-06-15 — Harden: parser cancel-flush, keychain, preview bridge, error cap, prompt-injection
 - `3cfcead` 2026-06-15 — Harden: deploy shell-quoting, safe checkpoint restore, shell-probe timeout
 - `4b3b307` 2026-06-15 — Roadmap: Supabase + multi-framework + syntax-highlight done
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `f3cf0a3` 2026-06-15 — Fix: emit token usage from the build loop too (not just plan)
 - `2359175` 2026-06-15 — Project thumbnails in the recent-projects list
 - `d87a65a` 2026-06-15 — Token usage counter per turn + project
-- `4ee03c9` 2026-06-15 — Tidier project names from the first prompt
 <!-- COMMITLOG:END -->

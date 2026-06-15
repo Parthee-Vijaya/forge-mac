@@ -25,7 +25,9 @@ with an × button. Persist all cards in localStorage so they survive a reload. \
 Clean, modern look.
 """
 let prompt = args.count > 1 && !args[1].isEmpty ? args[1] : defaultPrompt
-let modelID = args.count > 2 ? args[2] : "qwen/qwen3.6-35b-a3b"
+let modelID = args.count > 2 && !args[2].isEmpty ? args[2] : "qwen/qwen3.6-35b-a3b"
+let framework = Framework(id: args.count > 3 ? args[3] : "react")
+let entryFile = framework.template.modelEntryFile
 
 let startedAt = Date()
 func elapsed() -> String { String(format: "%6.1fs", Date().timeIntervalSince(startedAt)) }
@@ -42,14 +44,14 @@ let runDir = URL(fileURLWithPath: NSHomeDirectory())
 let projectDir = runDir.appendingPathComponent("project")
 try? FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
 
-note("Forge dogfood — model=\(modelID)")
+note("Forge dogfood — model=\(modelID)  framework=\(framework.displayName)")
 note("run dir: \(runDir.path)")
 note("prompt: \(prompt)")
 note(String(repeating: "─", count: 78))
 
 let workspace = ProjectWorkspace(root: projectDir)
-try await TemplateInstaller().install(into: workspace)   // .viteReactTailwind, like the app
-note("scaffolded React+Vite+Tailwind template")
+try await TemplateInstaller().install(framework.template, into: workspace)
+note("scaffolded \(framework.displayName)+Vite+Tailwind template (entry: \(entryFile))")
 
 let devServer = DevServerManager(workspace: workspace)
 let processLayer = ForgeProcessLayer(workspace: workspace, devServer: devServer)
@@ -176,9 +178,9 @@ if let url = previewURL {
 // Save artifacts for inspection.
 try? assistantTranscript.write(to: runDir.appendingPathComponent("assistant.md"), atomically: true, encoding: .utf8)
 try? reasoningBuffer.write(to: runDir.appendingPathComponent("reasoning.txt"), atomically: true, encoding: .utf8)
-if let app = try? await workspace.readFile("src/App.tsx") {
+if let app = try? await workspace.readFile(entryFile) {
     note(String(repeating: "─", count: 78))
-    note("FINAL src/App.tsx (\(app.count) chars):")
+    note("FINAL \(entryFile) (\(app.count) chars):")
     for line in app.split(separator: "\n", omittingEmptySubsequences: false).prefix(80) {
         print("    \(line)")
     }
@@ -189,14 +191,21 @@ if let app = try? await workspace.readFile("src/App.tsx") {
 // → real tsc → ErrorClassifier actually catches a type error the dev-server
 // settle reports as "clean". Injects a real error, re-collects, then restores.
 if ProcessInfo.processInfo.environment["FORGE_GATE_SELFTEST"] == "1",
-   let original = try? await workspace.readFile("src/App.tsx") {
+   let original = try? await workspace.readFile(entryFile) {
     note(String(repeating: "─", count: 78))
-    note("tsc-GATE SELF-TEST")
+    note("TYPE-GATE SELF-TEST (\(entryFile))")
     let before = await collector.collect()
     note("  baseline collect() on the generated app: clean=\(before.isClean)")
-    try? await workspace.writeFile(
-        "src/App.tsx",
-        contents: original + "\n\nconst _forgeGateProbe: number = \"this is a string, not a number\"\n")
+    // A real TYPE error (not a parse error): for .vue/.svelte it must live inside
+    // the <script> block, so inject before the first </script>; .tsx is plain TS.
+    let probe = "\nconst _forgeGateProbe: number = \"this is a string, not a number\"\n"
+    let broken: String
+    if let r = original.range(of: "</script>") {
+        broken = original.replacingCharacters(in: r, with: probe + "</script>")
+    } else {
+        broken = original + "\n" + probe
+    }
+    try? await workspace.writeFile(entryFile, contents: broken)
     note("  injected a deliberate type error (number = string) …")
     let after = await collector.collect()
     if after.isClean {
@@ -205,8 +214,8 @@ if ProcessInfo.processInfo.environment["FORGE_GATE_SELFTEST"] == "1",
         note("  ✅ GATE WORKS: collect() now reports the type error the esbuild settle missed:")
         for line in after.formatted().split(separator: "\n").prefix(5) { note("     \(line)") }
     }
-    try? await workspace.writeFile("src/App.tsx", contents: original)  // restore
-    note("  restored src/App.tsx")
+    try? await workspace.writeFile(entryFile, contents: original)  // restore
+    note("  restored \(entryFile)")
 }
 
 await devServer.shutdown()

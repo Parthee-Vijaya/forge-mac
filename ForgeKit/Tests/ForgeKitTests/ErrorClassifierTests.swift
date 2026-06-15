@@ -142,6 +142,30 @@ final class ErrorClassifierTests: XCTestCase {
         XCTAssertTrue(classifier.report(logs: [], runtime: []).isClean)
     }
 
+    // MARK: - svelte-check machine output normalization (Svelte type gate)
+
+    /// A real svelte-check `--output machine` ERROR line is reshaped into the
+    /// tsc-style form and then parses to a structured build item.
+    func testSvelteCheckErrorNormalizesToStructuredItem() {
+        let raw = LogLine(stream: .stdout,
+            text: #"1781516079805 ERROR "src/App.svelte" 67:7 "Type 'string' is not assignable to type 'number'.""#)
+        guard let normalized = DevServerManager.normalizeSvelteCheckLine(raw) else {
+            return XCTFail("ERROR line should normalize")
+        }
+        let item = classifier.classifyBuildLine(normalized.text)
+        XCTAssertEqual(item?.source, .build)
+        XCTAssertEqual(item?.file, "src/App.svelte")
+        XCTAssertEqual(item?.line, 67)
+    }
+
+    /// The trailing `COMPLETED … 1 ERRORS …` summary must be dropped, not surfaced
+    /// as a phantom error (it contains the word "ERRORS").
+    func testSvelteCheckSummaryLineDropped() {
+        let summary = LogLine(stream: .stdout,
+            text: "1781516079805 COMPLETED 1 FILES 1 ERRORS 0 WARNINGS 1 FILES_WITH_PROBLEMS")
+        XCTAssertNil(DevServerManager.normalizeSvelteCheckLine(summary))
+    }
+
     func testSignatureStableAcrossLineDrift() {
         let a = classifier.report(logs: [log("src/App.tsx(12,5): error TS2304: Cannot find name 'foo'.")], runtime: [])
         let b = classifier.report(logs: [log("src/App.tsx(40,2): error TS2304: Cannot find name 'foo'.")], runtime: [])

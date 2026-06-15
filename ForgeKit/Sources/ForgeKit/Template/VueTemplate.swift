@@ -12,11 +12,37 @@ extension ProjectTemplate {
             File(path: "src/App.vue", contents: vueAppVue),
             File(path: "src/style.css", contents: vueStyleCSS),
             File(path: "src/vite-env.d.ts", contents: vueEnvDTS),
+            File(path: "tsconfig.json", contents: vueTSConfig),
             File(path: ".gitignore", contents: frameworkGitignore),
         ],
         modelEntryFile: "src/App.vue"
     )
 }
+
+// vue-tsc reads this to type-check `.vue` SFCs (the self-correction loop's type
+// gate). `include` covers src only — vite.config.ts needs node types we don't
+// ship, and Vite validates its own config at runtime.
+private let vueTSConfig = """
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+}
+"""
 
 private let vuePackageJSON = """
 {
@@ -37,6 +63,7 @@ private let vuePackageJSON = """
     "@tailwindcss/vite": "^4.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
+    "vue-tsc": "^2.1.0",
     "vite": "^6.0.0"
   }
 }

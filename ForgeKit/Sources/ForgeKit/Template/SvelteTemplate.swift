@@ -38,6 +38,7 @@ private let sveltePackageJSON = """
     "@tailwindcss/vite": "^4.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
+    "svelte-check": "^4.0.0",
     "vite": "^6.0.0"
   }
 }
