@@ -24,6 +24,7 @@ struct Composer: View {
     var isDictating: Bool = false                    // B15: voice dictation active
     var onMic: (() -> Void)? = nil                   // 🎙 → toggle dictation
     var onClone: (() -> Void)? = nil                 // /klon → open the Clone-from-Git dialog
+    var skills: [Skill] = []                         // user/built-in skills → "/" commands
     var onSubmit: () -> Void
     var onStop: (() -> Void)? = nil
 
@@ -248,7 +249,7 @@ struct Composer: View {
     /// A "/" command surfaced in the composer. `mode` commands flip Build/Plan;
     /// `insert` commands prefill the prompt with a ready-made brief.
     struct SlashCommand: Identifiable {
-        enum Action { case mode(AgentLoop.Mode); case insert(String); case clone }
+        enum Action { case mode(AgentLoop.Mode); case insert(String); case clone; case skill(prompt: String, mode: AgentLoop.Mode) }
         let id: String
         let triggers: [String]   // first entry is the canonical label shown in the menu
         let hint: String
@@ -285,7 +286,16 @@ struct Composer: View {
 
     private var slashMatches: [SlashCommand] {
         guard let q = slashQuery else { return [] }
-        return Self.slashCommands.filter { cmd in
+        // Skills become "/" commands too — skipping any whose trigger already belongs
+        // to a built-in command (e.g. /plan, /fix, /responsive) to avoid duplicates.
+        let builtinTriggers = Set(Self.slashCommands.flatMap { $0.triggers })
+        let skillCommands: [SlashCommand] = skills.compactMap { s in
+            guard !s.triggers.contains(where: { builtinTriggers.contains($0) }) else { return nil }
+            return SlashCommand(id: "skill:\(s.id)", triggers: s.triggers,
+                                hint: s.description.isEmpty ? s.name : s.description, icon: s.icon,
+                                action: .skill(prompt: s.expand(input: ""), mode: s.mode))
+        }
+        return (Self.slashCommands + skillCommands).filter { cmd in
             if case .mode = cmd.action, mode == nil { return false }   // no Build/Plan binding here
             if case .clone = cmd.action, onClone == nil { return false }  // no clone target here
             return q.isEmpty || cmd.triggers.contains { $0.hasPrefix(q) }
@@ -305,6 +315,7 @@ struct Composer: View {
         case .mode(let m): mode?.wrappedValue = m; text = ""
         case .insert(let template): text = template
         case .clone: text = ""; onClone?()
+        case .skill(let prompt, let m): text = prompt; mode?.wrappedValue = m
         }
         slashSelection = 0
         slashSuppressed = false

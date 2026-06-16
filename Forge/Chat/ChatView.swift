@@ -86,6 +86,7 @@ struct ChatView: View {
                     onEnhance: model.selectedElement == nil ? { model.enhancePrompt() } : nil,
                     isDictating: model.isDictating,
                     onMic: { model.toggleDictation() },
+                    skills: model.loadedSkills,
                     onSubmit: {
                         if model.selectedElement != nil { model.applyVisualEdit(model.draft) }
                         else { model.submit() }

@@ -101,6 +101,8 @@ final class AppModel {
     var isEnhancing: Bool = false        // B14: expanding the draft into a detailed brief
     var statusText: String = "Ready."
     var chatMode: AgentLoop.Mode = .build   // Plan vs Build toggle in the composer
+    /// Built-in + user skills (presets) surfaced in the composer's "/" menu; see SkillStore.
+    var loadedSkills: [Skill] = []
     var askMode = false                     // B10: read-only "ask about the code" mode
     var isDictating = false                 // B15: live voice dictation into the composer
     @ObservationIgnored private let dictation = Dictation()
@@ -275,6 +277,7 @@ final class AppModel {
         self.processLayer = ForgeProcessLayer(workspace: workspace, devServer: devServer)
         self.errorCollector = ErrorCollector(devServer: devServer)
         self.checkpoints = CheckpointManager(root: ProjectStore.dir(for: current))
+        self.loadedSkills = SkillStore.load(projectRoot: ProjectStore.dir(for: current))
 
         if AppModel.isStaleModelID(prefs.defaultModelID) { self.preferences.defaultModelID = "" }
         self.availableModels = [.localDefault]
@@ -486,12 +489,16 @@ final class AppModel {
             : "Slettede \(toDelete.count) projekter")
     }
 
+    /// Reload skills for the current project (built-in + global + project dirs).
+    func reloadSkills() { loadedSkills = SkillStore.load(projectRoot: ProjectStore.dir(for: currentProject)) }
+
     private func activate(_ project: Project, freshState: Bool) {
         let previous = devServer
         Task { await previous.shutdown() }
 
         currentProject = project
         installHandles(for: project)
+        reloadSkills()
 
         previewURL = nil
         serverPhase = .idle

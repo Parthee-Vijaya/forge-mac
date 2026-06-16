@@ -147,6 +147,7 @@ struct StartScreen: View {
                     isDictating: model.isDictating,
                     onMic: { model.toggleDictation() },
                     onClone: { model.showCloneDialog = true },
+                    skills: model.loadedSkills,
                     onSubmit: { model.submit() }
                 )
                 .frame(maxWidth: 600)
