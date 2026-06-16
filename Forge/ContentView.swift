@@ -26,11 +26,17 @@ struct ContentView: View {
                     Divider().overlay(Theme.border)
                     StatusBar()
                 }
-                .transition(.opacity)
+                // C5: the working split slides in from the right (preview-from-trailing
+                // choreography) when the first build starts, instead of a flat crossfade.
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .opacity))
                 .animation(.smooth(duration: 0.28), value: model.showProjectSidebar)
             } else {
                 StartScreen()
-                    .transition(.opacity)
+                    .transition(.asymmetric(
+                        insertion: .opacity,
+                        removal: .move(edge: .leading).combined(with: .opacity)))
             }
         }
         .frame(minWidth: 1040, minHeight: 680)

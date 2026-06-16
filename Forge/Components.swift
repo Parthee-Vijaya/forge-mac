@@ -459,6 +459,108 @@ struct ToastView: View {
 /// code blocks become monospace cards, list items get bullets/numbers, headings
 /// are bold, and paragraphs use SwiftUI's inline markdown (bold/italic/`code`).
 /// Good enough for the model's typical output without a full Markdown engine.
+/// A fenced code block in a chat message, with a hover/tap copy button (C7).
+private struct CodeBlockView: View {
+    let code: String
+    @State private var copied = false
+
+    var body: some View {
+        Text(code)
+            .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.ink)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(Theme.fill, in: RoundedRectangle(cornerRadius: Theme.radiusS))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).strokeBorder(Theme.border, lineWidth: 1))
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code, forType: .string)
+                    copied = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
+                } label: {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(copied ? Theme.positive : Theme.inkFaint)
+                        .padding(6)
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(6)
+                .help(copied ? "Kopieret" : "Kopiér kode")
+                .accessibilityLabel("Kopiér kode")
+            }
+    }
+}
+
+/// C8: a horizontal build timeline (skriver → installerer → starter → tjekker → klar)
+/// that maps the live agent/server state to a step, with prior steps checked.
+struct BuildTimeline: View {
+    let phase: AgentState
+    let serverPhase: DevServerPhase
+    let hasPreview: Bool
+
+    private static let steps: [(label: String, icon: String)] = [
+        ("Skriver", "pencil.line"),
+        ("Installerer", "shippingbox"),
+        ("Starter", "play.circle"),
+        ("Tjekker", "checkmark.shield"),
+        ("Klar", "sparkles"),
+    ]
+
+    private var serverStep: Int {
+        switch serverPhase {
+        case .installingDependencies: return 1
+        case .startingServer: return 2
+        case .running: return 4
+        default: return 0
+        }
+    }
+
+    private var current: Int {
+        switch phase {
+        case .building, .planning: return 0
+        case .applying: return max(2, serverStep)
+        case .awaitingHMR, .collectingErrors, .repairing: return 3
+        case .clean: return 4
+        case .planReady: return hasPreview ? 4 : 3
+        case .idle, .failed: return serverStep
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(Array(Self.steps.enumerated()), id: \.offset) { i, step in
+                dot(index: i, step: step)
+                if i < Self.steps.count - 1 {
+                    Rectangle()
+                        .fill(i < current ? Theme.accent : Theme.border)
+                        .frame(width: 16, height: 1.5)
+                }
+            }
+        }
+        .animation(.smooth(duration: 0.25), value: current)
+    }
+
+    @ViewBuilder private func dot(index i: Int, step: (label: String, icon: String)) -> some View {
+        let done = i < current
+        let active = i == current
+        HStack(spacing: 5) {
+            ZStack {
+                Circle().fill(done || active ? Theme.accent : Theme.fill).frame(width: 20, height: 20)
+                Image(systemName: done ? "checkmark" : step.icon)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(done || active ? Theme.onAccent : Theme.inkFaint)
+            }
+            if active {
+                Text(step.label).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.ink)
+                ProgressView().controlSize(.small)
+            }
+        }
+    }
+}
+
 struct MarkdownView: View {
     let text: String
 
@@ -471,13 +573,7 @@ struct MarkdownView: View {
             ForEach(Array(Self.blocks(from: text).enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .code(let code):
-                    Text(code)
-                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.ink)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(10)
-                        .background(Theme.fill, in: RoundedRectangle(cornerRadius: Theme.radiusS))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).strokeBorder(Theme.border, lineWidth: 1))
+                    CodeBlockView(code: code)   // C7: code block with a copy button
                 case .bullet(let items):
                     listView(items) { _ in "•" }
                 case .ordered(let items):

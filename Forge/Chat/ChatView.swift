@@ -172,7 +172,12 @@ struct ChatView: View {
                         // streaming text — same count — never re-triggers it).
                         .transition(.opacity.combined(with: .offset(y: 8)))
                     }
-                    if model.isBusy { StatusRow(text: model.statusText) }
+                    if model.isBusy {
+                        BuildTimeline(phase: model.phase, serverPhase: model.serverPhase,
+                                      hasPreview: model.previewURL != nil)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(Theme.fill, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+                    }
                     if let last = model.messages.last, last.role == .assistant,
                        last.isPlan, !last.text.isEmpty, !model.isBusy {
                         BuildPlanButton { model.buildFromPlan() }
@@ -295,18 +300,6 @@ private struct BuildPlanButton: View {
             .background(Theme.accent, in: RoundedRectangle(cornerRadius: Theme.radiusM))
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct StatusRow: View {
-    let text: String
-    var body: some View {
-        HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.inkSoft)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Theme.fill, in: Capsule())
     }
 }
 

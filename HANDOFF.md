@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `8d8aedb` 2026-06-16 — A11 + A13 + A6: motor-hærdning (self-correction, node-cache, fuzz)
 - `7fb9d1f` 2026-06-16 — docs(roadmap): backlog-oprydning — audit af kode mod plan
 - `eb3e250` 2026-06-16 — docs(handoff): nanocoder-køreplan (CLI + Skills + MCP) leveret
 - `b5c0c3c` 2026-06-16 — Phase 3 (MCP) part 2b: agenten kan kalde eksterne MCP-værktøjer
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `700406a` 2026-06-15 — feat: /klon slash command — clone a Git repo from the prompt
 - `7bb317c` 2026-06-15 — docs: rigere landing page-design (uden emojis)
 - `83f0678` 2026-06-15 — docs: README på dansk med nybegynder/gratis-vinkel
-- `8d6ebd1` 2026-06-15 — docs: minimalistisk redesign af landing page
 <!-- COMMITLOG:END -->

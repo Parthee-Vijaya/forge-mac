@@ -43,6 +43,8 @@ struct PreviewPane: View {
                 BuildingView(statusText: model.displayStatus,
                              lastLog: model.serverLog.last?.text,
                              isBusy: model.isBusy || model.isStartingPreview,
+                             phase: model.phase,
+                             serverPhase: model.serverPhase,
                              onRestart: model.previewServerDown ? { model.restartDevServer() } : nil)
             }
         }
@@ -175,6 +177,8 @@ private struct BuildingView: View {
     let statusText: String
     let lastLog: String?
     var isBusy: Bool = true
+    var phase: AgentState = .idle
+    var serverPhase: DevServerPhase = .idle
     var onRestart: (() -> Void)? = nil
 
     var body: some View {
@@ -182,8 +186,10 @@ private struct BuildingView: View {
             Text("Forge")
                 .font(Theme.wordmark(28))
                 .foregroundStyle(Theme.ink.opacity(0.9))
+            if isBusy {   // C8: step timeline (the active step carries its own spinner)
+                BuildTimeline(phase: phase, serverPhase: serverPhase, hasPreview: false)
+            }
             HStack(spacing: 8) {
-                if isBusy { ProgressView().controlSize(.small) }
                 Text(statusText).font(.system(size: 13)).foregroundStyle(Theme.inkSoft)
             }
             if let lastLog, !lastLog.isEmpty {
