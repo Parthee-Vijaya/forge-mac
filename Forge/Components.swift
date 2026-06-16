@@ -776,6 +776,8 @@ struct DependenciesView: View {
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusS))
                     .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).strokeBorder(Theme.border))
                     .onSubmit { model.addDependency() }
+                    .onChange(of: model.newDependency) { _, q in model.searchNpm(q) }   // B9
+                if model.isSearchingNpm { ProgressView().controlSize(.small).scaleEffect(0.7) }
                 Button { model.addDependency() } label: {
                     Text("Tilføj").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.onAccent)
                         .padding(.horizontal, 14).padding(.vertical, 8).background(Theme.accent, in: Capsule())
@@ -784,6 +786,42 @@ struct DependenciesView: View {
                 .disabled(model.isManagingDeps || model.newDependency.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
+
+            if !model.npmResults.isEmpty {   // B9: registry search results
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(model.npmResults) { pkg in
+                            Button { model.addDependency(named: pkg.name) } label: {
+                                HStack(spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack(spacing: 6) {
+                                            Text(pkg.name).font(.system(size: 12.5, weight: .medium, design: .monospaced))
+                                                .foregroundStyle(Theme.ink)
+                                            Text(pkg.version).font(.system(size: 10)).foregroundStyle(Theme.inkFaint)
+                                        }
+                                        if !pkg.description.isEmpty {
+                                            Text(pkg.description).font(.system(size: 11)).foregroundStyle(Theme.inkSoft)
+                                                .lineLimit(1).truncationMode(.tail)
+                                        }
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "plus.circle.fill").font(.system(size: 14)).foregroundStyle(Theme.accent)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 7)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain).disabled(model.isManagingDeps)
+                            .background(Theme.surface.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                    .padding(8)
+                }
+                .frame(maxHeight: 190)
+                Divider().overlay(Theme.border)
+                Text("Installeret").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.top, 8)
+            }
 
             ScrollView {
                 LazyVStack(spacing: 1) {

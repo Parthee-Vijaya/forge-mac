@@ -198,6 +198,11 @@ final class AppModel {
     var dependencies: [Dependency] = []
     var newDependency = ""
     var isManagingDeps = false
+    // B9: live npm-registry search
+    struct NpmPackage: Identifiable, Equatable { var id: String { name }; let name: String; let version: String; let description: String }
+    var npmResults: [NpmPackage] = []
+    var isSearchingNpm = false
+    @ObservationIgnored private var npmSearchTask: Task<Void, Never>?
 
     // Supabase backend
     var showSupabaseDialog = false
@@ -1453,6 +1458,48 @@ final class AppModel {
         guard !name.isEmpty, !isManagingDeps, templateInstalled else { return }
         newDependency = ""
         runDependencyCommand("npm install \(Self.shellQuote(name)) 2>&1", toast: "Tilføjede \(name)")
+    }
+
+    /// B9: install a package chosen from the search results.
+    func addDependency(named name: String) {
+        newDependency = name
+        npmResults = []
+        addDependency()
+    }
+
+    /// B9: debounced search of the npm registry as the user types a package name.
+    func searchNpm(_ query: String) {
+        npmSearchTask?.cancel()
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard q.count >= 2 else { npmResults = []; isSearchingNpm = false; return }
+        isSearchingNpm = true
+        npmSearchTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))   // debounce
+            if Task.isCancelled { return }
+            let hits = await AppModel.fetchNpm(q)
+            if Task.isCancelled { return }
+            self?.npmResults = hits
+            self?.isSearchingNpm = false
+        }
+    }
+
+    nonisolated private static func fetchNpm(_ query: String) async -> [NpmPackage] {
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=8") else { return [] }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoded = try JSONDecoder().decode(NpmSearchResponse.self, from: data)
+            return decoded.objects.map {
+                NpmPackage(name: $0.package.name, version: $0.package.version,
+                           description: $0.package.description ?? "")
+            }
+        } catch { return [] }
+    }
+
+    private struct NpmSearchResponse: Decodable {
+        struct Obj: Decodable { let package: Pkg }
+        struct Pkg: Decodable { let name: String; let version: String; let description: String? }
+        let objects: [Obj]
     }
 
     func removeDependency(_ name: String) {

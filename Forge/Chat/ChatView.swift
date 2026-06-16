@@ -39,20 +39,7 @@ struct ChatView: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.warning.opacity(0.4), lineWidth: 1))
                 }
                 if let element = model.selectedElement {
-                    HStack(spacing: 6) {
-                        Image(systemName: "cursorarrow.rays").font(.system(size: 11)).foregroundStyle(Theme.accent)
-                        Text(element.text.isEmpty ? element.tag : "\(element.tag) · \(element.text)")
-                            .font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.inkSoft)
-                            .lineLimit(1).truncationMode(.tail)
-                        Spacer(minLength: 0)
-                        Button { model.clearSelection() } label: {
-                            Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
-                        }
-                        .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Theme.fill, in: Capsule())
-                    .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
+                    SelectionQuickBar(element: element)   // C4: quick style controls for the selection
                 }
                 if model.canCopyPass {
                     HStack(spacing: 0) {
@@ -283,6 +270,76 @@ private struct MessageView: View {
         }
     }
 
+}
+
+/// C4: a floating quick-edit toolbar for the visually-selected element. One-tap
+/// style controls + a colour picker, all routed through the persistent
+/// `applyVisualEdit` path (live DOM edits wouldn't survive an HMR reload).
+private struct SelectionQuickBar: View {
+    @Environment(AppModel.self) private var model
+    let element: AppModel.SelectedElement
+    @State private var color = Color.accentColor
+
+    private let quickEdits: [(label: String, icon: String, instruction: String)] = [
+        ("Større", "textformat.size.larger", "Gør det valgte element lidt større (skriftstørrelse/padding)."),
+        ("Mindre", "textformat.size.smaller", "Gør det valgte element lidt mindre."),
+        ("Fed", "bold", "Gør teksten i det valgte element fed."),
+        ("Centrér", "text.aligncenter", "Centrér det valgte element."),
+        ("Skjul", "eye.slash", "Fjern det valgte element fra siden."),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Image(systemName: "cursorarrow.rays").font(.system(size: 11)).foregroundStyle(Theme.accent)
+                Text(element.text.isEmpty ? element.tag : "\(element.tag) · \(element.text)")
+                    .font(.system(size: 11.5, design: .monospaced)).foregroundStyle(Theme.inkSoft)
+                    .lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 0)
+                Button { model.clearSelection() } label: {
+                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
+                }
+                .buttonStyle(.plain).foregroundStyle(Theme.inkFaint)
+            }
+            HStack(spacing: 6) {
+                ForEach(quickEdits, id: \.label) { item in
+                    Button { model.applyVisualEdit(item.instruction) } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: item.icon).font(.system(size: 9))
+                            Text(item.label).font(.system(size: 10.5, weight: .medium))
+                        }
+                        .foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Theme.surface, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain).disabled(model.isBusy)
+                    .help("\(item.label) — anvendes via en målrettet redigering")
+                }
+                ColorPicker("", selection: $color, supportsOpacity: false)
+                    .labelsHidden().frame(width: 28, height: 22)
+                    .disabled(model.isBusy)
+                    .help("Skift farve på det valgte element")
+                    .onChange(of: color) { _, newColor in
+                        model.applyVisualEdit("Skift farven på det valgte element til \(newColor.hexString).")
+                    }
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Theme.fill, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.accent.opacity(0.3), lineWidth: 1))
+    }
+}
+
+private extension Color {
+    /// `#RRGGBB` for feeding a concrete colour into a visual-edit instruction.
+    var hexString: String {
+        let ns = NSColor(self).usingColorSpace(.sRGB) ?? .black
+        return String(format: "#%02X%02X%02X",
+                      Int(round(ns.redComponent * 255)),
+                      Int(round(ns.greenComponent * 255)),
+                      Int(round(ns.blueComponent * 255)))
+    }
 }
 
 /// The approve-and-build affordance shown under a finished plan.

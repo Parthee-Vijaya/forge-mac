@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `e23070c` 2026-06-16 — C13 + C6: venlig fejl-kort i preview + device-bezels
 - `bcdb581` 2026-06-16 — C7 + C8 + C5: rigere chat-beskeder, status-tidslinje, entré-animation
 - `8d8aedb` 2026-06-16 — A11 + A13 + A6: motor-hærdning (self-correction, node-cache, fuzz)
 - `7fb9d1f` 2026-06-16 — docs(roadmap): backlog-oprydning — audit af kode mod plan
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `01d7ffe` 2026-06-16 — feat: free-NVIDIA onboarding shortcut + tap-to-expand glossary
 - `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
 - `700406a` 2026-06-15 — feat: /klon slash command — clone a Git repo from the prompt
-- `7bb317c` 2026-06-15 — docs: rigere landing page-design (uden emojis)
 <!-- COMMITLOG:END -->
