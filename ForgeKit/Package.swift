@@ -17,7 +17,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "ForgeKit"),
-        .executableTarget(name: "forge-mcp"),
+        .executableTarget(name: "forge-mcp", dependencies: ["ForgeKit"]),
         .executableTarget(name: "forge", dependencies: ["ForgeKit"]),
         .testTarget(
             name: "ForgeKitTests",
