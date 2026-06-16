@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `3af345b` 2026-06-16 — docs(roadmap): hele P1+P2-backlog leveret
 - `ec08a4c` 2026-06-16 — C4 + B9: hurtig-redigerings-toolbar + npm-pakke-søgning
 - `e23070c` 2026-06-16 — C13 + C6: venlig fejl-kort i preview + device-bezels
 - `bcdb581` 2026-06-16 — C7 + C8 + C5: rigere chat-beskeder, status-tidslinje, entré-animation
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `7725f7e` 2026-06-16 — fix: start dev-server even when the model omits </forgeArtifact>
 - `a4596a3` 2026-06-16 — fix(A5): drop esbuild/vite internal stack frames from error reports
 - `01d7ffe` 2026-06-16 — feat: free-NVIDIA onboarding shortcut + tap-to-expand glossary
-- `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
 <!-- COMMITLOG:END -->
