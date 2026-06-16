@@ -44,6 +44,26 @@ final class StreamingArtifactParserTests: XCTestCase {
         }
     }
 
+    func testMCPActionEmitsRequest() {
+        let input = """
+        <forgeArtifact id="x" title="X">
+        <forgeAction type="mcp" server="fs" tool="read_file">{ "path": "package.json" }</forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 9] {
+            let events = parse(input, chunkSize: chunk)
+            let mcp = events.compactMap { e -> (String, String, String)? in
+                if case .mcpRequest(let s, let t, let a) = e { return (s, t, a) }; return nil
+            }
+            XCTAssertEqual(mcp.count, 1, "chunk \(chunk)")
+            XCTAssertEqual(mcp.first?.0, "fs", "chunk \(chunk)")
+            XCTAssertEqual(mcp.first?.1, "read_file", "chunk \(chunk)")
+            XCTAssertTrue(mcp.first?.2.contains("package.json") ?? false, "args preserved (chunk \(chunk))")
+            XCTAssertTrue(files(events).isEmpty, "mcp must not write a file (chunk \(chunk))")
+            XCTAssertEqual(events.filter { $0 == .artifactClose }.count, 1, "chunk \(chunk)")
+        }
+    }
+
     /// Regression (dogfood, Svelte/qwen): the model wrote the file but omitted the
     /// inner </forgeAction>, jumping straight to </forgeArtifact>. The close tag must
     /// NOT leak into the file body — it made Svelte components end with a literal

@@ -237,6 +237,8 @@ final class AppModel {
     @ObservationIgnored private(set) var devServer: DevServerManager
     @ObservationIgnored private(set) var processLayer: ForgeProcessLayer
     @ObservationIgnored private(set) var errorCollector: ErrorCollector
+    /// External MCP tool servers (from `.forge/.mcp.json`); started per project.
+    @ObservationIgnored let mcpManager = MCPManager()
     @ObservationIgnored private(set) var checkpoints: CheckpointManager
     @ObservationIgnored private var templateInstalled = false
     @ObservationIgnored private var agentTask: Task<Void, Never>?
@@ -289,6 +291,8 @@ final class AppModel {
         self.templateInstalled = ProjectStore.hasBuiltApp(current)
 
         startLogStream()
+        let mcpRoot = ProjectStore.dir(for: current)
+        Task { [mcpManager] in await mcpManager.start(projectRoot: mcpRoot) }
         let resume = templateInstalled && !messages.isEmpty
         let devServerRef = devServer
         let projectsRootPath = ProjectStore.root.path
@@ -438,6 +442,10 @@ final class AppModel {
         if role != .copy, await workspace.fileExists("src/lib/supabase.ts") {
             parts.append(SystemPrompt.supabaseNote)
         }
+        // External MCP tools, if any are configured (high salience at the very end).
+        if role == .build, let mcpSection = mcpManager.promptSection() {
+            parts.append(mcpSection)
+        }
         return parts.joined(separator: "\n\n")
     }
 
@@ -492,6 +500,12 @@ final class AppModel {
     /// Reload skills for the current project (built-in + global + project dirs).
     func reloadSkills() { loadedSkills = SkillStore.load(projectRoot: ProjectStore.dir(for: currentProject)) }
 
+    /// Restart MCP tool servers for the current project (stop old, start new).
+    func reloadMCP() {
+        let root = ProjectStore.dir(for: currentProject)
+        Task { [mcpManager] in mcpManager.shutdownAll(); await mcpManager.start(projectRoot: root) }
+    }
+
     private func activate(_ project: Project, freshState: Bool) {
         let previous = devServer
         Task { await previous.shutdown() }
@@ -499,6 +513,7 @@ final class AppModel {
         currentProject = project
         installHandles(for: project)
         reloadSkills()
+        reloadMCP()
 
         previewURL = nil
         serverPhase = .idle
@@ -1865,6 +1880,10 @@ final class AppModel {
             collectErrors: { [weak self] in await self?.collectWithSmokeTest() ?? ErrorReport() },
             onTurnStart: { [errorCollector] in await errorCollector.reset() },
             readFile: { [workspace] path in try? await workspace.readFile(path) },
+            callMCP: { [mcpManager] server, tool, argsJSON in
+                let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
+                return await mcpManager.call(server: server, tool: tool, arguments: args)
+            },
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 

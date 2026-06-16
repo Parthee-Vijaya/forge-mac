@@ -34,6 +34,8 @@ public final class StreamingArtifactParser {
     private var buffer = ""
     private var fileContents = ""
     private var inlineBuffer = ""
+    private var mcpServer = ""   // server/tool of the in-flight <forgeAction type="mcp">
+    private var mcpTool = ""
 
     private static let artifactOpenMarker = "<forgeArtifact"
     private static let artifactCloseMarker = "</forgeArtifact>"
@@ -168,6 +170,13 @@ public final class StreamingArtifactParser {
             events.append(.readRequest(path: attribute("filePath", in: tag) ?? ""))
             inlineBuffer = ""
             state = .inInlineBody(type: "read-file")
+        } else if type == "mcp" {
+            // A request to call an external MCP tool: server/tool are attributes, the
+            // body is the JSON arguments (emitted as .mcpRequest on close).
+            mcpServer = attribute("server", in: tag) ?? ""
+            mcpTool = attribute("tool", in: tag) ?? ""
+            inlineBuffer = ""
+            state = .inInlineBody(type: "mcp")
         } else {
             inlineBuffer = ""
             state = .inInlineBody(type: type)
@@ -248,7 +257,9 @@ public final class StreamingArtifactParser {
             inlineBuffer += String(buffer[..<close.lowerBound])
             buffer = String(buffer[close.upperBound...])
             let payload = inlineBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let action = makeInlineAction(type: type, payload: payload) {
+            if type == "mcp" {
+                events.append(.mcpRequest(server: mcpServer, tool: mcpTool, arguments: payload))
+            } else if let action = makeInlineAction(type: type, payload: payload) {
                 events.append(.inlineAction(action))
             }
             inlineBuffer = ""

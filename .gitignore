@@ -11,6 +11,7 @@ DerivedData/
 .build-xcode/
 .build-release/
 .build-ios/
+.build-app/
 build/
 *.dmg
 *.xcuserstate

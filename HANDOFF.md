@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `df0f4b1` 2026-06-16 — feat(mcp): MCP client + manager — Forge can use external tools (Phase 3, part 2a)
 - `ff04751` 2026-06-16 — feat(mcp): finish the forge-mcp server — external agents can drive Forge (Phase 3, part 1)
 - `2a899f2` 2026-06-16 — feat(skills): surface skills in the GUI composer (roadmap Phase 2, part 2)
 - `4528258` 2026-06-16 — feat(skills): user-extensible skills — engine + CLI (roadmap Phase 2, part 1)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `5b4f549` 2026-06-15 — docs: landing page på dansk + nybegynder/gratis-vinkel
 - `1228091` 2026-06-15 — docs: GitHub Pages landing page (served from /docs)
 - `3fc881e` 2026-06-15 — docs: refresh screenshots for v0.2.1 + add slash/tutorial steps
-- `8c2069d` 2026-06-15 — UI-polish: status bar, editor tabs, minimap, native notifications
 <!-- COMMITLOG:END -->

@@ -81,10 +81,22 @@ public final class MCPManager: @unchecked Sendable {
         guard !t.isEmpty else { return nil }
         let list = t.map { "- `\($0.server)` / `\($0.name)`: \($0.description)" }.joined(separator: "\n")
         return """
-        EXTERNAL TOOLS (MCP): you may call these when they help. Emit a tool call as a
-        forgeAction and STOP — the result is fed back to you, then you continue:
+        EXTERNAL TOOLS (MCP)
+        You can call external tools. If the user needs information or an action that only a
+        tool can provide, you MUST call the tool FIRST — never guess or invent a value a tool
+        can give you.
+
+        To call a tool, emit ONLY a forgeArtifact containing the mcp action (write NO files in
+        that turn) and STOP. The result is fed back to you, then you continue the build:
+        <forgeArtifact id="tool" title="Calling tool">
         <forgeAction type="mcp" server="<server>" tool="<tool>">{ "arg": "value" }</forgeAction>
-        Available:
+        </forgeArtifact>
+
+        The mcp action MUST be inside a <forgeArtifact>, exactly like file actions — a bare
+        <forgeAction> outside an artifact is ignored. Use {} as the body if the tool takes no
+        arguments.
+
+        Available tools:
         \(list)
         """
     }

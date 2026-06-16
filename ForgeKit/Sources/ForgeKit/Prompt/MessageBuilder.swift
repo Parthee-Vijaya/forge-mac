@@ -40,6 +40,15 @@ public struct MessageBuilder: Sendable {
         return ChatMessage(role: .user, content: body)
     }
 
+    /// Feeds external MCP tool results back so the model can continue the build.
+    public func mcpResultTurn(_ results: [(server: String, tool: String, output: String)]) -> ChatMessage {
+        var body = "Results of the tool(s) you called. Continue the build with these in mind — don't call them again unless needed.\n\n"
+        for r in results {
+            body += "<tool server=\"\(r.server)\" name=\"\(r.tool)\">\n\(r.output)\n</tool>\n\n"
+        }
+        return ChatMessage(role: .user, content: body)
+    }
+
     /// A follow-up user turn that feeds back the errors for self-correction.
     public func errorTurn(_ report: ErrorReport) -> ChatMessage {
         let body = """

@@ -19,6 +19,8 @@ public actor AgentLoop {
         /// A2b: returns a project file's current contents (nil if it doesn't
         /// exist) when the model asks to read it mid-build.
         public var readFile: @Sendable (String) async -> String?
+        /// Call an external MCP tool (server, tool, JSON arguments) → text result.
+        public var callMCP: @Sendable (String, String, String) async -> String
         public var settleDelay: Duration
         public var maxRepairAttempts: Int
 
@@ -31,6 +33,7 @@ public actor AgentLoop {
             collectErrors: @escaping @Sendable () async -> ErrorReport,
             onTurnStart: @escaping @Sendable () async -> Void = {},
             readFile: @escaping @Sendable (String) async -> String? = { _ in nil },
+            callMCP: @escaping @Sendable (String, String, String) async -> String = { _, _, _ in "" },
             settleDelay: Duration = .seconds(2),
             maxRepairAttempts: Int = 3
         ) {
@@ -42,6 +45,7 @@ public actor AgentLoop {
             self.collectErrors = collectErrors
             self.onTurnStart = onTurnStart
             self.readFile = readFile
+            self.callMCP = callMCP
             self.settleDelay = settleDelay
             self.maxRepairAttempts = maxRepairAttempts
         }
@@ -140,12 +144,13 @@ public actor AgentLoop {
             var attempt = 0
             var lastSignature: String?
             var readRounds = 0
+            var toolRounds = 0
 
             while !Task.isCancelled {
                 await deps.onTurnStart()
 
                 continuation.yield(.state(.building))
-                let (rawAssistant, reads) = try await streamAndApply(messages: messages, continuation)
+                let (rawAssistant, reads, mcpReqs) = try await streamAndApply(messages: messages, continuation)
 
                 // A2b: the model asked to see files before building. Fetch them,
                 // feed them back, and let it continue — not counted as a repair.
@@ -155,6 +160,19 @@ public actor AgentLoop {
                     for path in reads { fetched.append((path, await deps.readFile(path))) }
                     messages.append(ChatMessage(role: .assistant, content: rawAssistant))
                     messages.append(MessageBuilder().readResultTurn(fetched))
+                    continue
+                }
+
+                // The model called external MCP tools. Run them, feed the results
+                // back, and continue — like the read round, not counted as a repair.
+                if !mcpReqs.isEmpty, toolRounds < 5 {
+                    toolRounds += 1
+                    var results: [(server: String, tool: String, output: String)] = []
+                    for r in mcpReqs {
+                        results.append((r.server, r.tool, await deps.callMCP(r.server, r.tool, r.arguments)))
+                    }
+                    messages.append(ChatMessage(role: .assistant, content: rawAssistant))
+                    messages.append(MessageBuilder().mcpResultTurn(results))
                     continue
                 }
 
@@ -196,27 +214,32 @@ public actor AgentLoop {
     private func streamAndApply(
         messages: [ChatMessage],
         _ continuation: AsyncStream<AgentEvent>.Continuation
-    ) async throws -> (raw: String, reads: [String]) {
+    ) async throws -> (raw: String, reads: [String], mcp: [(server: String, tool: String, arguments: String)]) {
         let parser = StreamingArtifactParser()
         let executor = ActionExecutor(process: deps.process)
         let splitter = ReasoningSplitter()
         var raw = ""
         var reads: [String] = []
+        var mcpReqs: [(server: String, tool: String, arguments: String)] = []
         var sawArtifactClose = false
         var wroteFiles = false
 
-        // Synchronous triage of one parser event: collect read-requests (A2b) and
-        // skip the flush on a read-only artifact's close; otherwise return the
-        // event to apply. Nested (non-async) so the non-Sendable parser/executor
-        // stay inside this actor method's isolation region.
+        // Synchronous triage of one parser event: collect read-requests (A2b) and MCP
+        // tool calls, skip the flush on a tool-request artifact's close; otherwise
+        // return the event to apply. Nested (non-async) so the non-Sendable parser/
+        // executor stay inside this actor method's isolation region.
         func toApply(_ event: ParserEvent) -> ParserEvent? {
             switch event {
             case .readRequest(let path):
                 reads.append(path)
                 continuation.yield(.assistantText("\n_Læser \(path)…_\n"))
                 return nil
-            case .artifactClose where !reads.isEmpty:
-                return nil   // read-only artifact: don't install/start — the read-round handles it
+            case .mcpRequest(let server, let tool, let arguments):
+                mcpReqs.append((server, tool, arguments))
+                continuation.yield(.assistantText("\n_Kalder \(server)/\(tool)…_\n"))
+                return nil
+            case .artifactClose where !reads.isEmpty || !mcpReqs.isEmpty:
+                return nil   // tool-request artifact: don't install/start — the tool round handles it
             case .artifactClose:
                 sawArtifactClose = true
                 return event
@@ -277,7 +300,7 @@ public actor AgentLoop {
         // less-familiar frameworks and smaller models), flush anyway — otherwise the
         // loop settles and reports CLEAN against a server that never started (a blank
         // "done"). Skipped on read-rounds and when artifact-close already flushed.
-        if reads.isEmpty, !sawArtifactClose, wroteFiles {
+        if reads.isEmpty, mcpReqs.isEmpty, !sawArtifactClose, wroteFiles {
             continuation.yield(.state(.applying))
             try await executor.flush()
             if let url = await deps.process.serverReadyURL {
@@ -285,7 +308,7 @@ public actor AgentLoop {
             }
         }
 
-        return (raw, reads)
+        return (raw, reads, mcpReqs)
     }
 
     private func apply(

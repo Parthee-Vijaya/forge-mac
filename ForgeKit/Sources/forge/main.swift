@@ -116,6 +116,7 @@ struct Engine {
     let devServer: DevServerManager
     let collector: ErrorCollector
     let config: ModelConfig
+    let mcp: MCPManager
 }
 
 /// Open `dir` as a project; scaffold the framework template only if it isn't one yet.
@@ -129,17 +130,22 @@ func prepareEngine(dir: URL, framework: Framework, config: ModelConfig) async th
         info("opened existing project at \(dir.path)")
     }
     let devServer = DevServerManager(workspace: workspace)
+    let mcp = MCPManager()
+    await mcp.start(projectRoot: dir)
+    if !mcp.isEmpty { info("MCP: \(mcp.availableTools.count) eksternt værktøj(er) tilgængelige") }
     return Engine(workspace: workspace, devServer: devServer,
-                  collector: ErrorCollector(devServer: devServer), config: config)
+                  collector: ErrorCollector(devServer: devServer), config: config, mcp: mcp)
 }
 
 func makeDeps(_ engine: Engine, mode: AgentLoop.Mode) -> AgentLoop.Dependencies {
     let processLayer = ForgeProcessLayer(workspace: engine.workspace, devServer: engine.devServer)
+    let base = mode == .plan ? SystemPrompt.plan : SystemPrompt.forge
+    let systemPrompt = engine.mcp.promptSection().map { base + "\n\n" + $0 } ?? base
     return AgentLoop.Dependencies(
         provider: ModelRouter.provider(for: engine.config),
         options: ModelRouter.options(for: engine.config),
         process: processLayer,
-        systemPrompt: mode == .plan ? SystemPrompt.plan : SystemPrompt.forge,
+        systemPrompt: systemPrompt,
         projectContext: { [workspace = engine.workspace] in
             let files = await workspace.fileMap()
             return await ContextBuilder().build(files: files, touched: []) { try? await workspace.readFile($0) }
@@ -147,6 +153,10 @@ func makeDeps(_ engine: Engine, mode: AgentLoop.Mode) -> AgentLoop.Dependencies 
         collectErrors: { [collector = engine.collector] in await collector.collect() },
         onTurnStart: { [collector = engine.collector] in await collector.reset() },
         readFile: { [workspace = engine.workspace] path in try? await workspace.readFile(path) },
+        callMCP: { [mcp = engine.mcp] server, tool, argsJSON in
+            let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
+            return await mcp.call(server: server, tool: tool, arguments: args)
+        },
         settleDelay: .seconds(2),
         maxRepairAttempts: 3)
 }
@@ -178,7 +188,17 @@ func runTurn(_ engine: Engine, prompt: String, history: [ChatMessage], mode: Age
             }
         case .fileWritten(let path): say("  " + green("✎") + " \(path)")
         case .previewReady(let url): preview = url; say("  " + cyan("→ preview: ") + url.absoluteString)
-        case .assistantText(let t):  if mode == .plan { FileHandle.standardOutput.write(Data(t.utf8)) }; assistant += t
+        case .assistantText(let t):
+            if mode == .plan {
+                FileHandle.standardOutput.write(Data(t.utf8))
+            } else {
+                // Surface tool/read activity in build mode (markers like "_Kalder fs/x…_").
+                let line = t.trimmingCharacters(in: .whitespacesAndNewlines)
+                if line.hasPrefix("_Kalder ") || line.hasPrefix("_Læser ") {
+                    say("  " + cyan("⚙ ") + line.trimmingCharacters(in: CharacterSet(charactersIn: "_")))
+                }
+            }
+            assistant += t
         case .reasoning, .fileWriting, .fileChunk, .usage: break
         }
     }
