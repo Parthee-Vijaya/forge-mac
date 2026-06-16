@@ -44,6 +44,34 @@ final class StreamingArtifactParserTests: XCTestCase {
         }
     }
 
+    /// Regression (dogfood, Svelte/qwen): the model wrote the file but omitted the
+    /// inner </forgeAction>, jumping straight to </forgeArtifact>. The close tag must
+    /// NOT leak into the file body — it made Svelte components end with a literal
+    /// "</forgeArtifact>" and fail to compile. </forgeArtifact> implicitly closes the
+    /// open file, and an artifactClose is still emitted.
+    func testArtifactCloseTerminatesUnclosedFile() {
+        let input = """
+        <forgeArtifact id="app" title="App">
+        <forgeAction type="file" filePath="src/App.svelte">
+        <div class="board">
+          <h1>Kanban</h1>
+        </div>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 7, 13] {
+            let events = parse(input, chunkSize: chunk)
+            let written = files(events)
+            XCTAssertEqual(written.count, 1, "chunk \(chunk)")
+            XCTAssertEqual(written.first?.0, "src/App.svelte", "chunk \(chunk)")
+            XCTAssertFalse(written.first?.1.contains("forgeArtifact") ?? true,
+                           "close tag leaked into file body (chunk \(chunk))")
+            XCTAssertTrue(written.first?.1.contains("</div>") ?? false,
+                          "real content must survive (chunk \(chunk))")
+            XCTAssertEqual(events.filter { $0 == .artifactClose }.count, 1,
+                           "must still emit artifactClose (chunk \(chunk))")
+        }
+    }
+
     private let sample = """
     Here is your app.
     <forgeArtifact id="todo" title="Todo App">

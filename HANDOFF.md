@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `7725f7e` 2026-06-16 — fix: start dev-server even when the model omits </forgeArtifact>
 - `a4596a3` 2026-06-16 — fix(A5): drop esbuild/vite internal stack frames from error reports
 - `01d7ffe` 2026-06-16 — feat: free-NVIDIA onboarding shortcut + tap-to-expand glossary
 - `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `dedd058` 2026-06-15 — B11: pluggable agent-backend seam (ForgeEngine protocol)
 - `52a1dbb` 2026-06-15 — A15: keyboard navigation in the code-view file tree
 - `fdaeb17` 2026-06-15 — B15: voice dictation into the composer (Apple Speech)
-- `2fb7b87` 2026-06-15 — B7: Next.js as a 4th framework (basic support)
 <!-- COMMITLOG:END -->

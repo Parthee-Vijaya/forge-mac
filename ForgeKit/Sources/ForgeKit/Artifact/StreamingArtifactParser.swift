@@ -176,7 +176,11 @@ public final class StreamingArtifactParser {
     }
 
     private func drainFileBody(path: String, _ events: inout [ParserEvent], atEnd: Bool) -> Bool {
-        if let close = buffer.range(of: Self.actionCloseMarker) {
+        let actionClose = buffer.range(of: Self.actionCloseMarker)
+        let artifactClose = buffer.range(of: Self.artifactCloseMarker)
+
+        // Normal terminator: </forgeAction> (when it's present and comes first).
+        if let close = actionClose, artifactClose == nil || close.lowerBound <= artifactClose!.lowerBound {
             let content = String(buffer[..<close.lowerBound])
             if !content.isEmpty {
                 fileContents += content
@@ -188,8 +192,29 @@ public final class StreamingArtifactParser {
             state = .inArtifact
             return true
         }
-        // Stream content, holding only a tail that could be a partial close tag.
-        let hold = atEnd ? "" : longestSuffixPrefix(of: buffer, matching: Self.actionCloseMarker)
+
+        // Robustness: the model omitted </forgeAction> and jumped straight to
+        // </forgeArtifact>. That marker can never appear in real source, so treat it as
+        // an implicit file-close — and LEAVE it in the buffer so `.inArtifact` closes the
+        // artifact next. Without this the close tag leaks into the file (e.g. a Svelte
+        // component ending "</div>\n</forgeArtifact>"), which then fails to compile.
+        if let artClose = artifactClose {
+            let content = String(buffer[..<artClose.lowerBound])
+            if !content.isEmpty {
+                fileContents += content
+                events.append(.fileChunk(path: path, text: content))
+            }
+            buffer = String(buffer[artClose.lowerBound...])
+            events.append(.fileClose(path: path, contents: stripCodeFence(trimEdges(fileContents))))
+            fileContents = ""
+            state = .inArtifact
+            return true
+        }
+
+        // Stream content, holding a tail that could be a partial close tag of EITHER
+        // kind (both start with "</forge").
+        let hold = atEnd ? "" : longestSuffixPrefix(
+            of: buffer, matching: Self.actionCloseMarker, Self.artifactCloseMarker)
         let emit = String(buffer.dropLast(hold.count))
         if !emit.isEmpty {
             fileContents += emit
