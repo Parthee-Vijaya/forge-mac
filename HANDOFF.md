@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `edab364` 2026-06-16 — fix: surface human message from model HTTP errors (not raw JSON)
 - `17b3b41` 2026-06-16 — feat(B19): ForgeCompanion — iOS/iPadOS companion-app
 - `eabb807` 2026-06-16 — fix(A5): also drop esbuild 'Failed to scan for dependencies' header
 - `b6915d7` 2026-06-16 — fix(parser): </forgeArtifact> implicitly closes an unclosed file body
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `f736a3d` 2026-06-15 — docs: comprehensive README with screenshot tour + v0.2.0 bump
 - `38a7005` 2026-06-15 — docs: ROADMAP status — full P2 sweep (B7/B8/B10/B11/B15/B18/B19/B20/C11/C17/A14/A15/A19 + rest)
 - `ae8ff20` 2026-06-15 — B19 (host side): HTTP status server for an iOS companion
-- `6d47895` 2026-06-15 — B18: forge-mcp — MCP stdio server exposing a project to external agents
 <!-- COMMITLOG:END -->

@@ -11,11 +11,14 @@ let package = Package(
     products: [
         .library(name: "ForgeKit", targets: ["ForgeKit"]),
         // B18: a stdio MCP server that exposes a project's files to external agents.
-        .executable(name: "forge-mcp", targets: ["forge-mcp"])
+        .executable(name: "forge-mcp", targets: ["forge-mcp"]),
+        // The `forge` CLI: drives the real AgentLoop from a terminal.
+        .executable(name: "forge", targets: ["forge"])
     ],
     targets: [
         .target(name: "ForgeKit"),
         .executableTarget(name: "forge-mcp"),
+        .executableTarget(name: "forge", dependencies: ["ForgeKit"]),
         .testTarget(
             name: "ForgeKitTests",
             dependencies: ["ForgeKit"]
