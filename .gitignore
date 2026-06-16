@@ -10,6 +10,7 @@ Package.resolved
 DerivedData/
 .build-xcode/
 .build-release/
+.build-ios/
 build/
 *.dmg
 *.xcuserstate

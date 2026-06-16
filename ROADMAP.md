@@ -21,8 +21,11 @@ Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 > uverificeret), **A15** tastatur-nav (Dynamic Type bevidst fravalgt), **B11**
 > pluggbar engine-seam, **B18** forge-mcp MCP-server, **B19** iOS-companion
 > *host-side* (HTTP-status-server — selve iOS-app'en er det udestående XL-stykke).
-> Se commits 8411318…ae8ff20. Tilbage: notarisering (udskudt til Developer-konto),
-> de uverificerede CLI/mic-stykker, og B19's iOS-app-target.
+> Se commits 8411318…ae8ff20. **Opdatering 2026-06-16:** B19's iOS-app (`ForgeCompanion`)
+> er nu bygget — et iOS/iPadOS-target der poller host'ens `/status`, omskriver
+> preview-URL'en til Mac'ens LAN/Tailscale-adresse og viser den i en WKWebView
+> (simulator-build grøn). Tilbage: notarisering (udskudt til Developer-konto), de
+> uverificerede CLI/mic-stykker, og live-test af companion på en fysisk enhed.
 
 ---
 

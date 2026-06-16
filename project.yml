@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: pavi
   deploymentTarget:
     macOS: "26.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 
 packages:
@@ -24,6 +25,14 @@ schemes:
     test:
       targets:
         - ForgeTests
+    archive:
+      config: Release
+  ForgeCompanion:
+    build:
+      targets:
+        ForgeCompanion: all
+    run:
+      config: Debug
     archive:
       config: Release
 
@@ -75,4 +84,27 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Forge.app/Contents/MacOS/Forge"
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+
+  # B19 — iOS/iPadOS companion: thin client for the Mac's RemoteServer (:7842).
+  ForgeCompanion:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ForgeCompanion
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pavi.ForgeCompanion
+        PRODUCT_NAME: "Forge Companion"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ForgeCompanion/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        # Simulator builds need no signing; a real device would add a team later.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
         DEVELOPMENT_TEAM: ""

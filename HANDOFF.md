@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `eabb807` 2026-06-16 — fix(A5): also drop esbuild 'Failed to scan for dependencies' header
 - `b6915d7` 2026-06-16 — fix(parser): </forgeArtifact> implicitly closes an unclosed file body
 - `7725f7e` 2026-06-16 — fix: start dev-server even when the model omits </forgeArtifact>
 - `a4596a3` 2026-06-16 — fix(A5): drop esbuild/vite internal stack frames from error reports
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `ae8ff20` 2026-06-15 — B19 (host side): HTTP status server for an iOS companion
 - `6d47895` 2026-06-15 — B18: forge-mcp — MCP stdio server exposing a project to external agents
 - `dedd058` 2026-06-15 — B11: pluggable agent-backend seam (ForgeEngine protocol)
-- `52a1dbb` 2026-06-15 — A15: keyboard navigation in the code-view file tree
 <!-- COMMITLOG:END -->
