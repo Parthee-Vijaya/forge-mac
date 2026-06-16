@@ -50,6 +50,14 @@ public struct ErrorClassifier: Sendable {
         if lower.contains("0 error") || lower.contains("no error") || lower.contains("found 0 error") {
             return true
         }
+        // Bundler-internal stack frames (esbuild/vite/rollup's OWN .js code) — these
+        // reference node_modules and are never something the user can fix, e.g.
+        // "/…/node_modules/esbuild/lib/main.js:1467 at failureErrorWithLog (…:1467:15)".
+        // Left in they (a) bury the real diagnostic in the report fed to the model and
+        // (b) get mis-parsed as the error's file:line (`fileLocation` accepts `.js`),
+        // poisoning the dedup key + the no-progress signature. The actionable lines
+        // (`✘ [ERROR] …`, `TSxxxx src/…`) point at the user's files, never node_modules.
+        if lower.contains("/node_modules/") { return true }
         let noise = [
             "[vite] connecting", "[vite] connected", "[vite] hot updated",
             "[vite] hmr", "[vite] page reload", "[vite] invalidate",

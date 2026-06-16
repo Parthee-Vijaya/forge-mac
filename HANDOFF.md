@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `01d7ffe` 2026-06-16 — feat: free-NVIDIA onboarding shortcut + tap-to-expand glossary
 - `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
 - `700406a` 2026-06-15 — feat: /klon slash command — clone a Git repo from the prompt
 - `7bb317c` 2026-06-15 — docs: rigere landing page-design (uden emojis)
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `fdaeb17` 2026-06-15 — B15: voice dictation into the composer (Apple Speech)
 - `2fb7b87` 2026-06-15 — B7: Next.js as a 4th framework (basic support)
 - `fa7f732` 2026-06-15 — C11: project dashboard grid
-- `b285ddb` 2026-06-15 — B10: read-only "Spørg om koden" mode (chat with the codebase)
 <!-- COMMITLOG:END -->

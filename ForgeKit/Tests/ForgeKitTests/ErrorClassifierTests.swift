@@ -112,6 +112,31 @@ final class ErrorClassifierTests: XCTestCase {
         XCTAssertFalse(report.isClean)
     }
 
+    /// Regression (dogfood, nemotron kanban): esbuild's own internal stack frames
+    /// (`…/node_modules/esbuild/lib/main.js:1467 at failureErrorWithLog`) slipped
+    /// through `looksLikeError` (they contain "error") and were then mis-parsed as the
+    /// error's `file:line` (the location regex accepts `.js`) — burying the real
+    /// diagnostic in the report shown to the model and poisoning the dedup signature
+    /// (it keyed on the node_modules path). They must be dropped; the user-facing
+    /// diagnostics must survive with correct file attribution.
+    func testFiltersEsbuildInternalStackFrames() {
+        let frame = "/Users/p/proj/node_modules/esbuild/lib/main.js:1467 at failureErrorWithLog (/Users/p/proj/node_modules/esbuild/lib/main.js:1467:15)"
+        XCTAssertNil(classifier.classifyBuildLine(frame), "esbuild-internal stack frame must be noise")
+
+        let report = classifier.report(logs: [
+            log("Error:   Failed to scan for dependencies from entries:"),
+            log(frame),
+            log("✘ [ERROR] No matching export in \"src/App.tsx\" for import \"default\""),
+            log("src/App.tsx(3,8): error TS1192: Module '\"/x/src/App\"' has no default export."),
+        ], runtime: [])
+
+        // Nothing attributed to a node_modules .js file; signature free of that path.
+        XCTAssertFalse(report.items.contains { $0.file?.contains("node_modules") == true })
+        XCTAssertFalse(report.signature.contains("node_modules"))
+        // The real, fixable error on the user's file survives intact.
+        XCTAssertTrue(report.items.contains { $0.file == "src/App.tsx" && $0.code == "TS1192" })
+    }
+
     func testCleanWhenNoErrors() {
         let report = classifier.report(logs: [log("[vite] connected."), log("Found 0 errors.")], runtime: [])
         XCTAssertTrue(report.isClean)
