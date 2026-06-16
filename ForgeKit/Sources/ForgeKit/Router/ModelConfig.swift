@@ -18,6 +18,9 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
     /// skeleton uses whole-file writes; this flag lets the prompt/parser adapt
     /// later when a strong model is selected.
     public var supportsLineReplace: Bool
+    /// Extra HTTP headers for OpenAI-compatible requests — e.g. OpenRouter's
+    /// optional `HTTP-Referer`/`X-Title` attribution headers. Empty for most.
+    public var extraHeaders: [String: String]
 
     public init(
         kind: Kind,
@@ -27,7 +30,8 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
         modelID: String,
         numCtx: Int = 32_768,
         displayName: String,
-        supportsLineReplace: Bool = false
+        supportsLineReplace: Bool = false,
+        extraHeaders: [String: String] = [:]
     ) {
         self.kind = kind
         self.source = source
@@ -37,6 +41,7 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
         self.numCtx = numCtx
         self.displayName = displayName
         self.supportsLineReplace = supportsLineReplace
+        self.extraHeaders = extraHeaders
     }
 
     /// Used until model discovery runs / if nothing else is available.
@@ -83,5 +88,19 @@ public struct ModelConfig: Sendable, Equatable, Identifiable {
         ModelConfig(kind: .openAICompat, source: .cloud,
                     baseURL: URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/")!,
                     apiKey: key, modelID: model, displayName: model, supportsLineReplace: true)
+    }
+
+    /// OpenRouter — a single OpenAI-compatible gateway to many models (OpenAI,
+    /// Anthropic, Google, Llama, …). Model ids are namespaced, e.g. `openai/gpt-4o`
+    /// or `anthropic/claude-sonnet-4`. `HTTP-Referer`/`X-Title` are optional
+    /// attribution headers OpenRouter surfaces on its dashboard/rankings.
+    public static func openRouter(key: String, model: String) -> ModelConfig {
+        ModelConfig(kind: .openAICompat, source: .cloud,
+                    baseURL: URL(string: "https://openrouter.ai/api/v1")!,
+                    apiKey: key, modelID: model, displayName: model, supportsLineReplace: true,
+                    extraHeaders: [
+                        "HTTP-Referer": "https://github.com/Parthee-Vijaya/forge-mac",
+                        "X-Title": "Forge",
+                    ])
     }
 }

@@ -13,4 +13,18 @@ final class ModelConfigTests: XCTestCase {
         XCTAssertEqual(cfg.apiKey, "k")
         XCTAssertTrue(ModelRouter.provider(for: cfg) is OpenAICompatProvider)
     }
+
+    /// OpenRouter is an OpenAI-compatible gateway: openAICompat config at the
+    /// OpenRouter base URL, carrying the optional attribution headers.
+    func testOpenRouterConfig() {
+        let cfg = ModelConfig.openRouter(key: "k", model: "openai/gpt-4o")
+        XCTAssertEqual(cfg.kind, .openAICompat)
+        XCTAssertEqual(cfg.source, .cloud)
+        XCTAssertEqual(cfg.baseURL.absoluteString, "https://openrouter.ai/api/v1")
+        XCTAssertEqual(cfg.apiKey, "k")
+        XCTAssertEqual(cfg.modelID, "openai/gpt-4o")
+        XCTAssertEqual(cfg.extraHeaders["X-Title"], "Forge")
+        XCTAssertNotNil(cfg.extraHeaders["HTTP-Referer"])
+        XCTAssertTrue(ModelRouter.provider(for: cfg) is OpenAICompatProvider)
+    }
 }

@@ -8,7 +8,8 @@ public enum ModelRouter {
         case .ollamaNative:
             OllamaNativeProvider(baseURL: config.baseURL, modelID: config.modelID)
         case .openAICompat:
-            OpenAICompatProvider(baseURL: config.baseURL, apiKey: config.apiKey, modelID: config.modelID)
+            OpenAICompatProvider(baseURL: config.baseURL, apiKey: config.apiKey,
+                                 modelID: config.modelID, extraHeaders: config.extraHeaders)
         case .anthropic:
             AnthropicProvider(apiKey: config.apiKey ?? "", modelID: config.modelID)
         }

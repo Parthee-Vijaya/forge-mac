@@ -7,11 +7,13 @@ public struct OpenAICompatProvider: ChatModel {
     let baseURL: URL
     let apiKey: String?
     let modelID: String
+    let extraHeaders: [String: String]
 
-    public init(baseURL: URL, apiKey: String?, modelID: String) {
+    public init(baseURL: URL, apiKey: String?, modelID: String, extraHeaders: [String: String] = [:]) {
         self.baseURL = baseURL
         self.apiKey = apiKey
         self.modelID = modelID
+        self.extraHeaders = extraHeaders
     }
 
     public func stream(messages: [ChatMessage], options: GenerationOptions)
@@ -26,6 +28,9 @@ public struct OpenAICompatProvider: ChatModel {
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     if let apiKey, !apiKey.isEmpty {
                         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+                    }
+                    for (header, value) in extraHeaders {   // e.g. OpenRouter HTTP-Referer / X-Title
+                        request.setValue(value, forHTTPHeaderField: header)
                     }
                     let body = Request(
                         model: modelID,

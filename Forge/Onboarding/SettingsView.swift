@@ -90,6 +90,7 @@ struct SettingsView: View {
                     Text("Google Gemini (gratis niveau)").tag("gemini")
                     Text("OpenAI").tag("openai")
                     Text("Anthropic").tag("anthropic")
+                    Text("OpenRouter").tag("openrouter")
                     Text("NVIDIA NIM").tag("nvidiaNIM")
                 }
                 if !model.preferences.cloudProvider.isEmpty {

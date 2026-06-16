@@ -429,6 +429,7 @@ struct OnboardingView: View {
                 Text("Google Gemini (gratis niveau)").tag("gemini")
                 Text("OpenAI").tag("openai")
                 Text("Anthropic").tag("anthropic")
+                Text("OpenRouter").tag("openrouter")
                 Text("NVIDIA NIM").tag("nvidiaNIM")
             }
             .pickerStyle(.menu).labelsHidden()
@@ -489,22 +490,24 @@ struct OnboardingView: View {
 
     static func getKeyURL(_ provider: String) -> String {
         switch provider {
-        case "openai":    "https://platform.openai.com/api-keys"
-        case "anthropic": "https://console.anthropic.com/settings/keys"
-        case "gemini":    "https://aistudio.google.com/app/apikey"
-        default:          "https://build.nvidia.com/"
+        case "openai":     "https://platform.openai.com/api-keys"
+        case "anthropic":  "https://console.anthropic.com/settings/keys"
+        case "gemini":     "https://aistudio.google.com/app/apikey"
+        case "openrouter": "https://openrouter.ai/keys"
+        default:           "https://build.nvidia.com/"
         }
     }
     static func providerName(_ provider: String) -> String {
         switch provider {
         case "openai": "OpenAI"; case "anthropic": "Anthropic"
-        case "gemini": "Google AI Studio"; default: "NVIDIA"
+        case "gemini": "Google AI Studio"; case "openrouter": "OpenRouter"; default: "NVIDIA"
         }
     }
     static func modelHint(_ provider: String) -> String {
         switch provider {
         case "openai": "gpt-4o"; case "anthropic": "claude-sonnet-4-6"
-        case "gemini": "gemini-2.0-flash"; default: "nvidia/llama-3.1-nemotron-70b-instruct"
+        case "gemini": "gemini-2.0-flash"; case "openrouter": "openai/gpt-4o"
+        default: "nvidia/llama-3.1-nemotron-70b-instruct"
         }
     }
 

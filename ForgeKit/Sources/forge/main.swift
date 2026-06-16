@@ -100,10 +100,11 @@ func makeModelConfig(_ args: Args, _ cfg: ForgeConfig) -> ModelConfig {
 
     switch provider.lowercased() {
     case "ollama":    return baseURL.map { ModelConfig.ollama(model: model, baseURL: $0) } ?? .ollama(model: model)
-    case "openai":    return .openAI(key: apiKey, model: model)
-    case "anthropic": return .anthropic(key: apiKey, model: model)
-    case "gemini":    return .gemini(key: apiKey, model: model)
-    case "nvidia":    return .nvidiaNIM(key: apiKey, model: model)
+    case "openai":     return .openAI(key: apiKey, model: model)
+    case "anthropic":  return .anthropic(key: apiKey, model: model)
+    case "gemini":     return .gemini(key: apiKey, model: model)
+    case "openrouter": return .openRouter(key: apiKey, model: model)
+    case "nvidia":     return .nvidiaNIM(key: apiKey, model: model)
     default:          return baseURL.map { ModelConfig.lmStudio(model: model, baseURL: $0) } ?? .lmStudio(model: model)
     }
 }
@@ -250,7 +251,7 @@ let helpText = """
   --project DIR        Projektmappe (default: ./<navn> eller ./<slug>)
   --framework F        react (default) · svelte · vue · nextjs
   --skill <id>         brug en skill som prompt (se 'forge skills'); positional = ekstra input
-  --provider P         lmStudio (default) · ollama · openai · anthropic · gemini · nvidia
+  --provider P         lmStudio (default) · ollama · openai · anthropic · gemini · openrouter · nvidia
   --model M            model-id (default: qwen/qwen3.6-35b-a3b)
   --base-url URL       eget OpenAI-kompatibelt endpoint
   --api-key KEY        cloud-nøgle (ellers $FORGE_CLOUD_API_KEY eller config)
