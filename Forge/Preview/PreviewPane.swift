@@ -30,15 +30,14 @@ struct PreviewPane: View {
             // switch / dev-server restart reuses the same (warm) instance and just
             // loads a new URL — instead of remounting. BuildingView overlays it
             // until a URL is ready.
-            WebView(url: model.previewURL, reloadToken: model.reloadToken, selectMode: model.selectMode,
-                    onRuntimeIssue: { model.handleRuntimeIssue($0) },
-                    onElementSelected: { model.handleElementSelected(tag: $0, text: $1, className: $2, selector: $3) })
-                .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: model.previewWidth == .full ? 0 : 12))
-                .shadow(color: model.previewWidth == .full ? .clear : .black.opacity(0.10),
-                        radius: 16, y: 4)
-                .padding(model.previewWidth == .full ? 0 : 24)
-                .opacity(model.previewURL == nil ? 0 : 1)
+            DeviceChrome(width: model.previewWidth) {   // C6: device bezels in tablet/phone mode
+                WebView(url: model.previewURL, reloadToken: model.reloadToken, selectMode: model.selectMode,
+                        onRuntimeIssue: { model.handleRuntimeIssue($0) },
+                        onElementSelected: { model.handleElementSelected(tag: $0, text: $1, className: $2, selector: $3) })
+                    .frame(maxWidth: model.previewWidth.maxWidth ?? .infinity, maxHeight: .infinity)
+            }
+            .opacity(model.previewURL == nil ? 0 : 1)
+            .animation(.smooth(duration: 0.3), value: model.previewWidth)
             if model.previewURL == nil {
                 BuildingView(statusText: model.displayStatus,
                              lastLog: model.serverLog.last?.text,
@@ -48,6 +47,62 @@ struct PreviewPane: View {
                              onRestart: model.previewServerDown ? { model.restartDevServer() } : nil)
             }
         }
+        // C13: a friendly native error card over the preview (instead of only the
+        // raw Vite/console overlay) with a one-tap repair.
+        .overlay(alignment: .bottom) {
+            if model.hasFixableErrors, let first = model.jsErrors.first {
+                PreviewErrorCard(issue: first,
+                                 extraCount: model.jsErrors.count - 1,
+                                 onFix: { model.fixErrors() },
+                                 onDismiss: { withAnimation { model.dismissRuntimeErrors() } })
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth(duration: 0.25), value: model.hasFixableErrors)
+    }
+}
+
+/// C13: a native runtime-error card shown over the preview, with a "Fix det" button
+/// that hands the error to the self-correction loop.
+private struct PreviewErrorCard: View {
+    let issue: RuntimeIssue
+    let extraCount: Int
+    var onFix: () -> Void
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Theme.warning).font(.system(size: 14))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(extraCount > 0 ? "Runtime-fejl · \(extraCount + 1) i alt" : "Runtime-fejl")
+                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(issue.displayMessage)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(Theme.inkSoft)
+                    .lineLimit(3).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            VStack(spacing: 6) {
+                Button(action: onFix) {
+                    Text("Fix det").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                Button(action: onDismiss) {
+                    Text("Skjul").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: 520)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.warning.opacity(0.4), lineWidth: 1))
+        .shadow(color: .black.opacity(0.18), radius: 14, y: 4)
+        .padding(20)
     }
 }
 
@@ -170,6 +225,33 @@ private struct PreviewToolbar: View {
         }
         .padding(.horizontal, 11).padding(.vertical, 6)
         .background(Theme.fill, in: Capsule())
+    }
+}
+
+/// C6: wraps the preview in a device bezel for tablet/phone widths; passes content
+/// through untouched at full width.
+private struct DeviceChrome<Content: View>: View {
+    let width: AppModel.PreviewWidth
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if width == .full {
+            content
+        } else {
+            let outer: CGFloat = width == .phone ? 36 : 22
+            content
+                .clipShape(RoundedRectangle(cornerRadius: outer - 9))
+                .padding(width == .phone ? 9 : 11)
+                .background(RoundedRectangle(cornerRadius: outer).fill(Color(white: 0.13)))
+                .overlay(alignment: .top) {
+                    Capsule().fill(Color.black.opacity(0.55))   // camera / notch hint
+                        .frame(width: width == .phone ? 52 : 68, height: 5)
+                        .padding(.top, width == .phone ? 4 : 5)
+                }
+                .overlay(RoundedRectangle(cornerRadius: outer).strokeBorder(Color.white.opacity(0.06), lineWidth: 1))
+                .shadow(color: .black.opacity(0.28), radius: 22, y: 8)
+                .padding(24)
+        }
     }
 }
 

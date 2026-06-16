@@ -2056,6 +2056,10 @@ final class AppModel {
     /// Whether there are unaddressed runtime errors to offer a fix for.
     var hasFixableErrors: Bool { !jsErrors.isEmpty && hasStarted && !isBusy }
 
+    /// C13: dismiss the runtime-error card without repairing (errors re-report on
+    /// the next reload or interaction).
+    func dismissRuntimeErrors() { jsErrors = [] }
+
     /// Run a repair turn for the current runtime errors (B12). Manual entry point
     /// for the "Fix it" affordance; also used by auto-fix.
     func fixErrors() {
