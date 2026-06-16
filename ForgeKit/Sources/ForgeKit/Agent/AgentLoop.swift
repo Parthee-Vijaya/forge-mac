@@ -202,6 +202,8 @@ public actor AgentLoop {
         let splitter = ReasoningSplitter()
         var raw = ""
         var reads: [String] = []
+        var sawArtifactClose = false
+        var wroteFiles = false
 
         // Synchronous triage of one parser event: collect read-requests (A2b) and
         // skip the flush on a read-only artifact's close; otherwise return the
@@ -215,6 +217,12 @@ public actor AgentLoop {
                 return nil
             case .artifactClose where !reads.isEmpty:
                 return nil   // read-only artifact: don't install/start — the read-round handles it
+            case .artifactClose:
+                sawArtifactClose = true
+                return event
+            case .fileClose, .lineReplaceClose:
+                wroteFiles = true
+                return event
             default:
                 return event
             }
@@ -263,6 +271,20 @@ public actor AgentLoop {
                 try await apply(event, executor: executor, continuation)
             }
         }
+
+        // Robustness: the dev-server start lives in artifact-close (flush). If the
+        // model wrote files but never emitted a clean </forgeArtifact> (seen with
+        // less-familiar frameworks and smaller models), flush anyway — otherwise the
+        // loop settles and reports CLEAN against a server that never started (a blank
+        // "done"). Skipped on read-rounds and when artifact-close already flushed.
+        if reads.isEmpty, !sawArtifactClose, wroteFiles {
+            continuation.yield(.state(.applying))
+            try await executor.flush()
+            if let url = await deps.process.serverReadyURL {
+                continuation.yield(.previewReady(url))
+            }
+        }
+
         return (raw, reads)
     }
 
