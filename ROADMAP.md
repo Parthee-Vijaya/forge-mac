@@ -26,6 +26,63 @@ Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 > preview-URL'en til Mac'ens LAN/Tailscale-adresse og viser den i en WKWebView
 > (simulator-build grøn). Tilbage: notarisering (udskudt til Developer-konto), de
 > uverificerede CLI/mic-stykker, og live-test af companion på en fysisk enhed.
+>
+> **Audit 2026-06-16 (backlog-oprydning).** Et kode-tjek mod denne plan afslørede at
+> mange poster stod *umarkerede* men reelt ER bygget. Bekræftet bygget i koden:
+> **A1** line-replace, **A3** stop/afbryd (`cancelGeneration`), **A4** Keychain +
+> Settings (`KeychainStore`/`SettingsView`), **A9** log-persistens, **A10** smart
+> WebView-reload, **A16** app-lags-tests (`AppModelLogicTests`), **A20** few-shot,
+> **A21** konfigurerbar placering, **A22** PreferencesStore, **B1** checkpoints
+> (`CheckpointManager`), **B2/C3** git-diff pr. tur (`DiffView`), **B5** shadcn,
+> **B12** auto-fix, **B13** eksport, **B23** konto-valg, **B24** åbn-i-editor,
+> **C9** ⌘K-palette, **C10** onboarding (`OnboardingView`), **C14** toasts,
+> **C19** app-ikon (rigtige PNG'er). Den **ægte** resterende backlog står nu samlet
+> i sektionen "Backlog efter audit" lige nedenfor — det er den, man skal stole på;
+> resten af dokumentet er idé-katalog.
+
+---
+
+## Backlog efter audit (2026-06-16) — kilde til sandhed
+
+Kun det der *faktisk* mangler, verificeret mod koden.
+
+### Åbent — P1 (næste oplagte arbejde)
+- **A11** Self-correction skal se den fejlende fils *indhold* (`MessageBuilder.errorTurn` sender kun fejlteksten) — billig, hæver fix-rate direkte. *Anbefalet næste.*
+- **A13** NodeResolver-caching (login-shell-probe på ~100-300 ms køres ved hver `start`).
+- **C2** Live "fil-skrives"-animation (`ParserEvent.fileChunk` findes, men ruttes ikke til en typing-effekt i editoren).
+- **C4** Floating selektions-toolbar til visuel redigering (inline tekst/stil uden model-tur).
+- **C5** Animeret empty→split-koreografi (ingen `matchedGeometryEffect` endnu).
+- **C7** Rige chat-beskeder (plan som live-checklist, foldbare "tænke"-blokke, kopiér-knap på kodeblokke).
+- **C8** Rigere status-tidslinje (skriver→installerer→starter→tjekker→klar, med timing pr. trin).
+- **C13** Venlig fejl-præsentation (native fejl-kort m/ "Fix det"-knap i stedet for rå Vite-overlay).
+
+### Åbent — P2 (lavere)
+- **A6** Fuzz/property-tests af streaming-parseren.
+- **B9** npm-pakke-søgning + tilføj-UI.
+- **C6** Browser-agtig preview-chrome (rigtig adresselinje + device-bezels).
+- **C18** Resizable + persistente paneler pr. projekt.
+- **C20** Cheat-sheet-overlay for genveje (`?`).
+
+### Delvist bygget (◑ — kun resten udestår)
+- **A2** read-file ✅ · bredere token-budget / fil-map-komprimering ◑
+- **A5** støj-filtrering hærdet ✅ · struktureret fil:linje:kol-parsing ◑
+- **A8** pnpm/`npm ci`-stier findes ✅ · delt-store-cache som default ◑
+- **A15** a11y-labels ✅ · Dynamic Type + fuld tastatur-nav ◑
+- **B7** React/Svelte/Vue ✅ · Next.js ◑
+- **B10** "Spørg om koden"-mode ✅ · embeddings/sqlite-vec-RAG ◑ (markeret som fremtid i `AppModel`)
+- **B14** prompt-forbedring (✨) ✅ · prompt-bibliotek/gem ◑
+- **C1** syntax-highlight ✅ · linjenumre/minimap/aktiv-linje ◑
+- **C11** preview-thumbnails ✅ · fuldt dashboard-grid ◑
+- **C12** dark mode ✅ · token-skala/elevation-formalisering ◑
+
+### Skal *verificeres* (bygget, men uafprøvet — ikke ny kode)
+- **B16** Vercel deploy-historik/rollback (`vercel ls`/`rollback`) · **B17** Vercel env-push (`vercel env`) · **B15** stemme-mic · **B19** iOS-companion på en fysisk enhed.
+
+### Bevidst udskudt
+- Notarisering / signeret DMG → afventer Apple Developer-konto.
+
+### Leveret efter denne plan blev skrevet (uden for A/B/C-nummereringen)
+- **`forge` CLI** (nanocoder-køreplan fase 1) · **Skills** projekt+global+builtins (fase 2) · **MCP tool-calling**: agenten kalder eksterne værktøjer + `forge-mcp`-server (fase 3, e2e-verificeret).
 
 ---
 
@@ -67,6 +124,8 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 ---
 
 ## A. 20 FORBEDRINGER (hærdning af det eksisterende)
+
+> *Audit 2026-06-16: flere poster nedenfor mangler ✅ men ER bygget (A1/A3/A4/A9/A10/A16/A20/A21/A22). Se "Backlog efter audit" øverst for den korrekte status.*
 
 1. **Line-replace / diff-edits for stærke modeller** — pt. altid whole-file writes (dyrt + langsomt på store filer). `ModelConfig.supportsLineReplace` findes allerede. *Sådan:* ny `.inLineReplaceBody`-state i `StreamingArtifactParser`, `ForgeAction.lineReplace(path,search,replace)`, diff-apply i `ActionExecutor`, og en prompt-gren i `SystemPrompt`/`MessageBuilder` valgt på `config.supportsLineReplace`. **L · P0**
 
@@ -115,6 +174,8 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 ---
 
 ## B. 20 NYE FEATURES (net-nye evner)
+
+> *Audit 2026-06-16: flere poster nedenfor mangler ✅ men ER bygget (B1/B2/B5/B12/B13/B23/B24). Se "Backlog efter audit" øverst for den korrekte status.*
 
 1. **Checkpoints / fortryd pr. tur** — snapshot projektet før hver agent-tur; ét-klik revert til enhver tidligere tilstand (Bolt/Lovable-kerne). *Sådan:* git-commit pr. tur i projektets egen repo (genbrug deploy-git-opsætningen) ELLER kopiér `src/` til `.forge/checkpoints/<turn>/`; en tidslinje i chatten med "Gendan". **L · P0**
 
@@ -173,6 +234,8 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 ---
 
 ## C. 20 DESIGN-FORSLAG (UI/UX/visuelt)
+
+> *Audit 2026-06-16: flere poster nedenfor mangler ✅ men ER bygget (C3/C9/C10/C14/C19). Se "Backlog efter audit" øverst for den korrekte status.*
 
 1. **VS Code-agtig kode-editor** — ◑ *delvist bygget.* Syntax highlighting er på plads: en let regex-tokenizer (`SyntaxHighlighter`) farver `CodeTextView`s textStorage (keywords/typer/tal/strenge/kommentarer) i mørk + lys palet, debounced, uden at røre teksten. *Udestår:* linjenumre, minimap, aktiv-linje-marker. **M · P1**
 
@@ -255,9 +318,10 @@ model/nøgler/memory/regler/konti læses af alt det øvrige.
 ### Løbende (drys ind mellem faser)
 Hurtige gevinster der kan tages når som helst: A7 token-tælling · A9 log-persistens · A13 NodeResolver-cache · A17 migrering · A18 slet-bekræftelse · B9 npm-søgning · **B24 åbn i VS Code/Xcode** · C5 transition · C14 toasts · C18 paneler · C20 genveje.
 
-### Anbefalet "gør-nu" top-5
-1. **A22 + C10 onboarding & config** (first-run-flowet + fundamentet alt andet læser)
-2. **B21 + B22 memory + AI_RULES** (løfter output-kvaliteten straks; en del af onboarding)
-3. **A1 line-replace** (billigere/hurtigere edits)
-4. **B1 checkpoints/fortryd** (sikkerhedsnet + Lovable-kerne)
-5. **C1 syntax-highlighting** (kode-visningen ser pro ud)
+### Anbefalet "gør-nu" top-5 (opdateret efter audit 2026-06-16)
+> De *oprindelige* fem (onboarding/config, memory+AI_RULES, line-replace, checkpoints, syntax-highlight) er **alle bygget**. Den reelle rest:
+1. **A11 self-correction ser fejlfilen** — billig, hæver fix-rate direkte (`MessageBuilder.errorTurn`).
+2. **C13 venlig fejl-præsentation** — pænt fejl-kort m/ "Fix det" (kobler til A11/B12).
+3. **C7 + C8 rige beskeder + status-tidslinje** — størst synligt løft i chatten.
+4. **C2 live fil-skrives-animation** — Bolt/Lovable-signaturen (`fileChunk` findes).
+5. **A13 NodeResolver-cache** — hurtigere kold start, lille indsats.
