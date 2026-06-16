@@ -1760,6 +1760,34 @@ final class AppModel {
         }
     }
 
+    /// Glossary "uddyb med AI": a richer, beginner-friendly explanation of a single
+    /// term on demand. One-shot (collects the stream into a string); returns a
+    /// friendly Danish message if no model is reachable, so it degrades gracefully.
+    func explainTerm(_ term: String) async -> String {
+        let config = modelFor(.plan)
+        let system = "Du forklarer ét teknisk begreb for en HELT ny vibecoding-bruger på dansk. "
+            + "Vær kort og konkret: 3–5 sætninger i hverdagssprog, gerne en analogi, og ét lille eksempel. "
+            + "Ingen jargon. Brug gerne en kort punktliste. Svar kun om begrebet."
+        let user = "Forklar begrebet \"\(term)\", som det bruges i en vibecoding-app som Forge."
+        do {
+            let provider = ModelRouter.provider(for: config)
+            let options = ModelRouter.options(for: config)
+            var out = ""
+            for try await event in provider.stream(
+                messages: [ChatMessage(role: .system, content: system),
+                           ChatMessage(role: .user, content: user)],
+                options: options) {
+                if case .token(let t) = event { out += t }
+            }
+            let cleaned = out
+                .replacingOccurrences(of: #"<think>[\s\S]*?</think>"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleaned.isEmpty ? "Modellen gav intet svar — prøv igen." : cleaned
+        } catch {
+            return "Kunne ikke nå modellen lige nu. \(Self.briefReason(String(describing: error)))"
+        }
+    }
+
     /// Gather the project's source (src/** + key config files), capped + formatted
     /// as labeled blocks, for the read-only code Q&A (B10).
     private func gatherSourceContext(maxChars: Int) async -> String {

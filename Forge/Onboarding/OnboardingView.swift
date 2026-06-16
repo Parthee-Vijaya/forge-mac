@@ -123,7 +123,7 @@ struct OnboardingView: View {
             }
         case 4:
             stepShell("Eller brug en cloud-model (API-nøgle)",
-                      "Ingen stærk lokal model? Brug en cloud-model i stedet. Det kræver en API-nøgle fra udbyderens konsol — ikke dit ChatGPT/Claude/Gemini-abonnement (API'et er separat og afregnes pr. brug). Google Gemini har et gratis niveau. Kan springes over.") {
+                      "Ingen stærk lokal model? Start gratis med NVIDIAs Nemotron-modeller (se nedenfor) eller Google Geminis gratis niveau. Det kræver kun en API-nøgle fra udbyderens konsol — ikke et chat-abonnement. Kan springes over.") {
                 cloudStep(model)
             }
         case 5:
@@ -422,6 +422,9 @@ struct OnboardingView: View {
         let provider = model.wrappedValue.preferences.cloudProvider.isEmpty
             ? "gemini" : model.wrappedValue.preferences.cloudProvider
         return VStack(alignment: .leading, spacing: 10) {
+            freeNvidiaCard(model)
+            Text("…eller vælg en anden udbyder:")
+                .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
             Picker("Provider", selection: model.preferences.cloudProvider) {
                 Text("Google Gemini (gratis niveau)").tag("gemini")
                 Text("OpenAI").tag("openai")
@@ -447,6 +450,41 @@ struct OnboardingView: View {
             Text("Nøglen gemmes sikkert i Keychain — aldrig i klartekst.")
                 .font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
         }
+    }
+
+    /// Highlighted one-tap path: NVIDIA's free hosted API for their Nemotron
+    /// models — the easiest cloud start for beginners (no local model needed).
+    private func freeNvidiaCard(_ model: Bindable<AppModel>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "gift").font(.system(size: 12)).foregroundStyle(Theme.positive)
+                Text("Anbefalet — gratis: NVIDIA Nemotron")
+                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ink)
+            }
+            Text("NVIDIA giver gratis API-adgang til deres Nemotron-modeller. Tryk her, opret en gratis nøgle (starter med “nvapi-”), og indsæt den nedenfor — så er du i gang uden en lokal model.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                model.wrappedValue.preferences.cloudProvider = "nvidiaNIM"
+                if model.wrappedValue.preferences.cloudModel.isEmpty {
+                    model.wrappedValue.preferences.cloudModel = "nvidia/llama-3.1-nemotron-70b-instruct"
+                }
+                SystemSetup.openURL("https://build.nvidia.com/")
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.up.forward.app").font(.system(size: 11))
+                    Text("Brug NVIDIA + hent gratis nøgle →").font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(Theme.onAccent)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(Theme.accent, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.positive.opacity(0.06), in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.positive.opacity(0.3), lineWidth: 1))
     }
 
     static func getKeyURL(_ provider: String) -> String {

@@ -5,7 +5,7 @@
 > Du skriver en prompt → en AI-agent skriver et React+Vite+TS+Tailwind-projekt til disk
 > → Forge kører det → preview opdaterer via HMR.
 
-- **Sidst opdateret:** 2026-06-15
+- **Sidst opdateret:** 2026-06-16
 - **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. Alle ForgeKit-tests grønne.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
@@ -74,6 +74,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
 - `700406a` 2026-06-15 — feat: /klon slash command — clone a Git repo from the prompt
 - `7bb317c` 2026-06-15 — docs: rigere landing page-design (uden emojis)
 - `83f0678` 2026-06-15 — docs: README på dansk med nybegynder/gratis-vinkel
@@ -93,5 +94,4 @@ ollama list | grep qwen2.5-coder
 - `2fb7b87` 2026-06-15 — B7: Next.js as a 4th framework (basic support)
 - `fa7f732` 2026-06-15 — C11: project dashboard grid
 - `b285ddb` 2026-06-15 — B10: read-only "Spørg om koden" mode (chat with the codebase)
-- `6f385bc` 2026-06-15 — B8: built-in terminal (command field + output log)
 <!-- COMMITLOG:END -->
