@@ -135,6 +135,10 @@ final class ErrorClassifierTests: XCTestCase {
         XCTAssertFalse(report.signature.contains("node_modules"))
         // The real, fixable error on the user's file survives intact.
         XCTAssertTrue(report.items.contains { $0.file == "src/App.tsx" && $0.code == "TS1192" })
+        // esbuild's generic "Failed to scan for dependencies" header is noise too
+        // (dogfood: nemotron recharts) — it must not appear as an item.
+        XCTAssertNil(classifier.classifyBuildLine("Error:   Failed to scan for dependencies from entries:"))
+        XCTAssertFalse(report.items.contains { $0.message.lowercased().contains("failed to scan") })
     }
 
     func testCleanWhenNoErrors() {

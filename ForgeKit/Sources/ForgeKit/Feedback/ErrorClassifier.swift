@@ -58,6 +58,10 @@ public struct ErrorClassifier: Sendable {
         // poisoning the dedup key + the no-progress signature. The actionable lines
         // (`✘ [ERROR] …`, `TSxxxx src/…`) point at the user's files, never node_modules.
         if lower.contains("/node_modules/") { return true }
+        // esbuild's generic dependency-scan header — always followed by the real
+        // "✘ [ERROR] Could not resolve / No matching export …" lines, so on its own it
+        // adds nothing but noise and (sorted first) dominates the dedup signature.
+        if lower.contains("failed to scan for dependencies from entries") { return true }
         let noise = [
             "[vite] connecting", "[vite] connected", "[vite] hot updated",
             "[vite] hmr", "[vite] page reload", "[vite] invalidate",
