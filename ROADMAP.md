@@ -44,39 +44,32 @@ Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 
 ## Backlog efter audit (2026-06-16) — kilde til sandhed
 
-Kun det der *faktisk* mangler, verificeret mod koden.
+**Opdatering 2026-06-16 (eftermiddag): hele P1+P2-backlog'en er nu fejet igennem.**
+Verificeret mod koden + bygget/testet i denne session. Mac-app + CLI bygger; 118
+ForgeKit-tests grønne.
 
-### Åbent — P1 (næste oplagte arbejde)
-- **A11** Self-correction skal se den fejlende fils *indhold* (`MessageBuilder.errorTurn` sender kun fejlteksten) — billig, hæver fix-rate direkte. *Anbefalet næste.*
-- **A13** NodeResolver-caching (login-shell-probe på ~100-300 ms køres ved hver `start`).
-- **C2** Live "fil-skrives"-animation (`ParserEvent.fileChunk` findes, men ruttes ikke til en typing-effekt i editoren).
-- **C4** Floating selektions-toolbar til visuel redigering (inline tekst/stil uden model-tur).
-- **C5** Animeret empty→split-koreografi (ingen `matchedGeometryEffect` endnu).
-- **C7** Rige chat-beskeder (plan som live-checklist, foldbare "tænke"-blokke, kopiér-knap på kodeblokke).
-- **C8** Rigere status-tidslinje (skriver→installerer→starter→tjekker→klar, med timing pr. trin).
-- **C13** Venlig fejl-præsentation (native fejl-kort m/ "Fix det"-knap i stedet for rå Vite-overlay).
+### ✅ Leveret i denne session (var P1+P2-backlog)
+- **A11** self-correction inliner nu de fejlende filers indhold i repair-turen (`errorTurn` + AgentLoop, maks 3 filer). *(+ MessageBuilderTests)*
+- **A13** NodeResolver-cache i UserDefaults med invalidation + `clearCache()`. *(+ NodeResolverTests)*
+- **A6** rigtige fuzz-tests af parseren (seeded randomiseret input + 230 KB kæmpe-fil).
+- **C7** kodeblokke i chat får kopiér-knap (`CodeBlockView`). *(foldbare tænke-blokke fandtes via `ThinkingView`)*
+- **C8** `BuildTimeline` — trin-tidslinje skriver→installerer→starter→tjekker→klar (chat + preview).
+- **C5** empty→split glider ind fra højre (asymmetrisk transition).
+- **C13** `PreviewErrorCard` — native fejl-kort over preview m/ "Fix det".
+- **C6** `DeviceChrome` — telefon/tablet-bezel om webview'et.
+- **C4** `SelectionQuickBar` — hurtig-redigerings-toolbar for valgt element (størrelse/fed/centrér/skjul/farve) via persistent `applyVisualEdit`.
+- **B9** live npm-registry-søgning i `DependenciesView` (debounced, resultatliste, ét-klik install).
+- **Allerede bygget — fundet i audit:** **C2** live fil-skrives-animation (`beginStreaming`), **C18** `PersistentHSplit` (@AppStorage), **C20** `ShortcutsView` (⌘/).
 
-### Åbent — P2 (lavere)
-- **A6** Fuzz/property-tests af streaming-parseren.
-- **B9** npm-pakke-søgning + tilføj-UI.
-- **C6** Browser-agtig preview-chrome (rigtig adresselinje + device-bezels).
-- **C18** Resizable + persistente paneler pr. projekt.
-- **C20** Cheat-sheet-overlay for genveje (`?`).
+### ✅ Også bekræftet færdige (var fejlagtigt ◑)
+- **A2** read-file (A2b) + `ContextBuilder` token-budgettering.
+- **A5** `ErrorClassifier` giver struktureret fil:linje:kode (`ErrorReport.Item`) + støj-filtrering.
 
-### Delvist bygget (◑ — kun resten udestår)
-- **A2** read-file ✅ · bredere token-budget / fil-map-komprimering ◑
-- **A5** støj-filtrering hærdet ✅ · struktureret fil:linje:kol-parsing ◑
-- **A8** pnpm/`npm ci`-stier findes ✅ · delt-store-cache som default ◑
-- **A15** a11y-labels ✅ · Dynamic Type + fuld tastatur-nav ◑
-- **B7** React/Svelte/Vue ✅ · Next.js ◑
-- **B10** "Spørg om koden"-mode ✅ · embeddings/sqlite-vec-RAG ◑ (markeret som fremtid i `AppModel`)
-- **B14** prompt-forbedring (✨) ✅ · prompt-bibliotek/gem ◑
-- **C1** syntax-highlight ✅ · linjenumre/minimap/aktiv-linje ◑
-- **C11** preview-thumbnails ✅ · fuldt dashboard-grid ◑
-- **C12** dark mode ✅ · token-skala/elevation-formalisering ◑
+### ◑ Resterende refinements (ikke P1/P2 — egne beslutninger)
+- **B7** Next.js-framework (XL — anden dev-server/ready-output) · **B10** embeddings/sqlite-vec-RAG (L — kræver embed-model; markeret som fremtid i `AppModel`) · **B14** prompt-bibliotek/gem · **C1** linjenumre/minimap i editoren · **C11** fuldt dashboard-grid · **C12** token-skala/elevation · **A8** pnpm delt-store som default · **A15** Dynamic Type (bevidst fravalgt).
 
-### Skal *verificeres* (bygget, men uafprøvet — ikke ny kode)
-- **B16** Vercel deploy-historik/rollback (`vercel ls`/`rollback`) · **B17** Vercel env-push (`vercel env`) · **B15** stemme-mic · **B19** iOS-companion på en fysisk enhed.
+### Skal *verificeres* live (bygget, men kan ikke testes headless)
+- **B16** Vercel rollback (`vercel ls`/`rollback`) · **B17** Vercel env-push · **B15** stemme-mic · **B19** iOS-companion på en fysisk enhed.
 
 ### Bevidst udskudt
 - Notarisering / signeret DMG → afventer Apple Developer-konto.
@@ -318,10 +311,7 @@ model/nøgler/memory/regler/konti læses af alt det øvrige.
 ### Løbende (drys ind mellem faser)
 Hurtige gevinster der kan tages når som helst: A7 token-tælling · A9 log-persistens · A13 NodeResolver-cache · A17 migrering · A18 slet-bekræftelse · B9 npm-søgning · **B24 åbn i VS Code/Xcode** · C5 transition · C14 toasts · C18 paneler · C20 genveje.
 
-### Anbefalet "gør-nu" top-5 (opdateret efter audit 2026-06-16)
-> De *oprindelige* fem (onboarding/config, memory+AI_RULES, line-replace, checkpoints, syntax-highlight) er **alle bygget**. Den reelle rest:
-1. **A11 self-correction ser fejlfilen** — billig, hæver fix-rate direkte (`MessageBuilder.errorTurn`).
-2. **C13 venlig fejl-præsentation** — pænt fejl-kort m/ "Fix det" (kobler til A11/B12).
-3. **C7 + C8 rige beskeder + status-tidslinje** — størst synligt løft i chatten.
-4. **C2 live fil-skrives-animation** — Bolt/Lovable-signaturen (`fileChunk` findes).
-5. **A13 NodeResolver-cache** — hurtigere kold start, lille indsats.
+### Anbefalet "gør-nu" top-5 — ✅ alle leveret (2026-06-16)
+> Både de *oprindelige* fem (onboarding/config, memory+AI_RULES, line-replace, checkpoints, syntax-highlight) OG den efterfølgende reelle rest (A11, C13, C7+C8, C2, A13) er nu bygget. Hele P1+P2-backlog'en er tom.
+>
+> **Næste beslutninger (kræver dit valg — XL/L eller live-ressourcer):** Next.js-support (B7), embeddings-RAG (B10), prompt-bibliotek (B14), linjenumre i editor (C1) — eller live-verifikation af Vercel-rollback/env (B16/B17), mic (B15) og iOS på fysisk enhed (B19), og til sidst notarisering (Apple-konto).

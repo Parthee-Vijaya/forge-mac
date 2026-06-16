@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `ec08a4c` 2026-06-16 — C4 + B9: hurtig-redigerings-toolbar + npm-pakke-søgning
 - `e23070c` 2026-06-16 — C13 + C6: venlig fejl-kort i preview + device-bezels
 - `bcdb581` 2026-06-16 — C7 + C8 + C5: rigere chat-beskeder, status-tidslinje, entré-animation
 - `8d8aedb` 2026-06-16 — A11 + A13 + A6: motor-hærdning (self-correction, node-cache, fuzz)
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `a4596a3` 2026-06-16 — fix(A5): drop esbuild/vite internal stack frames from error reports
 - `01d7ffe` 2026-06-16 — feat: free-NVIDIA onboarding shortcut + tap-to-expand glossary
 - `1c704a2` 2026-06-15 — beta-readiness: LICENSE, issue templates, report-bug, friendlier errors
-- `700406a` 2026-06-15 — feat: /klon slash command — clone a Git repo from the prompt
 <!-- COMMITLOG:END -->
