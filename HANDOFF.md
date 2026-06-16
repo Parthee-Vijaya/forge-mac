@@ -6,7 +6,7 @@
 > → Forge kører det → preview opdaterer via HMR.
 
 - **Sidst opdateret:** 2026-06-16
-- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. Alle ForgeKit-tests grønne.
+- **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. **nanocoder-køreplan leveret**: `forge` CLI, bruger-skills (CLI+GUI), og MCP tool-calling — agenten kan kalde eksterne MCP-værktøjer midt i et build (e2e-verificeret) + eksterne agenter kan drive Forge via `forge-mcp`. Alle 112 ForgeKit-tests grønne; Mac-app + CLI bygger.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
 ## Stack
@@ -69,11 +69,21 @@ ollama list | grep qwen2.5-coder
 - ✅ Feature 2: Multi-projekt + historik (skift/opret/slet, persistent chat + kode pr. projekt) — verificeret live
 - ✅ Feature 3: Deploy GitHub + Vercel (git→`gh repo create`→`vercel deploy --prod`, status-panel m/ links). UI + CLI-auth (gh=Parthee-Vijaya, vercel=parthee-vijaya) verificeret; selve deploy = bruger-trigget klik (udadvendt handling). Respekterer ALDRIG-disable-deployment-protection.
 - ✅ Feature 4: Visuel redigering — select-tilstand → klik element i preview (JS-bro fanger tag/tekst/klasser) → beskriv ændring i composer → targeted prompt til agent-loop → retter kilde → HMR. Verificeret live: h1 "Forge Todo App" → "My Tasks" i blåt.
-- Senere/udskudt: line-replace edits (`ModelConfig.supportsLineReplace` findes), syntax-highlighting i editor, Keychain-settings (afløser `FORGE_CLOUD_API_KEY`), MCP-eksponering, notariseret DMG, iOS companion, live NIM-cloud-test
+- Senere/udskudt: line-replace edits (`ModelConfig.supportsLineReplace` findes), syntax-highlighting i editor, Keychain-settings (afløser `FORGE_CLOUD_API_KEY`), native function-calling for cloud-modeller (XML forbliver lokal default), approval-gate for shell-actions, notariseret DMG (afventer Apple Developer-konto), live NIM-cloud-test
+
+## nanocoder-køreplan (CLI · Skills · MCP) — alle tre leveret
+
+- ✅ Fase 1 — `forge` CLI: subkommandoer new/build/chat/skills/mcp, `~/.config/forge/config.json`, flag `--plain`/`--no-serve`/`--plan`/`--skill`/`--provider`/`--model`. Genbruger dogfood-wiringen; bygger under CLT (`swift run forge`).
+- ✅ Fase 2 — Skills: markdown + `---` frontmatter, projekt `.forge/skills/` + global `~/.config/forge/skills/` + 6 builtins (precedence projekt>global>builtin). Eksponeret i CLI + GUI-composerens `/`-menu. 8 tests.
+- ✅ Fase 3 — MCP / tool-calling:
+  - **Server** (`forge-mcp`): list_files/read_file/write_file/run_command/get_errors — eksterne agenter (Claude Code, Cline, nanocoder) kan drive en Forge-projekt.
+  - **Klient** (`MCPClient` + `MCPManager`): læser nanocoder-kompatibel `.forge/.mcp.json` (`${ENV}`-expansion), starter servere, aggregerer værktøjer.
+  - **Agent-integration**: modellen kalder et værktøj med `<forgeAction type="mcp" server tool>{args}` (SKAL ligge i en `<forgeArtifact>`) → tool-round i AgentLoop (≤5, tæller ikke som repair) → resultatet fodres tilbage via `mcpResultTurn`. Virker i både CLI og GUI. E2e-verificeret med qwen3.6 + en throwaway MCP-server (modellen hentede en uggætbar kode og brugte den i den byggede side).
 
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `b5c0c3c` 2026-06-16 — Phase 3 (MCP) part 2b: agenten kan kalde eksterne MCP-værktøjer
 - `df0f4b1` 2026-06-16 — feat(mcp): MCP client + manager — Forge can use external tools (Phase 3, part 2a)
 - `ff04751` 2026-06-16 — feat(mcp): finish the forge-mcp server — external agents can drive Forge (Phase 3, part 1)
 - `2a899f2` 2026-06-16 — feat(skills): surface skills in the GUI composer (roadmap Phase 2, part 2)
@@ -93,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `8d6ebd1` 2026-06-15 — docs: minimalistisk redesign af landing page
 - `5b4f549` 2026-06-15 — docs: landing page på dansk + nybegynder/gratis-vinkel
 - `1228091` 2026-06-15 — docs: GitHub Pages landing page (served from /docs)
-- `3fc881e` 2026-06-15 — docs: refresh screenshots for v0.2.1 + add slash/tutorial steps
 <!-- COMMITLOG:END -->
