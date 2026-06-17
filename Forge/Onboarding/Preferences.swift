@@ -57,6 +57,14 @@ struct Preferences: Codable, Equatable {
     /// (tok/s) in the status bar + token-pill tooltip.
     var verboseMetrics = false
 
+    /// Approval gate (borrowed from opencode): ask before the agent runs a shell
+    /// command, installs a new dependency, or calls an external MCP tool. Shell +
+    /// MCP default ON (real side effects); dependency installs default OFF (routine
+    /// in vibecoding). File writes are never gated (checkpointed + restorable).
+    var askBeforeShell = true
+    var askBeforeDependencies = false
+    var askBeforeMCP = true
+
     static let defaultRules = """
     # Project rules
 
@@ -84,6 +92,7 @@ extension Preferences {
         case learningMode, learnedLessons
         case preferredName, askedPreferredName
         case appearance, deployTarget, verboseMetrics
+        case askBeforeShell, askBeforeDependencies, askBeforeMCP
     }
 
     init(from decoder: Decoder) throws {
@@ -112,5 +121,8 @@ extension Preferences {
         appearance = (try? c.decode(String.self, forKey: .appearance)) ?? appearance
         deployTarget = (try? c.decode(String.self, forKey: .deployTarget)) ?? deployTarget
         verboseMetrics = (try? c.decode(Bool.self, forKey: .verboseMetrics)) ?? verboseMetrics
+        askBeforeShell = (try? c.decode(Bool.self, forKey: .askBeforeShell)) ?? askBeforeShell
+        askBeforeDependencies = (try? c.decode(Bool.self, forKey: .askBeforeDependencies)) ?? askBeforeDependencies
+        askBeforeMCP = (try? c.decode(Bool.self, forKey: .askBeforeMCP)) ?? askBeforeMCP
     }
 }

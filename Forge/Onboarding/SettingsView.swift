@@ -156,6 +156,11 @@ struct SettingsView: View {
                 Toggle("Verbose metrics", isOn: $model.preferences.verboseMetrics)
                 Text("Viser hastighed (tokens/sek) og tid-til-første-token i statuslinjen, og en fuld token-oversigt (tur · projekt · session) i tooltippet på token-pillen.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
+                Toggle("Spørg før terminal-kommandoer", isOn: $model.preferences.askBeforeShell)
+                Toggle("Spørg før installation af pakker", isOn: $model.preferences.askBeforeDependencies)
+                Toggle("Spørg før eksterne værktøjer (MCP)", isOn: $model.preferences.askBeforeMCP)
+                Text("Forge beder om lov før den kører disse handlinger under et build. Fil-ændringer spørges der aldrig om — de kan altid fortrydes via checkpoints.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
 
             Section {

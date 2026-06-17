@@ -37,7 +37,7 @@ enum Notifier {
 /// Root app state and the glue between the SwiftUI UI and the ForgeKit engine.
 @MainActor
 @Observable
-final class AppModel {
+final class AppModel: PermissionGate {
     struct UIMessage: Identifiable, Codable {
         enum Role: String, Codable { case user, assistant }
         var id = UUID()
@@ -238,6 +238,40 @@ final class AppModel {
     var sessionTokens = 0
     var sessionCalls = 0
     var lastMetrics: GenerationMetrics?
+
+    // Fase 1: approval gate. The agent (an actor) awaits decide(_:); a non-nil
+    // pendingPermission drives the approval card, whose buttons call resolvePermission.
+    var pendingPermission: PermissionRequest?
+    @ObservationIgnored private var permissionContinuation: CheckedContinuation<PermissionDecision, Never>?
+    @ObservationIgnored private var sessionAllowedActions: Set<String> = []
+
+    /// PermissionGate: ask the user (via a card) before a gated side-effect runs.
+    func decide(_ request: PermissionRequest) async -> PermissionDecision {
+        guard isGated(request) else { return .allow }                    // category not gated
+        if sessionAllowedActions.contains(request.label) { return .allowForSession }
+        return await withCheckedContinuation { continuation in
+            permissionContinuation = continuation
+            pendingPermission = request
+        }
+    }
+
+    /// Called by the approval card's buttons.
+    func resolvePermission(_ decision: PermissionDecision) {
+        if decision == .allowForSession, let request = pendingPermission {
+            sessionAllowedActions.insert(request.label)
+        }
+        pendingPermission = nil
+        permissionContinuation?.resume(returning: decision)
+        permissionContinuation = nil
+    }
+
+    private func isGated(_ request: PermissionRequest) -> Bool {
+        switch request {
+        case .shell:           return preferences.askBeforeShell
+        case .addDependencies: return preferences.askBeforeDependencies
+        case .mcp:             return preferences.askBeforeMCP
+        }
+    }
     /// Compact "78 tok/s · TTFT 0.42s" for the most recent call (nil until one runs).
     var lastMetricsLine: String? {
         guard let m = lastMetrics else { return nil }
@@ -1923,6 +1957,7 @@ final class AppModel {
     /// consuming task's cancellation; partial assistant text + any files already
     /// written are kept.
     func cancelGeneration() {
+        if pendingPermission != nil { resolvePermission(.deny) }   // unblock a waiting approval
         agentTask?.cancel()
     }
 
@@ -1966,6 +2001,7 @@ final class AppModel {
                 let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
                 return await mcpManager.call(server: server, tool: tool, arguments: args)
             },
+            permissionGate: self,   // Fase 1: approve shell/new-deps/MCP before they run
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 

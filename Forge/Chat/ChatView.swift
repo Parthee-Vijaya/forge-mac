@@ -16,6 +16,12 @@ struct ChatView: View {
             }
             Divider().overlay(Theme.border)
             VStack(spacing: 8) {
+                if let request = model.pendingPermission {
+                    PermissionCard(request: request,
+                                   onAllow: { model.resolvePermission(.allow) },
+                                   onAlways: { model.resolvePermission(.allowForSession) },
+                                   onDeny: { model.resolvePermission(.deny) })
+                }
                 if let lesson = model.currentLesson {
                     LessonCard(lesson: lesson) { withAnimation { model.dismissLesson() } }
                 }
@@ -354,6 +360,51 @@ private extension Color {
                       Int(round(ns.redComponent * 255)),
                       Int(round(ns.greenComponent * 255)),
                       Int(round(ns.blueComponent * 255)))
+    }
+}
+
+/// Fase 1: approval card for a gated side-effect (shell / new dependency / MCP tool).
+private struct PermissionCard: View {
+    let request: PermissionRequest
+    var onAllow: () -> Void
+    var onAlways: () -> Void
+    var onDeny: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Image(systemName: "lock.shield").font(.system(size: 12)).foregroundStyle(Theme.warning)
+                Text("Tillad denne handling?").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ink)
+            }
+            Text("Forge vil \(request.label)")
+                .font(.system(size: 12)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
+                Button(action: onAllow) {
+                    Text("Tillad").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 12).padding(.vertical, 5).background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                Button(action: onAlways) {
+                    Text("Tillad altid").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Theme.fill, in: Capsule())
+                        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 0)
+                Button(action: onDeny) {
+                    Text("Afvis").font(.system(size: 12, weight: .medium)).foregroundStyle(Color(nsColor: .systemRed))
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Theme.fill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Theme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.warning.opacity(0.4), lineWidth: 1))
     }
 }
 
