@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `50f7c05` 2026-06-17 — TUI P12 (opencode/nanocoder): slash-menu + themes + /init + flip to default
 - `c444ef2` 2026-06-17 — TUI P11 (opencode/nanocoder): session resume + undo/restore
 - `9843f64` 2026-06-17 — TUI P10 (opencode/nanocoder): mid-session model switch (/model)
 - `d5d8160` 2026-06-17 — TUI P9 (opencode/nanocoder): colored diffs + /diff
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `b6e3ea2` 2026-06-17 — Fase 2a (opencode): editor-diagnostics (tsc squiggles)
 - `c0dc38b` 2026-06-17 — Fase 2b (opencode): cost-tracking (kr/$) på metrics
 - `9829233` 2026-06-17 — Fase 1b (opencode): approval-gate — GUI
-- `09bd6e2` 2026-06-17 — Fase 1a (opencode): approval-gate — motor + CLI
 <!-- COMMITLOG:END -->
