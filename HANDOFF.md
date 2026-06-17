@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `491153e` 2026-06-17 — TUI P1 (opencode/nanocoder): terminal lifecycle + guaranteed teardown
 - `6c4a8dd` 2026-06-17 — docs(handoff): opdater commit-log
 - `4559bd3` 2026-06-17 — Fase 4c (opencode): steer-API — styr Forge fra iPhone/curl
 - `43801d7` 2026-06-17 — Fase 4b (opencode): prettier-ved-gem (opt-in)
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `ca52861` 2026-06-16 — feat(model): tilføj OpenRouter som udbyder
 - `8f56ddb` 2026-06-16 — docs(handoff): opdater commit-log
 - `3af345b` 2026-06-16 — docs(roadmap): hele P1+P2-backlog leveret
-- `ec08a4c` 2026-06-16 — C4 + B9: hurtig-redigerings-toolbar + npm-pakke-søgning
 <!-- COMMITLOG:END -->
