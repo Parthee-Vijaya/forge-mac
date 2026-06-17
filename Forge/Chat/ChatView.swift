@@ -22,6 +22,11 @@ struct ChatView: View {
                                    onAlways: { model.resolvePermission(.allowForSession) },
                                    onDeny: { model.resolvePermission(.deny) })
                 }
+                if let report = model.reviewReport {
+                    ReviewCard(report: report,
+                               onFix: { model.applyReviewFix() },
+                               onDismiss: { model.dismissReview() })
+                }
                 if let lesson = model.currentLesson {
                     LessonCard(lesson: lesson) { withAnimation { model.dismissLesson() } }
                 }
@@ -399,6 +404,58 @@ private struct PermissionCard: View {
                     Text("Afvis").font(.system(size: 12, weight: .medium)).foregroundStyle(Color(nsColor: .systemRed))
                         .padding(.horizontal, 12).padding(.vertical, 5)
                         .background(Theme.fill, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Theme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: Theme.radiusM))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).strokeBorder(Theme.warning.opacity(0.4), lineWidth: 1))
+    }
+}
+
+/// Reviewer card (agentic-SDLC borrow): findings from the post-build review pass,
+/// with a one-click fix (re-builds to address them) or dismiss.
+private struct ReviewCard: View {
+    let report: ReviewReport
+    var onFix: () -> Void
+    var onDismiss: () -> Void
+
+    private func color(_ s: ReviewFinding.Severity) -> Color {
+        switch s {
+        case .critical: return Color(nsColor: .systemRed)
+        case .warn:     return Theme.warning
+        default:        return Theme.inkFaint
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Image(systemName: "checklist").font(.system(size: 12)).foregroundStyle(Theme.warning)
+                Text("Reviewer fandt \(report.actionable.count) ting")
+                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ink)
+            }
+            ForEach(Array(report.actionable.prefix(5).enumerated()), id: \.offset) { _, f in
+                HStack(alignment: .top, spacing: 6) {
+                    Circle().fill(color(f.severity)).frame(width: 6, height: 6).padding(.top, 5)
+                    (Text("[\(f.category)] ").font(.system(size: 11, weight: .semibold)).foregroundStyle(color(f.severity))
+                        + Text(f.file.map { "\($0): " } ?? "").font(.system(size: 11)).foregroundStyle(Theme.inkFaint)
+                        + Text(f.message).font(.system(size: 11)).foregroundStyle(Theme.inkSoft))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            HStack(spacing: 8) {
+                Button(action: onFix) {
+                    Text("Ret det").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 12).padding(.vertical, 5).background(Theme.accent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                Spacer(minLength: 0)
+                Button(action: onDismiss) {
+                    Text("Afvis").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 12).padding(.vertical, 5).background(Theme.fill, in: Capsule())
                 }
                 .buttonStyle(.plain)
             }

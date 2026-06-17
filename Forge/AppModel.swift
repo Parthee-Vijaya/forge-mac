@@ -262,6 +262,11 @@ final class AppModel: PermissionGate {
     @ObservationIgnored private var permissionContinuation: CheckedContinuation<PermissionDecision, Never>?
     @ObservationIgnored private var sessionAllowedActions: Set<String> = []
 
+    // Reviewer (agentic-SDLC borrow): after a clean build, a second agent reviews the
+    // diff. A non-nil reviewReport (only set when there are findings) drives the review card.
+    var reviewReport: ReviewReport?
+    var isReviewing = false
+
     /// PermissionGate: ask the user (via a card) before a gated side-effect runs.
     func decide(_ request: PermissionRequest) async -> PermissionDecision {
         guard isGated(request) else { return .allow }                    // category not gated
@@ -2109,6 +2114,7 @@ final class AppModel: PermissionGate {
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 
+        var reachedClean = false
         // B11: construct the engine via the pluggable factory (built-in AgentLoop today).
         for await event in ForgeEngineFactory.make(.forge, deps: deps)
             .run(userPrompt: prompt, history: history, mode: .build, images: images) {
@@ -2120,7 +2126,7 @@ final class AppModel: PermissionGate {
             case .state(let state):
                 phase = state
                 statusText = Self.statusText(for: state)
-                if case .clean = state { presentLessonIfNew("app-running") }
+                if case .clean = state { reachedClean = true; presentLessonIfNew("app-running") }
                 if case .repairing = state { presentLessonIfNew("errors-fixing") }
             case .fileWriting(let path):
                 statusText = "Writing \(path)…"
@@ -2158,7 +2164,40 @@ final class AppModel: PermissionGate {
         endStreaming()
         await refreshFiles()
         persistCurrentChat()
+        // Reviewer pass (agentic-SDLC borrow): after a clean build, a second agent reviews
+        // the diff. Non-blocking — the build is already "done"; findings arrive into a card.
+        if reachedClean, preferences.reviewOnBuild, let preSha {
+            Task { [weak self] in await self?.runReview(request: prompt, preSha: preSha) }
+        }
     }
+
+    /// Review the just-finished build's diff with a strong model (the plan-role model).
+    /// Surfaces a card only when there are findings; a clean review shows a toast.
+    private func runReview(request: String, preSha: String) async {
+        guard !preSha.isEmpty else { return }
+        isReviewing = true
+        defer { isReviewing = false }
+        let diff = await checkpoints.diff(from: preSha)
+        let cfg = modelFor(.plan)
+        let report = await ReviewAgent().review(
+            request: request, diff: diff,
+            provider: ModelRouter.provider(for: cfg), options: ModelRouter.options(for: cfg))
+        if report.isClean {
+            showToast("Review: \(report.summary.isEmpty ? "ser godt ud ✓" : report.summary)", icon: "checkmark.seal")
+        } else {
+            reviewReport = report
+        }
+    }
+
+    /// "Ret" on the review card → fix the findings as a normal build turn.
+    func applyReviewFix() {
+        guard let r = reviewReport else { return }
+        reviewReport = nil
+        draft = ReviewAgent.fixPrompt(for: r)
+        submit()
+    }
+
+    func dismissReview() { reviewReport = nil }
 
     /// Error collection for the loop, plus a FINAL functional gate: when the
     /// static checks (build logs + type-check) come back clean, load the running

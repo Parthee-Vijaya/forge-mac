@@ -69,6 +69,10 @@ struct Preferences: Codable, Equatable {
     /// (no-op if the project has no prettier installed). Off by default.
     var formatOnSave = false
 
+    /// Run a reviewer agent after each clean build (agentic-SDLC borrow). Advisory —
+    /// it never blocks; findings surface in a card you can apply or dismiss.
+    var reviewOnBuild = true
+
     static let defaultRules = """
     # Project rules
 
@@ -96,7 +100,7 @@ extension Preferences {
         case learningMode, learnedLessons
         case preferredName, askedPreferredName
         case appearance, deployTarget, verboseMetrics
-        case askBeforeShell, askBeforeDependencies, askBeforeMCP, formatOnSave
+        case askBeforeShell, askBeforeDependencies, askBeforeMCP, formatOnSave, reviewOnBuild
     }
 
     init(from decoder: Decoder) throws {
@@ -129,5 +133,6 @@ extension Preferences {
         askBeforeDependencies = (try? c.decode(Bool.self, forKey: .askBeforeDependencies)) ?? askBeforeDependencies
         askBeforeMCP = (try? c.decode(Bool.self, forKey: .askBeforeMCP)) ?? askBeforeMCP
         formatOnSave = (try? c.decode(Bool.self, forKey: .formatOnSave)) ?? formatOnSave
+        reviewOnBuild = (try? c.decode(Bool.self, forKey: .reviewOnBuild)) ?? reviewOnBuild
     }
 }

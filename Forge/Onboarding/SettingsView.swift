@@ -164,6 +164,9 @@ struct SettingsView: View {
                 Toggle("Formatér med prettier ved Gem", isOn: $model.preferences.formatOnSave)
                 Text("Kører projektets egen prettier på filen når du gemmer (⌘S). Ingen effekt hvis projektet ikke har prettier installeret.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
+                Toggle("Kør reviewer efter build", isOn: $model.preferences.reviewOnBuild)
+                Text("Når et build er færdigt, gennemgår en 2. agent (plan-modellen) ændringerne for korrekthed, sikkerhed og tilgængelighed. Fund vises i et kort du kan rette eller afvise — det blokerer aldrig.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
             }
 
             Section {
