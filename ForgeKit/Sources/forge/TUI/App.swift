@@ -19,6 +19,7 @@ enum AppEvent: Sendable {
     case agent(AgentEvent)
     case permission(PermissionRequest, CheckedContinuation<PermissionDecision, Never>)
     case turnSnapshot(String)
+    case diffLoaded(String)
     case turnEnded
 }
 
@@ -70,7 +71,9 @@ final class TUIApp {
     private var status = "Klar."
     private var liveFile: String?              // file currently streaming (side pane)
     private var liveBuffer = ""                // its contents so far
-    private var showInfo = false               // Tab toggles the side pane: live-write ⇄ info
+    enum SidePane { case live, info, diff }
+    private var sidePane: SidePane = .live     // Tab cycles live → info → diff; /diff jumps here
+    private var diffText = ""                   // loaded by /diff
     private var isBusy = false
     private var pendingUser: String?
     private var currentAssistant: String?
@@ -125,6 +128,7 @@ final class TUIApp {
             case .agent(let e):         applyAgent(e)
             case .permission(let r, let c): pendingPermission = (r, c); status = "Tilladelse kræves"; needsRender = true
             case .turnSnapshot(let sha): turnSHAs.append(sha)
+            case .diffLoaded(let d):    diffText = d; sidePane = .diff; status = "Diff"; needsRender = true
             case .turnEnded:            endTurn()
             }
             if !running { break }
@@ -155,8 +159,14 @@ final class TUIApp {
         case .down:  scroll = max(0, scroll - 1); needsRender = true
         case .pageUp:   scroll += max(1, size.rows - 4); needsRender = true
         case .pageDown: scroll = max(0, scroll - max(1, size.rows - 4)); needsRender = true
-        case .tab:   showInfo.toggle(); needsRender = true
-        case .enter: if !isBusy { submit() }
+        case .tab:   sidePane = (sidePane == .live) ? .info : (sidePane == .info ? .diff : .live); needsRender = true
+        case .enter:
+            let line = input.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("/") {                  // slash commands work even mid-turn (read-only)
+                input = ""; cursor = 0; handleCommand(line); needsRender = true
+            } else if !isBusy {
+                submit()
+            }
         default: break
         }
     }
@@ -346,10 +356,19 @@ final class TUIApp {
     /// The side pane: the live-streaming file (syntax-highlighted, with a gutter), or
     /// an info card. Tab toggles which one is shown while a file is streaming.
     private func renderSide(_ buf: ScreenBuffer, _ rect: Rect) {
-        if let lf = liveFile, !showInfo {
-            buf.box(rect, dimStyle, title: shortName(lf))
-            let inner = rect.inset(1)
-            guard inner.h > 0, inner.w > 6 else { return }
+        switch sidePane {
+        case .diff:
+            buf.box(rect, dimStyle, title: "Diff")
+            let inner = rect.inset(1); guard inner.h > 0 else { return }
+            let lines: [(String, Style)] = diffText.isEmpty
+                ? [("(intet endnu — /diff efter et build)", dimStyle)]
+                : DiffRenderer.lines(diffText, theme: theme)
+            for (i, pair) in lines.prefix(inner.h).enumerated() {
+                buf.text(TextWidth.truncate(pair.0, toWidth: inner.w), x: inner.x, y: inner.y + i, pair.1, clip: inner)
+            }
+        case .live where liveFile != nil:
+            buf.box(rect, dimStyle, title: shortName(liveFile!))
+            let inner = rect.inset(1); guard inner.h > 0, inner.w > 6 else { return }
             let lines = liveBuffer.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
             let show = Array(lines.suffix(inner.h))               // newest lines = watch it being written
             let firstNo = max(1, lines.count - show.count + 1)
@@ -363,13 +382,48 @@ final class TUIApp {
                     x = buf.text(seg, x: x, y: inner.y + i, st, clip: inner)
                 }
             }
-        } else {
+        default:
             buf.box(rect, dimStyle, title: "Info")
-            let inner = rect.inset(1)
-            guard inner.h > 0 else { return }
+            let inner = rect.inset(1); guard inner.h > 0 else { return }
             buf.text("model: \(modelName)", x: inner.x + 1, y: inner.y, dimStyle, clip: inner)
-            if liveFile != nil { buf.text("Tab → live kode", x: inner.x + 1, y: inner.y + 2, dimStyle, clip: inner) }
-            if !turnSHAs.isEmpty { buf.text("\(turnSHAs.count) checkpoint(s)", x: inner.x + 1, y: inner.y + 3, dimStyle, clip: inner) }
+            buf.text("Tab skifter panel", x: inner.x + 1, y: inner.y + 2, dimStyle, clip: inner)
+            buf.text("/diff efter et build", x: inner.x + 1, y: inner.y + 3, dimStyle, clip: inner)
+            if !turnSHAs.isEmpty { buf.text("\(turnSHAs.count) checkpoint(s)", x: inner.x + 1, y: inner.y + 4, dimStyle, clip: inner) }
+        }
+    }
+
+    // MARK: - Slash commands (minimal; the full menu lands in P12)
+
+    private func handleCommand(_ line: String) {
+        let parts = line.dropFirst().split(separator: " ", maxSplits: 1).map(String.init)
+        let cmd = (parts.first ?? "").lowercased()
+        let arg = parts.count > 1 ? parts[1] : ""
+        switch cmd {
+        case "diff":       loadDiff(arg)
+        case "quit", "q":  running = false
+        case "help":       transcript.append(Line(role: .system, text: "kommandoer: /diff [n] · /quit  (flere i P12)"))
+        default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
+        }
+    }
+
+    /// /diff [n] — what turn n changed vs the next checkpoint (or the working tree),
+    /// via the pre-turn snapshots. No arg = the latest turn.
+    private func loadDiff(_ arg: String) {
+        guard let cont = channel else { return }
+        guard !turnSHAs.isEmpty else {
+            transcript.append(Line(role: .system, text: "ingen checkpoints endnu — kør et build først")); return
+        }
+        let fromIdx = (Int(arg).map { $0 - 1 }) ?? (turnSHAs.count - 1)
+        guard fromIdx >= 0, fromIdx < turnSHAs.count else {
+            transcript.append(Line(role: .system, text: "ugyldigt tur-nummer (1–\(turnSHAs.count))")); return
+        }
+        let from = turnSHAs[fromIdx]
+        let to: String? = fromIdx + 1 < turnSHAs.count ? turnSHAs[fromIdx + 1] : nil
+        let engine = self.engine
+        status = "Henter diff…"
+        Task {
+            let d = await engine.checkpoints.diff(from: from, to: to)
+            cont.yield(.diffLoaded(d.isEmpty ? "(ingen ændringer)" : d))
         }
     }
 
