@@ -28,6 +28,16 @@ enum AppEvent: Sendable {
     case turnEnded
 }
 
+/// One build task on the kø (queue). Forge drains the kø one task at a time —
+/// sequential by design, since parallel builds in a single project dir would
+/// fight over the same files (the safe "swarm-lite" for a beginner audience).
+struct QueueItem: Identifiable {
+    let id: Int
+    let prompt: String
+    var state: QState
+}
+enum QState { case queued, building, review, done, failed }
+
 /// Read the current terminal size (Sendable free function — safe from the SIGWINCH
 /// handler on any queue).
 func currentTerminalSize() -> Size {
@@ -106,6 +116,9 @@ final class TUIApp {
     private var git: GitStatus = .none         // the project's REAL .git state (GIT sidebar section)
     private var gitChecked = false             // first status probe has completed
     private var gitBusy = false                // a git/gh operation is in flight
+    private var queue: [QueueItem] = []        // the build kø (KØ sidebar section)
+    private var queueSeq = 0                   // monotonic id source
+    private var currentQueueID: Int?           // the kø item currently building (nil = a plain turn)
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
     private var running = true
@@ -281,6 +294,9 @@ final class TUIApp {
         if let (_, c) = pendingPermission { pendingPermission = nil; c.resume(returning: .deny) }
         isBusy = false; status = "Afbrudt."
         pendingUser = nil; currentAssistant = nil; assistantLineIndex = nil
+        // A deliberate stop pauses the kø: mark the current task failed and DON'T
+        // auto-drain — the rest stay queued, resumable with /kø.
+        if currentQueueID != nil { setQueueState(currentQueueID, .failed); currentQueueID = nil }
         needsRender = true
     }
 
@@ -298,12 +314,27 @@ final class TUIApp {
         isBusy = false
         if sidePane == .live { sidePane = .context }     // back to context after the build
         turnTask = nil
-        // Reviewer pass (advisory, non-blocking) on a successful build with a snapshot.
-        if autoReview, let req, let sha = lastSHA, !status.hasPrefix("✗") {
+        let failed = status.hasPrefix("✗")
+        if failed {
+            // Pause the kø on a failure: queued tasks usually build on the previous
+            // one's result, so barreling on after a broken build just cascades
+            // failures. Mark it failed, stop, and let the user inspect — /kø resumes.
+            setQueueState(currentQueueID, .failed); currentQueueID = nil
+            if queue.contains(where: { $0.state == .queued }) {
+                transcript.append(Line(role: .system, text: "kø sat på pause efter en fejl — /kø fortsætter"))
+            }
+            if status.hasPrefix("Tænker") || status.hasPrefix("…") { status = "Klar." }
+        } else if autoReview, let req, let sha = lastSHA {
+            // Reviewer pass (advisory, non-blocking). The kø task stays open through
+            // its review; the next one only starts after (applyReview drains), so
+            // tasks never overlap.
             lastRequest = req; reviewing = true; status = "Gennemgår…"
+            setQueueState(currentQueueID, .review)
             runReview(request: req, sha: sha)
-        } else if status.hasPrefix("Tænker") || status.hasPrefix("…") {
-            status = "Klar."
+        } else {
+            setQueueState(currentQueueID, .done); currentQueueID = nil
+            if status.hasPrefix("Tænker") || status.hasPrefix("…") { status = "Klar." }
+            drainQueue()                      // no review → start the next kø task now
         }
         refreshGit()                          // a build changes the dirty count / branch
         needsRender = true
@@ -337,6 +368,8 @@ final class TUIApp {
             }
         }
         if status.hasPrefix("Gennemgår") { status = "Klar." }
+        if currentQueueID != nil { setQueueState(currentQueueID, .done); currentQueueID = nil }
+        drainQueue()                          // kø task fully done (build + review) → next
         scroll = 0; needsRender = true
     }
 
@@ -713,6 +746,28 @@ final class TUIApp {
         } else { line(autoReview ? "kører efter build" : "fra · /review", dimStyle) }
         gap()
 
+        let qActive = queue.filter { $0.state == .queued || $0.state == .building || $0.state == .review }.count
+        head("KØ" + (qActive > 0 ? " (\(qActive))" : ""))
+        if queue.isEmpty {
+            line("tom · /kø <opgave>", dimStyle)
+        } else {
+            for item in queue.suffix(6) {
+                let st: Style
+                switch item.state {
+                case .building, .review: st = theme.accentStyle
+                case .done:    st = theme.on(theme.ok)
+                case .failed:  st = theme.on(theme.error)
+                case .queued:  st = base
+                }
+                let icon = item.state == .building
+                    ? Self.spinner[spinnerFrame % Self.spinner.count]
+                    : Self.qIcon(item.state)
+                line("\(icon) \(item.prompt)", st)
+            }
+            if queue.count > 6 { line("+\(queue.count - 6) flere", dimStyle) }
+        }
+        gap()
+
         head("SKILLS (\(skills.count))")
         line(skills.isEmpty ? "ingen" : skills.prefix(5).map { $0.id }.joined(separator: " · "), dimStyle)
         gap()
@@ -772,6 +827,7 @@ final class TUIApp {
         case "pull":       gitPushPull(push: false)
         case "pr":         gitPR(arg)
         case "git":        refreshGit(manual: true)
+        case "kø", "ko", "queue", "swarm": queueCommand(arg)
         case "quit", "q":  running = false
         case "help":       transcript.append(Line(role: .system, text: Self.slashCommands.map { "\($0.0) — \($0.1)" }.joined(separator: "\n")))
         default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
@@ -898,6 +954,7 @@ final class TUIApp {
         ("/push", "send commits til GitHub"),
         ("/pull", "hent ændringer fra GitHub"),
         ("/pr", "opret et pull request"),
+        ("/kø", "stil byggeopgaver i kø (kører én ad gangen)"),
         ("/help", "vis kommandoer"),
         ("/quit", "afslut"),
     ]
@@ -996,6 +1053,61 @@ final class TUIApp {
         }
         let title = arg.isEmpty ? (lastRequest ?? "Forge-ændringer") : arg
         runGitOp("Opretter PR…") { await $0.openPR(title: title) }
+    }
+
+    // MARK: - Kø (sequential task queue / swarm-lite)
+
+    /// /kø <opgave> queues a build · /kø lists + resumes draining · /kø ryd clears
+    /// the pending (not-yet-started) items.
+    private func queueCommand(_ arg: String) {
+        let a = arg.trimmingCharacters(in: .whitespaces)
+        if a.isEmpty {
+            if queue.isEmpty {
+                transcript.append(Line(role: .system, text: "køen er tom — /kø <opgave> tilføjer en byggeopgave"))
+            } else {
+                transcript.append(Line(role: .system, text: "kø (\(queue.count)):"))
+                for item in queue {
+                    transcript.append(Line(role: .system, text: "  \(Self.qIcon(item.state)) \(item.prompt.prefix(60))"))
+                }
+                drainQueue()                              // resume if idle (e.g. after a cancel)
+            }
+            needsRender = true; return
+        }
+        if a.lowercased() == "ryd" || a.lowercased() == "clear" {
+            queue.removeAll { $0.state == .queued }
+            transcript.append(Line(role: .system, text: "ryddede ventende kø-opgaver"))
+            needsRender = true; return
+        }
+        queueSeq += 1
+        queue.append(QueueItem(id: queueSeq, prompt: a, state: .queued))
+        transcript.append(Line(role: .system, text: "+ kø: \(a.prefix(60))  (\(queue.filter { $0.state == .queued }.count) venter)"))
+        drainQueue()                                      // starts immediately if idle
+        needsRender = true
+    }
+
+    /// Start the next queued task if the engine is idle. Sequential by design —
+    /// each task builds on the previous one's result, so they never overlap.
+    private func drainQueue() {
+        guard !isBusy, currentQueueID == nil else { return }
+        guard let idx = queue.firstIndex(where: { $0.state == .queued }) else { return }
+        queue[idx].state = .building
+        currentQueueID = queue[idx].id
+        startTurn(queue[idx].prompt)
+    }
+
+    private func setQueueState(_ id: Int?, _ s: QState) {
+        guard let id, let i = queue.firstIndex(where: { $0.id == id }) else { return }
+        queue[i].state = s
+    }
+
+    static func qIcon(_ s: QState) -> String {
+        switch s {
+        case .queued:   return "⋯"
+        case .building: return "⟳"
+        case .review:   return "◎"
+        case .done:     return "✓"
+        case .failed:   return "✗"
+        }
     }
 
     /// Discovery popover above the input while typing a / command.
