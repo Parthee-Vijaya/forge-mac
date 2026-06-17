@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `1d5837b` 2026-06-17 — TUI: persistent Kontekst sidebar (opencode-style)
 - `1259a7a` 2026-06-17 — TUI: clearer FORGE wordmark logo (half-block font)
 - `fe54620` 2026-06-17 — TUI: opencode-style redesign + first-run onboarding
 - `6749c15` 2026-06-17 — forge CLI: one-command install script (build release + symlink onto PATH)
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `4559bd3` 2026-06-17 — Fase 4c (opencode): steer-API — styr Forge fra iPhone/curl
 - `43801d7` 2026-06-17 — Fase 4b (opencode): prettier-ved-gem (opt-in)
 - `982cbc1` 2026-06-17 — Fase 4a (opencode): markdown chat-eksport
-- `8702e9a` 2026-06-17 — Fase 3 (opencode): AGENTS.md-interop + @file-mentions
 <!-- COMMITLOG:END -->
