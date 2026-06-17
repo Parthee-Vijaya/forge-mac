@@ -973,6 +973,57 @@ final class AppModel: PermissionGate {
         }
     }
 
+    /// Fase 4a: export the chat transcript (what the AI built + said) as readable
+    /// markdown — for sharing or asking for help. Separate from exportZip (source).
+    func exportChatMarkdown() {
+        guard !messages.isEmpty else { return }
+        let panel = NSSavePanel()
+        panel.title = "Eksportér chat"
+        panel.nameFieldStringValue = "forge-\(Self.slug(currentProject.name)).md"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let out = panel.url else { return }
+        do {
+            try chatMarkdown().write(to: out, atomically: true, encoding: .utf8)
+            statusText = "Eksporterede \(out.lastPathComponent)."
+            NSWorkspace.shared.activateFileViewerSelecting([out])
+        } catch {
+            statusText = "Eksport fejlede."
+        }
+    }
+
+    /// Render the current chat as markdown (user/assistant turns + per-message
+    /// metrics + a session-total footer).
+    func chatMarkdown() -> String {
+        var lines = ["# \(currentProject.name)", ""]
+        for m in messages {
+            if m.role == .user {
+                lines.append("## 🧑 Dig")
+                if !m.text.isEmpty { lines.append(m.text) }
+            } else {
+                lines.append("## 🤖 Forge")
+                if !m.reasoning.isEmpty {
+                    lines.append("<details><summary>Tankeproces</summary>\n\n\(m.reasoning)\n\n</details>")
+                }
+                if !m.text.isEmpty { lines.append(m.text) }
+                if !m.files.isEmpty {
+                    lines.append("\n_Filer:_ " + m.files.map { "`\($0)`" }.joined(separator: ", "))
+                }
+                if let mm = m.metrics, mm.calls > 0 {
+                    var parts = ["\(Self.formatTokens(mm.totalTokens)) tok"]
+                    if mm.tokensPerSecond > 0 { parts.append(String(format: "%.0f tok/s", mm.tokensPerSecond)) }
+                    if let cost = Self.formatCost(mm.costUSD) { parts.append(cost) }
+                    lines.append("\n_\(parts.joined(separator: " · "))_")
+                }
+            }
+            lines.append("")
+        }
+        lines.append("---")
+        var footer = "Bygget med Forge · \(Self.formatTokens(sessionTokens)) tokens"
+        if let cost = Self.formatCost(sessionCostUSD) { footer += " · \(cost)" }
+        lines.append("_\(footer)_")
+        return lines.joined(separator: "\n")
+    }
+
     private func projectIsNative(_ dir: URL) -> Bool {
         let fm = FileManager.default
         if fm.fileExists(atPath: dir.appendingPathComponent("Package.swift").path) { return true }
@@ -2392,6 +2443,8 @@ final class AppModel: PermissionGate {
                                     icon: "archivebox") { self.exportZip() })
             c.append(PaletteCommand(id: "export-bundle", title: "Eksportér delbar bundle…",
                                     icon: "shippingbox.and.arrow.backward") { self.exportBundle() })
+            c.append(PaletteCommand(id: "export-chat", title: "Eksportér chat (markdown)…",
+                                    icon: "text.bubble") { self.exportChatMarkdown() })
             c.append(PaletteCommand(id: "deps", title: "Afhængigheder…",
                                     icon: "shippingbox") { self.showDependencies = true })
             c.append(PaletteCommand(id: "share", title: "Del live-link",
