@@ -515,6 +515,15 @@ func cmdTUICheck() {
     }
 }
 
+/// `forge __tuidemo` — phase-5 event-loop probe: the full-screen App shell with an
+/// echo "turn" (no engine yet). Used by the pty harness.
+func cmdTUIDemo() async {
+    let term = Terminal()
+    do { try term.enter() } catch { fail("\(error)") }
+    defer { term.restore() }
+    await TUIApp(size: Size(cols: term.cols, rows: term.rows), subtitle: "echo-demo").run()
+}
+
 // MARK: - Dispatch
 
 let argv = Array(CommandLine.arguments.dropFirst())
@@ -534,6 +543,7 @@ case "chat":   await cmdChat(rest, cfg)
 case "skills": cmdSkills(rest, cfg)
 case "mcp":    await cmdMCP(rest, cfg)
 case "__tuicheck": cmdTUICheck()
+case "__tuidemo": await cmdTUIDemo()
 default:
     // `forge "<prompt>"` is shorthand for `forge build "<prompt>"`.
     if command.hasPrefix("--") { fail("ukendt kommando. Prøv: forge --help") }
