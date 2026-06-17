@@ -172,6 +172,11 @@ func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)
 func fmtTTFT(_ s: Double?) -> String { s.map { String(format: "%.2fs", $0) } ?? "—" }
 func fmtRate(_ r: Double) -> String { String(format: "%.0f tok/s", r) }
 func fmtSecs(_ s: Double) -> String { String(format: "%.1fs", s) }
+/// "Gratis" / "≈ $0.03" / nil (unknown cloud price). USD — CLI keeps it currency-neutral.
+func fmtCost(_ usd: Double?) -> String? {
+    guard let usd else { return nil }
+    return usd <= 0 ? "gratis" : String(format: "≈ $%.3f", usd)
+}
 
 /// Session-wide accumulator across every model call in this `forge` run.
 final class MetricsAccumulator {
@@ -179,11 +184,13 @@ final class MetricsAccumulator {
     var promptTokens = 0
     var completionTokens = 0
     var totalSeconds = 0.0
-    func add(_ m: GenerationMetrics) {
+    var costUSD: Double?
+    func add(_ m: GenerationMetrics, cost: Double?) {
         calls += 1
         promptTokens += m.promptTokens
         completionTokens += m.completionTokens
         totalSeconds += m.totalSeconds
+        if let cost { costUSD = (costUSD ?? 0) + cost }
     }
     var totalTokens: Int { promptTokens + completionTokens }
     var tokensPerSecond: Double { totalSeconds > 0 ? Double(completionTokens) / totalSeconds : 0 }
@@ -191,8 +198,9 @@ final class MetricsAccumulator {
 
 func printSession(_ m: MetricsAccumulator) {
     guard m.calls > 0 else { return }
+    let cost = fmtCost(m.costUSD).map { " · \($0)" } ?? ""
     say(bold("Session: ") + "\(m.calls) kald · \(m.totalTokens) tok (\(m.promptTokens)→\(m.completionTokens)) · "
-        + "\(fmtRate(m.tokensPerSecond)) · \(fmtSecs(m.totalSeconds))")
+        + "\(fmtRate(m.tokensPerSecond)) · \(fmtSecs(m.totalSeconds))\(cost)")
 }
 
 /// CLI approval gate: prompts on stdin (j/n/a) before shell/dep/MCP actions.
@@ -227,6 +235,7 @@ func runTurn(_ engine: Engine, prompt: String, history: [ChatMessage], mode: Age
     var turnCalls = 0, turnPrompt = 0, turnCompletion = 0
     var turnSeconds = 0.0
     var turnFirstTTFT: Double?
+    var turnCostUSD: Double?
     for await event in loop.run(userPrompt: prompt, history: history, mode: mode) {
         switch event {
         case .state(let s):
@@ -259,19 +268,23 @@ func runTurn(_ engine: Engine, prompt: String, history: [ChatMessage], mode: Age
             turnCalls += 1
             turnPrompt += m.promptTokens; turnCompletion += m.completionTokens; turnSeconds += m.totalSeconds
             if turnFirstTTFT == nil { turnFirstTTFT = m.timeToFirstTokenSeconds }
-            session?.add(m)
+            let callCost = engine.config.cost(promptTokens: m.promptTokens, completionTokens: m.completionTokens)
+            if let callCost { turnCostUSD = (turnCostUSD ?? 0) + callCost }
+            session?.add(m, cost: callCost)
             if verbose {
                 let n = session?.calls ?? turnCalls
+                let costStr = fmtCost(callCost).map { " · \($0)" } ?? ""
                 say("  " + dim("↳ kald \(n): \(m.totalTokens) tok (\(m.promptTokens)→\(m.completionTokens)) · "
-                    + "TTFT \(fmtTTFT(m.timeToFirstTokenSeconds)) · \(fmtRate(m.tokensPerSecond)) · \(fmtSecs(m.totalSeconds))"))
+                    + "TTFT \(fmtTTFT(m.timeToFirstTokenSeconds)) · \(fmtRate(m.tokensPerSecond)) · \(fmtSecs(m.totalSeconds))\(costStr)"))
             }
         case .reasoning, .fileWriting, .fileChunk, .usage: break
         }
     }
     if turnCalls > 0 {
         let rate = turnSeconds > 0 ? Double(turnCompletion) / turnSeconds : 0
+        let costStr = fmtCost(turnCostUSD).map { " · \($0)" } ?? ""
         say("  " + dim("Σ besked: \(turnCalls) kald · \(turnPrompt + turnCompletion) tok (\(turnPrompt)→\(turnCompletion)) · "
-            + "TTFT \(fmtTTFT(turnFirstTTFT)) · \(fmtRate(rate)) · \(fmtSecs(turnSeconds))"))
+            + "TTFT \(fmtTTFT(turnFirstTTFT)) · \(fmtRate(rate)) · \(fmtSecs(turnSeconds))\(costStr)"))
     }
     if mode == .plan { say("") }
     return (assistant, preview, clean)

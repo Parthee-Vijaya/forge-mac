@@ -60,8 +60,19 @@ final class AppModel: PermissionGate {
         var completionTokens = 0
         var totalSeconds = 0.0
         var firstTTFT: Double?
+        var costUSD: Double?   // nil = unknown cloud price; 0 = free (local)
         var totalTokens: Int { promptTokens + completionTokens }
         var tokensPerSecond: Double { totalSeconds > 0 ? Double(completionTokens) / totalSeconds : 0 }
+    }
+
+    /// Static USD→DKK rate for the cost display (approximate; not live FX).
+    static let usdToDkk = 7.0
+
+    /// "Gratis" / "≈ 0,03 kr" / nil (unknown). Shared by chat + tooltip + status.
+    static func formatCost(_ usd: Double?) -> String? {
+        guard let usd else { return nil }
+        if usd <= 0 { return "Gratis" }
+        return String(format: "≈ %.2f kr", usd * usdToDkk)
     }
 
     enum PreviewWidth: CaseIterable {
@@ -238,6 +249,7 @@ final class AppModel: PermissionGate {
     var sessionTokens = 0
     var sessionCalls = 0
     var lastMetrics: GenerationMetrics?
+    var sessionCostUSD: Double?   // cumulative est. cost this app session (nil = unknown)
 
     // Fase 1: approval gate. The agent (an actor) awaits decide(_:); a non-nil
     // pendingPermission drives the approval card, whose buttons call resolvePermission.
@@ -283,6 +295,7 @@ final class AppModel: PermissionGate {
         var s = "Tokens — denne tur: \(Self.formatTokens(turnTokens))"
             + " · projekt: \(Self.formatTokens(projectTokens))"
             + " · session: \(Self.formatTokens(sessionTokens)) (\(sessionCalls) kald)"
+        if let cost = Self.formatCost(sessionCostUSD) { s += " · \(cost)" }
         if let line = lastMetricsLine { s += "\nSidste kald: \(line)" }
         return s
     }
@@ -2043,6 +2056,10 @@ final class AppModel: PermissionGate {
                     mm.completionTokens += m.completionTokens
                     mm.totalSeconds += m.totalSeconds
                     if mm.firstTTFT == nil { mm.firstTTFT = m.timeToFirstTokenSeconds }
+                    if let c = config.cost(promptTokens: m.promptTokens, completionTokens: m.completionTokens) {
+                        mm.costUSD = (mm.costUSD ?? 0) + c
+                        sessionCostUSD = (sessionCostUSD ?? 0) + c
+                    }
                     messages[assistantIndex].metrics = mm
                 }
             }
@@ -2123,6 +2140,10 @@ final class AppModel: PermissionGate {
                     mm.completionTokens += m.completionTokens
                     mm.totalSeconds += m.totalSeconds
                     if mm.firstTTFT == nil { mm.firstTTFT = m.timeToFirstTokenSeconds }
+                    if let c = config.cost(promptTokens: m.promptTokens, completionTokens: m.completionTokens) {
+                        mm.costUSD = (mm.costUSD ?? 0) + c
+                        sessionCostUSD = (sessionCostUSD ?? 0) + c
+                    }
                     messages[assistantIndex].metrics = mm
                 }
             default: break

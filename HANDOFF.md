@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `9829233` 2026-06-17 — Fase 1b (opencode): approval-gate — GUI
 - `09bd6e2` 2026-06-17 — Fase 1a (opencode): approval-gate — motor + CLI
 - `445852d` 2026-06-17 — docs(handoff): opdater commit-log
 - `7a35e83` 2026-06-17 — fix(engine): hæv max output-tokens 8k → 16k
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `eb3e250` 2026-06-16 — docs(handoff): nanocoder-køreplan (CLI + Skills + MCP) leveret
 - `b5c0c3c` 2026-06-16 — Phase 3 (MCP) part 2b: agenten kan kalde eksterne MCP-værktøjer
 - `df0f4b1` 2026-06-16 — feat(mcp): MCP client + manager — Forge can use external tools (Phase 3, part 2a)
-- `ff04751` 2026-06-16 — feat(mcp): finish the forge-mcp server — external agents can drive Forge (Phase 3, part 1)
 <!-- COMMITLOG:END -->

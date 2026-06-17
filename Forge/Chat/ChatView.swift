@@ -204,6 +204,7 @@ private struct MessageView: View {
         var parts = ["\(AppModel.formatTokens(m.totalTokens)) tok"]
         if m.tokensPerSecond > 0 { parts.append(String(format: "%.0f tok/s", m.tokensPerSecond)) }
         if let t = m.firstTTFT { parts.append(String(format: "TTFT %.2fs", t)) }
+        if let cost = AppModel.formatCost(m.costUSD) { parts.append(cost) }
         if m.calls > 1 { parts.append("\(m.calls) kald") }
         return parts.joined(separator: " · ")
     }

@@ -27,4 +27,13 @@ final class ModelConfigTests: XCTestCase {
         XCTAssertNotNil(cfg.extraHeaders["HTTP-Referer"])
         XCTAssertTrue(ModelRouter.provider(for: cfg) is OpenAICompatProvider)
     }
+
+    /// Cost: local is free, known cloud prices compute, `:free` is free, unknown → nil.
+    func testCost() {
+        XCTAssertEqual(ModelConfig.lmStudio(model: "qwen").cost(promptTokens: 1000, completionTokens: 1000), 0)
+        let gpt = ModelConfig.openAI(key: "k", model: "gpt-4o")          // 2.50 in / 10.00 out per 1M
+        XCTAssertEqual(gpt.cost(promptTokens: 1_000_000, completionTokens: 1_000_000)!, 12.50, accuracy: 0.001)
+        XCTAssertEqual(ModelConfig.openRouter(key: "k", model: "x/y:free").cost(promptTokens: 9, completionTokens: 9), 0)
+        XCTAssertNil(ModelConfig.openRouter(key: "k", model: "obscure/unknown").cost(promptTokens: 9, completionTokens: 9))
+    }
 }
