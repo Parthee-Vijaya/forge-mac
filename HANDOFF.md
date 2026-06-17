@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `10a7ced` 2026-06-17 — docs(handoff): opdater commit-log
 - `0ffcd2b` 2026-06-17 — feat(metrics): vis metrics pr. besked direkte i chatten
 - `3e75a76` 2026-06-17 — docs(handoff): opdater commit-log
 - `7f822f5` 2026-06-17 — feat(metrics): verbose mode — tokens, TTFT, tok/s pr. kald/besked/session
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `2a899f2` 2026-06-16 — feat(skills): surface skills in the GUI composer (roadmap Phase 2, part 2)
 - `4528258` 2026-06-16 — feat(skills): user-extensible skills — engine + CLI (roadmap Phase 2, part 1)
 - `674dd2e` 2026-06-16 — feat(cli): `forge` — drive the engine from the terminal (roadmap Phase 1)
-- `edab364` 2026-06-16 — fix: surface human message from model HTTP errors (not raw JSON)
 <!-- COMMITLOG:END -->

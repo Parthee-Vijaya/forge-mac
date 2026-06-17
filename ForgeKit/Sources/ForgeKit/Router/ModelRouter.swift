@@ -16,6 +16,8 @@ public enum ModelRouter {
     }
 
     public static func options(for config: ModelConfig) -> GenerationOptions {
-        GenerationOptions(temperature: 0.2, numCtx: config.numCtx, maxTokens: 8_192)
+        // 16k output so ambitious single-shot apps (charts, multiple views) don't get
+        // truncated mid-file; 8k was too low and produced "unexpected end of file".
+        GenerationOptions(temperature: 0.2, numCtx: config.numCtx, maxTokens: 16_384)
     }
 }
