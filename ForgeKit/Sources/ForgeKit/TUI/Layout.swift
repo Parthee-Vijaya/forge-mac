@@ -76,18 +76,18 @@ public struct ForgeLayout: Sendable, Equatable {
     public static let minWidthForSide = 60
 
     public static func compute(_ size: Size,
-                               inputHeight: Int = 1,
+                               inputHeight: Int = 3,
                                transcriptWeight: Int = 3,
                                sideWeight: Int = 2,
                                showSide: Bool = true) -> ForgeLayout {
         let full = Rect(x: 0, y: 0, w: size.cols, h: size.rows)
         let rows = splitRects(full, .vertical, [
-            .fixed(1),                 // header
-            .flex,                     // body
-            .fixed(1),                 // status
-            .fixed(max(1, inputHeight)) // input
+            .fixed(1),                   // header
+            .flex,                       // body
+            .fixed(max(1, inputHeight)), // input (boxed)
+            .fixed(1)                    // status bar (very bottom)
         ])
-        let header = rows[0], body = rows[1], status = rows[2], input = rows[3]
+        let header = rows[0], body = rows[1], input = rows[2], status = rows[3]
 
         let wantSide = showSide && size.cols >= minWidthForSide
         let (transcript, side): (Rect, Rect)

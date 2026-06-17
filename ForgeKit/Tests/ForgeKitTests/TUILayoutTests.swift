@@ -25,13 +25,15 @@ final class TUILayoutTests: XCTestCase {
     }
 
     func testForgeLayoutStandard() {
-        let l = ForgeLayout.compute(Size(cols: 80, rows: 24))
+        let l = ForgeLayout.compute(Size(cols: 80, rows: 24))   // header / body / input(3) / status(1)
         XCTAssertEqual(l.header.h, 1)
         XCTAssertEqual(l.header.y, 0)
+        XCTAssertEqual(l.input.y, 20)                      // boxed input above the status bar
+        XCTAssertEqual(l.input.h, 3)
         XCTAssertEqual(l.status.h, 1)
-        XCTAssertEqual(l.input.y, 23)
+        XCTAssertEqual(l.status.y, 23)                     // status bar at the very bottom
         XCTAssertEqual(l.transcript.y, 1)
-        XCTAssertEqual(l.transcript.h, 21)                 // body fills the middle
+        XCTAssertEqual(l.transcript.h, 19)                 // body fills the middle
         XCTAssertGreaterThan(l.transcript.w, l.side.w)     // 3:2 → transcript wider
         XCTAssertGreaterThan(l.side.w, 0)                  // side shown at 80 cols
         XCTAssertEqual(l.transcript.maxX, l.side.x)        // panes are adjacent, no gap

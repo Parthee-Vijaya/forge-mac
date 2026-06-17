@@ -9,15 +9,15 @@ enum DiffRenderer {
             let style: Style
             if line.hasPrefix("+++") || line.hasPrefix("---") || line.hasPrefix("diff ")
                 || line.hasPrefix("index ") || line.hasPrefix("new file") || line.hasPrefix("deleted") {
-                style = Style(fg: theme.diffMeta, dim: true)
+                style = theme.on(theme.diffMeta, dim: true)
             } else if line.hasPrefix("@@") {
-                style = Style(fg: theme.diffHunk)
+                style = theme.on(theme.diffHunk)
             } else if line.hasPrefix("+") {
-                style = Style(fg: theme.diffAdd)
+                style = theme.on(theme.diffAdd)
             } else if line.hasPrefix("-") {
-                style = Style(fg: theme.diffDel)
+                style = theme.on(theme.diffDel)
             } else {
-                style = .default
+                style = theme.base
             }
             return (line, style)
         }

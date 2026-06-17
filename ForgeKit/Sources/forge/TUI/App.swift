@@ -86,6 +86,8 @@ final class TUIApp {
     private var lastSHA: String?               // most recent pre-turn snapshot (for /diff)
     private var sessionTurns: [SessionFile.Turn] = []   // completed turns (user+assistant pairs), persisted
     private var modelChoices: [ModelConfig]?   // non-nil while the /model picker is open
+    private var onboarding = false             // first-run welcome + theme picker
+    private var onboardThemeIdx = 0
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
     private var running = true
@@ -97,13 +99,17 @@ final class TUIApp {
     private static let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
     init(size: Size, engine: Engine, modelName: String, framework: String, verbose: Bool,
-         theme: ANSITheme = .midnight, resume: SessionFile? = nil) {
+         theme: ANSITheme = .midnight, resume: SessionFile? = nil, firstRun: Bool = false) {
         self.size = size
         self.engine = engine
         self.modelName = modelName
         self.framework = framework
         self.verbose = verbose
         self.theme = theme
+        if firstRun {
+            onboarding = true
+            onboardThemeIdx = ANSITheme.all.firstIndex { $0.name == theme.name } ?? 0
+        }
         if let resume {
             sessionTurns = resume.turns
             history = resume.chatHistory()
@@ -159,6 +165,7 @@ final class TUIApp {
     // MARK: - Input
 
     private func handle(_ key: Key) {
+        if onboarding { handleOnboardingKey(key); return }
         if pendingPermission != nil { handlePermissionKey(key); return }
         if modelChoices != nil { handleModelKey(key); return }
         switch key {
@@ -323,6 +330,9 @@ final class TUIApp {
 
     // MARK: - Rendering
 
+    private var base: Style { theme.base }
+    private static let logo = ["┏━╸┏━┓┏━┓┏━╸┏━╸", "┣╸ ┃ ┃┣┳┛┃╺┓┣╸ ", "┗━╸┗━┛┗┛┗┗━┛┗━╸"]
+
     private func render(force: Bool = false) {
         let now = DispatchTime.now()
         if !force {
@@ -334,56 +344,138 @@ final class TUIApp {
 
         let layout = ForgeLayout.compute(size)
         let buf = ScreenBuffer(size: size)
+        buf.clear(base)                                          // themed full-screen background
 
-        // Header
-        buf.fill(layout.header, " ", dimStyle)
-        var hx = buf.text("⬢ forge", x: layout.header.x, y: layout.header.y, accentBold)
-        hx = buf.text("  ·  \(modelName)", x: hx, y: layout.header.y, dimStyle, clip: layout.header)
-
-        // Transcript
-        let vis = transcriptVisualLines(width: max(1, layout.transcript.w))
-        let h = layout.transcript.h
-        let maxScroll = max(0, vis.count - h)
-        if scroll > maxScroll { scroll = maxScroll }
-        let start = max(0, vis.count - h - scroll)
-        for i in 0..<min(h, max(0, vis.count - start)) {
-            let (txt, st) = vis[start + i]
-            buf.text(txt, x: layout.transcript.x, y: layout.transcript.y + i, st, clip: layout.transcript)
+        if onboarding {
+            drawOnboarding(buf)
+            TUIOutput.emit(TUIRenderer.renderDiff(old: prev, new: buf, cursor: nil))
+            prev = buf
+            return
         }
 
-        // Side pane
-        if !layout.side.isEmpty { renderSide(buf, layout.side) }
-
-        // Status bar
-        buf.fill(layout.status, " ", dimStyle)
-        let spin = isBusy ? Self.spinner[spinnerFrame % Self.spinner.count] + " " : ""
-        let statusStyle: Style = status.hasPrefix("✗") ? errStyle : (status.hasPrefix("✓") ? okStyle : dimStyle)
-        buf.text(spin + status, x: layout.status.x, y: layout.status.y, statusStyle, clip: layout.status)
-        var hint = "^C \(isBusy ? "afbryd" : "afslut") · Tab panel · ↑↓ scroll"
-        if verbose, sessionTokens > 0 { hint = "\(sessionTokens) tok · " + hint }
-        let hintX = max(layout.status.x, layout.status.maxX - TextWidth.width(hint))
-        buf.text(hint, x: hintX, y: layout.status.y, dimStyle, clip: layout.status)
-
-        // Input line
-        let prompt = "› "
-        buf.text(prompt, x: layout.input.x, y: layout.input.y, accent)
-        buf.text(input, x: layout.input.x + TextWidth.width(prompt), y: layout.input.y, .default, clip: layout.input)
-
-        // Permission modal (overlay, drawn last)
-        var cursorPt: Point? = nil
-        if let (req, _) = pendingPermission {
-            drawPermissionModal(buf, request: req)
-        } else if modelChoices != nil {
-            drawModelModal(buf)
+        drawHeader(buf, layout.header)
+        if transcript.count <= 1, history.isEmpty, !isBusy {
+            drawWelcome(buf, layout.transcript)                  // logo + hints before anything happens
         } else {
-            if input.hasPrefix("/") { drawSlashMenu(buf, anchor: layout.slashAnchor) }   // discovery popover
-            let before = String(input.prefix(cursor))
-            let curX = min(layout.input.x + TextWidth.width(prompt) + TextWidth.width(before), layout.input.maxX - 1)
-            cursorPt = Point(x: curX, y: layout.input.y)
+            drawTranscript(buf, layout.transcript)
         }
+        if !layout.side.isEmpty { renderSide(buf, layout.side) }
+        drawStatusBar(buf, layout.status)
+
+        var cursorPt = drawInputBox(buf, layout.input, active: pendingPermission == nil && modelChoices == nil)
+
+        // Overlays, drawn last
+        if let (req, _) = pendingPermission { drawPermissionModal(buf, request: req); cursorPt = nil }
+        else if modelChoices != nil { drawModelModal(buf); cursorPt = nil }
+        else if input.hasPrefix("/") { drawSlashMenu(buf, anchor: layout.slashAnchor) }
 
         TUIOutput.emit(TUIRenderer.renderDiff(old: prev, new: buf, cursor: cursorPt))
         prev = buf
+    }
+
+    private func drawHeader(_ buf: ScreenBuffer, _ r: Rect) {
+        buf.fill(r, " ", base)
+        buf.text("⬢ forge", x: r.x + 1, y: r.y, theme.accentBold)
+        var right = modelName
+        if sessionTokens > 0 { right += "  ·  \(fmtTok(sessionTokens)) tok" }
+        buf.text(right, x: max(r.x + 10, r.maxX - TextWidth.width(right) - 1), y: r.y, theme.dimStyle, clip: r)
+    }
+
+    private func drawWelcome(_ buf: ScreenBuffer, _ r: Rect) {
+        let tagline = "byg web-apps fra terminalen — med en lokal AI"
+        let hints = ["↵    skriv hvad du vil bygge", "/    kommandoer", "⇥    skift panel          ^C  afslut"]
+        let block = Self.logo.count + 2 + hints.count
+        var y = r.y + max(0, (r.h - block) / 2)
+        func cx(_ s: String) -> Int { r.x + max(0, (r.w - TextWidth.width(s)) / 2) }
+        for line in Self.logo { buf.text(line, x: cx(line), y: y, theme.accentBold, clip: r); y += 1 }
+        y += 1
+        buf.text(tagline, x: cx(tagline), y: y, base, clip: r); y += 2
+        for h in hints where y < r.maxY { buf.text(h, x: cx(hints[2]), y: y, theme.dimStyle, clip: r); y += 1 }
+    }
+
+    private func drawTranscript(_ buf: ScreenBuffer, _ r: Rect) {
+        let vis = transcriptVisualLines(width: max(1, r.w - 1))
+        let maxScroll = max(0, vis.count - r.h)
+        if scroll > maxScroll { scroll = maxScroll }
+        let start = max(0, vis.count - r.h - scroll)
+        for i in 0..<min(r.h, max(0, vis.count - start)) {
+            let (txt, st) = vis[start + i]
+            buf.text(txt, x: r.x, y: r.y + i, st, clip: r)
+        }
+    }
+
+    private func drawStatusBar(_ buf: ScreenBuffer, _ r: Rect) {
+        buf.fill(r, " ", base)
+        let spin = isBusy ? Self.spinner[spinnerFrame % Self.spinner.count] + " " : "▍ "
+        let st: Style = status.hasPrefix("✗") ? errStyle : (status.hasPrefix("✓") ? okStyle : (isBusy ? theme.accentStyle : theme.dimStyle))
+        buf.text(spin + status, x: r.x + 1, y: r.y, st, clip: r)
+        let hint = "/ kommandoer   ⇥ panel   ^C \(isBusy ? "afbryd" : "afslut")"
+        buf.text(hint, x: max(r.x + 1, r.maxX - TextWidth.width(hint) - 1), y: r.y, theme.dimStyle, clip: r)
+    }
+
+    /// The bordered input box; returns the caret position (nil when a modal owns input).
+    private func drawInputBox(_ buf: ScreenBuffer, _ r: Rect, active: Bool) -> Point? {
+        buf.box(r, active ? theme.accentStyle : theme.dimStyle)
+        let inner = r.inset(1)
+        guard inner.h > 0 else { return nil }
+        let prompt = "› "
+        if input.isEmpty {
+            buf.text(prompt + "skriv en ændring…  (/ for kommandoer)", x: inner.x + 1, y: inner.y, theme.dimStyle, clip: inner)
+        } else {
+            buf.text(prompt, x: inner.x + 1, y: inner.y, theme.accentStyle, clip: inner)
+            buf.text(input, x: inner.x + 1 + TextWidth.width(prompt), y: inner.y, base, clip: inner)
+        }
+        guard active else { return nil }
+        let before = String(input.prefix(cursor))
+        let cx = min(inner.x + 1 + TextWidth.width(prompt) + TextWidth.width(before), inner.maxX - 1)
+        return Point(x: cx, y: inner.y)
+    }
+
+    private func fmtTok(_ n: Int) -> String { n >= 1000 ? String(format: "%.1fk", Double(n) / 1000) : "\(n)" }
+
+    // MARK: - Onboarding (first run)
+
+    private func handleOnboardingKey(_ key: Key) {
+        switch key {
+        case .left:
+            onboardThemeIdx = (onboardThemeIdx - 1 + ANSITheme.all.count) % ANSITheme.all.count
+            theme = ANSITheme.all[onboardThemeIdx]; prev = nil; needsRender = true
+        case .right:
+            onboardThemeIdx = (onboardThemeIdx + 1) % ANSITheme.all.count
+            theme = ANSITheme.all[onboardThemeIdx]; prev = nil; needsRender = true
+        case .enter, .escape:
+            finishOnboarding()
+        default: break
+        }
+    }
+
+    private func finishOnboarding() {
+        onboarding = false
+        var c = ForgeConfig.load(); c.onboarded = true; c.theme = theme.name; c.save()
+        transcript.append(Line(role: .system, text: "Tema: \(theme.name). Skriv hvad du vil bygge og tryk Enter — / for kommandoer."))
+        prev = nil; needsRender = true
+    }
+
+    private func drawOnboarding(_ buf: ScreenBuffer) {
+        let r = Rect(x: 0, y: 0, w: size.cols, h: size.rows)
+        func cx(_ s: String) -> Int { max(0, (size.cols - TextWidth.width(s)) / 2) }
+        let greet = "Velkommen til forge"
+        let modelLine = "Model:   \(modelName)   ·   skift med /model"
+        let combo = "Tema:    ‹ \(theme.name) ›"
+        let hint = "← →  vælg tema       ↵  begynd"
+        let block = Self.logo.count + 6
+        var y = max(1, (size.rows - block) / 2)
+        for line in Self.logo { buf.text(line, x: cx(line), y: y, theme.accentBold, clip: r); y += 1 }
+        y += 1
+        buf.text(greet, x: cx(greet), y: y, base, clip: r); y += 2
+        buf.text(modelLine, x: cx(modelLine), y: y, theme.dimStyle, clip: r); y += 1
+        let comboX = cx(combo)
+        buf.text("Tema:    ‹ ", x: comboX, y: y, theme.dimStyle, clip: r)
+        let nameX = comboX + TextWidth.width("Tema:    ‹ ")
+        buf.text(theme.name, x: nameX, y: y, theme.accentBold, clip: r)
+        buf.text(" ›", x: nameX + TextWidth.width(theme.name), y: y, theme.dimStyle, clip: r)
+        y += 2
+        buf.text(hint, x: cx(hint), y: y, theme.dimStyle, clip: r)
     }
 
     private func drawPermissionModal(_ buf: ScreenBuffer, request: PermissionRequest) {
@@ -393,9 +485,9 @@ final class TUIApp {
         let x = (size.cols - w) / 2
         let y = (size.rows - h) / 2
         let rect = Rect(x: x, y: y, w: w, h: h)
-        buf.fill(rect, " ", .default)
+        buf.fill(rect, " ", base)
         buf.box(rect, warnStyle, title: "Tilladelse")
-        buf.text(TextWidth.truncate(label, toWidth: w - 4), x: x + 2, y: y + 2, .default, clip: rect)
+        buf.text(TextWidth.truncate(label, toWidth: w - 4), x: x + 2, y: y + 2, base, clip: rect)
         buf.text("[J]a   [A]ltid i session   [N]ej", x: x + 2, y: y + 4, accent, clip: rect)
     }
 
@@ -405,14 +497,14 @@ final class TUIApp {
         let h = min(size.rows - 2, choices.count + 4)
         let x = (size.cols - w) / 2, y = (size.rows - h) / 2
         let rect = Rect(x: x, y: y, w: w, h: h)
-        buf.fill(rect, " ", .default)
+        buf.fill(rect, " ", base)
         buf.box(rect, accentBold, title: "Vælg model")
         for (i, m) in choices.enumerated() where y + 1 + i < y + h - 1 {
             let src = m.source == .cloud ? "cloud" : (m.source == .ollama ? "ollama" : "lm studio")
             let cost = m.source == .cloud ? "" : " · gratis"
             let cur = m.id == engine.config.id ? " ✓" : ""
             let line = "\(i + 1))  \(m.displayName)  ·  \(src)\(cost)\(cur)"
-            buf.text(TextWidth.truncate(line, toWidth: w - 4), x: x + 2, y: y + 1 + i, .default, clip: rect)
+            buf.text(TextWidth.truncate(line, toWidth: w - 4), x: x + 2, y: y + 1 + i, base, clip: rect)
         }
         buf.text("tal vælger · Esc annullerer", x: x + 2, y: y + h - 1, dimStyle, clip: rect)
     }
@@ -626,7 +718,7 @@ final class TUIApp {
         guard !matches.isEmpty, anchor.h >= 3 else { return }
         let h = min(anchor.h, matches.count + 2), w = min(anchor.w, 46)
         let rect = Rect(x: anchor.x, y: anchor.maxY - h, w: w, h: h)
-        buf.fill(rect, " ", .default)
+        buf.fill(rect, " ", base)
         buf.box(rect, accent, title: "kommandoer")
         for (i, c) in matches.prefix(h - 2).enumerated() {
             buf.text(TextWidth.truncate("\(c.0)  \(c.1)", toWidth: w - 4),
@@ -638,18 +730,23 @@ final class TUIApp {
 
     private func transcriptVisualLines(width: Int) -> [(String, Style)] {
         var out: [(String, Style)] = []
+        let bodyWidth = max(1, width - 2)
         for line in transcript {
-            let style: Style
-            let prefix: String
             switch line.role {
-            case .user:      style = accentBold; prefix = "› "
-            case .assistant: style = .default;   prefix = ""
-            case .system:    style = dimStyle;   prefix = "· "
-            case .error:     style = errStyle;   prefix = ""
+            case .user:
+                out.append(("▌ Dig", accentBold))
+                for w in TextWidth.wrap(line.text, width: bodyWidth) { out.append(("  " + w, base)) }
+                out.append(("", base))
+            case .assistant:
+                out.append(("▌ forge", theme.on(theme.accent, dim: true)))
+                for w in TextWidth.wrap(line.text.isEmpty ? "…" : line.text, width: bodyWidth) { out.append(("  " + w, base)) }
+                out.append(("", base))
+            case .system:
+                for w in TextWidth.wrap(line.text, width: bodyWidth) { out.append(("  " + w, dimStyle)) }
+            case .error:
+                for w in TextWidth.wrap(line.text, width: bodyWidth) { out.append(("  " + w, errStyle)) }
+                out.append(("", base))
             }
-            let body = line.text.isEmpty && line.role == .assistant ? "…" : line.text
-            for w in TextWidth.wrap(prefix + body, width: width) { out.append((w, style)) }
-            if line.role == .assistant || line.role == .error { out.append(("", .default)) }
         }
         return out
     }

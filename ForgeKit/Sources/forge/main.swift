@@ -45,6 +45,7 @@ struct ForgeConfig: Codable {
     var apiKey: String?
     var verbose: Bool?
     var theme: String?
+    var onboarded: Bool?
 
     static func load() -> ForgeConfig {
         let path = configDir().appendingPathComponent("config.json")
@@ -447,7 +448,8 @@ func cmdChat(_ args: Args, _ cfg: ForgeConfig) async {
         do { try term.enter() } catch { fail("\(error)") }
         await TUIApp(size: Size(cols: term.cols, rows: term.rows),
                      engine: engine, modelName: engine.config.displayName, framework: framework.displayName,
-                     verbose: verbose, theme: theme, resume: resume).run()
+                     verbose: verbose, theme: theme, resume: resume,
+                     firstRun: cfg.onboarded != true && resume == nil).run()
         term.restore()
         await engine.devServer.shutdown()
         return

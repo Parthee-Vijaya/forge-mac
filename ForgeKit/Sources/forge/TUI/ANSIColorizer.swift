@@ -25,12 +25,12 @@ enum ANSIColorizer {
 
     static func style(for token: SyntaxRules.Token?, theme: ANSITheme) -> Style {
         switch token {
-        case .keyword: return Style(fg: theme.keyword)
-        case .type:    return Style(fg: theme.type)
-        case .number:  return Style(fg: theme.number)
-        case .string:  return Style(fg: theme.string)
-        case .comment: return Style(fg: theme.comment, dim: true)
-        case nil:      return .default
+        case .keyword: return theme.on(theme.keyword)
+        case .type:    return theme.on(theme.type)
+        case .number:  return theme.on(theme.number)
+        case .string:  return theme.on(theme.string)
+        case .comment: return theme.on(theme.comment, dim: true)
+        case nil:      return theme.base
         }
     }
 }
