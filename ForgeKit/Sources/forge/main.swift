@@ -417,7 +417,7 @@ func cmdChat(_ args: Args, _ cfg: ForgeConfig) async {
     let dir = resolveProjectDir(args, defaultName: "forge-app")
     let config = makeModelConfig(args, cfg)
     info("model: \(config.displayName) (\(config.source.rawValue)) · framework: \(framework.displayName)")
-    let engine: Engine
+    var engine: Engine
     do { engine = try await prepareEngine(dir: dir, framework: framework, config: config) }
     catch { fail("\(error)") }
 
@@ -425,10 +425,16 @@ func cmdChat(_ args: Args, _ cfg: ForgeConfig) async {
 
     // Full-screen TUI — opt-in via --tui for now; phase 12 makes it the TTY default.
     if args.flag("tui"), !plain, isTTY {
+        // --resume reloads the prior session; a local model from it wins unless --model was given.
+        let resume = args.flag("resume") ? SessionFile.load(projectDir: dir) : nil
+        if let resume, args.option("model") == nil {
+            engine.config = resume.resolvedConfig(fallback: config)
+        }
         let term = Terminal()
         do { try term.enter() } catch { fail("\(error)") }
         await TUIApp(size: Size(cols: term.cols, rows: term.rows),
-                     engine: engine, modelName: config.displayName, verbose: verbose).run()
+                     engine: engine, modelName: engine.config.displayName, framework: framework.displayName,
+                     verbose: verbose, resume: resume).run()
         term.restore()
         await engine.devServer.shutdown()
         return

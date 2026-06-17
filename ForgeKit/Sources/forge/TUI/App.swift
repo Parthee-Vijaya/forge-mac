@@ -21,6 +21,7 @@ enum AppEvent: Sendable {
     case turnSnapshot(String)
     case diffLoaded(String)
     case modelsLoaded([ModelConfig])
+    case restored(Int, Bool)
     case turnEnded
 }
 
@@ -60,6 +61,7 @@ final class TUIApp {
 
     private var engine: Engine                 // var: /model reassigns engine.config
     private var modelName: String
+    private let framework: String
     private let verbose: Bool
     private var size: Size
     private var prev: ScreenBuffer?
@@ -81,7 +83,8 @@ final class TUIApp {
     private var assistantLineIndex: Int?
     private var sessionTokens = 0
     private var spinnerFrame = 0
-    private var turnSHAs: [String] = []        // pre-turn checkpoint SHAs (for /diff + /undo, P9/P11)
+    private var lastSHA: String?               // most recent pre-turn snapshot (for /diff)
+    private var sessionTurns: [SessionFile.Turn] = []   // completed turns (user+assistant pairs), persisted
     private var modelChoices: [ModelConfig]?   // non-nil while the /model picker is open
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
@@ -93,14 +96,27 @@ final class TUIApp {
 
     private static let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
-    init(size: Size, engine: Engine, modelName: String, verbose: Bool, theme: ANSITheme = .midnight) {
+    init(size: Size, engine: Engine, modelName: String, framework: String, verbose: Bool,
+         theme: ANSITheme = .midnight, resume: SessionFile? = nil) {
         self.size = size
         self.engine = engine
         self.modelName = modelName
+        self.framework = framework
         self.verbose = verbose
         self.theme = theme
-        transcript.append(Line(role: .system,
-            text: "forge — beskriv hvad du vil bygge og tryk Enter. Ctrl-C afbryder/afslutter."))
+        if let resume {
+            sessionTurns = resume.turns
+            history = resume.chatHistory()
+            lastSHA = resume.turns.last(where: { $0.role == "user" })?.checkpointSHA
+            for t in resume.turns {
+                transcript.append(Line(role: t.role == "user" ? .user : .assistant, text: t.content))
+            }
+            let n = resume.turns.filter { $0.role == "user" }.count
+            transcript.append(Line(role: .system, text: "↺ genoptog \(n) tidligere tur(e) — byg videre eller /restore."))
+        } else {
+            transcript.append(Line(role: .system,
+                text: "forge — beskriv hvad du vil bygge og tryk Enter. Ctrl-C afbryder/afslutter."))
+        }
     }
 
     func run() async {
@@ -129,9 +145,10 @@ final class TUIApp {
             case .tick:                 if isBusy { spinnerFrame += 1; needsRender = true }
             case .agent(let e):         applyAgent(e)
             case .permission(let r, let c): pendingPermission = (r, c); status = "Tilladelse kræves"; needsRender = true
-            case .turnSnapshot(let sha): turnSHAs.append(sha)
+            case .turnSnapshot(let sha): lastSHA = sha
             case .diffLoaded(let d):    diffText = d; sidePane = .diff; status = "Diff"; needsRender = true
             case .modelsLoaded(let ms): modelChoices = Array(ms.prefix(9)); status = "Vælg model (1–\(min(ms.count, 9))) · Esc"; needsRender = true
+            case .restored(let n, let ok): applyRestore(n, ok)
             case .turnEnded:            endTurn()
             }
             if !running { break }
@@ -224,13 +241,29 @@ final class TUIApp {
     }
 
     private func endTurn() {
-        if let user = pendingUser { history.append(ChatMessage(role: .user, content: user)) }
-        if let a = currentAssistant, !a.isEmpty { history.append(ChatMessage(role: .assistant, content: a)) }
+        if let user = pendingUser {
+            let a = currentAssistant ?? ""
+            history.append(ChatMessage(role: .user, content: user))
+            history.append(ChatMessage(role: .assistant, content: a))
+            sessionTurns.append(SessionFile.Turn(role: "user", content: user, checkpointSHA: lastSHA))
+            sessionTurns.append(SessionFile.Turn(role: "assistant", content: a, checkpointSHA: nil))
+            saveSession()
+        }
         pendingUser = nil; currentAssistant = nil; assistantLineIndex = nil
         isBusy = false
         if status.hasPrefix("Tænker") || status.hasPrefix("…") { status = "Klar." }
         turnTask = nil
         needsRender = true
+    }
+
+    /// Persist the session (no apiKey) beside the checkpoints.
+    private func saveSession() {
+        let ref = SessionFile.ModelRef(provider: SessionFile.providerName(for: engine.config.source),
+                                       model: engine.config.modelID,
+                                       baseURL: engine.config.baseURL.absoluteString)
+        let file = SessionFile(project: engine.workspace.root.path, framework: framework,
+                               model: ref, turns: sessionTurns)
+        file.save(projectDir: engine.workspace.root)
     }
 
     private func applyAgent(_ ev: AgentEvent) {
@@ -412,7 +445,7 @@ final class TUIApp {
             buf.text("model: \(modelName)", x: inner.x + 1, y: inner.y, dimStyle, clip: inner)
             buf.text("Tab skifter panel", x: inner.x + 1, y: inner.y + 2, dimStyle, clip: inner)
             buf.text("/diff efter et build", x: inner.x + 1, y: inner.y + 3, dimStyle, clip: inner)
-            if !turnSHAs.isEmpty { buf.text("\(turnSHAs.count) checkpoint(s)", x: inner.x + 1, y: inner.y + 4, dimStyle, clip: inner) }
+            if !userTurns.isEmpty { buf.text("\(userTurns.count) checkpoint(s)", x: inner.x + 1, y: inner.y + 4, dimStyle, clip: inner) }
         }
     }
 
@@ -425,8 +458,11 @@ final class TUIApp {
         switch cmd {
         case "diff":       loadDiff(arg)
         case "model":      loadModels()
+        case "undo":       restoreToTurn("")
+        case "restore":    restoreToTurn(arg)
+        case "checkpoints", "cp": listCheckpoints()
         case "quit", "q":  running = false
-        case "help":       transcript.append(Line(role: .system, text: "kommandoer: /diff [n] · /model · /quit  (flere i P12)"))
+        case "help":       transcript.append(Line(role: .system, text: "/diff [n] · /model · /undo · /restore [n] · /checkpoints · /quit"))
         default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
         }
     }
@@ -462,24 +498,77 @@ final class TUIApp {
         }
     }
 
+    private var userTurns: [SessionFile.Turn] { sessionTurns.filter { $0.role == "user" } }
+
     /// /diff [n] — what turn n changed vs the next checkpoint (or the working tree),
-    /// via the pre-turn snapshots. No arg = the latest turn.
+    /// via the pre-turn snapshots. No arg = the latest snapshot vs the working tree.
     private func loadDiff(_ arg: String) {
         guard let cont = channel else { return }
-        guard !turnSHAs.isEmpty else {
+        let users = userTurns
+        let from: String?, to: String?
+        if let n = Int(arg) {
+            guard n >= 1, n <= users.count else {
+                transcript.append(Line(role: .system, text: "ugyldigt tur-nummer (1–\(users.count))")); return
+            }
+            from = users[n - 1].checkpointSHA
+            to = n < users.count ? users[n].checkpointSHA : nil
+        } else {
+            from = lastSHA; to = nil
+        }
+        guard let f = from else {
             transcript.append(Line(role: .system, text: "ingen checkpoints endnu — kør et build først")); return
         }
-        let fromIdx = (Int(arg).map { $0 - 1 }) ?? (turnSHAs.count - 1)
-        guard fromIdx >= 0, fromIdx < turnSHAs.count else {
-            transcript.append(Line(role: .system, text: "ugyldigt tur-nummer (1–\(turnSHAs.count))")); return
-        }
-        let from = turnSHAs[fromIdx]
-        let to: String? = fromIdx + 1 < turnSHAs.count ? turnSHAs[fromIdx + 1] : nil
         let engine = self.engine
         status = "Henter diff…"
         Task {
-            let d = await engine.checkpoints.diff(from: from, to: to)
+            let d = await engine.checkpoints.diff(from: f, to: to)
             cont.yield(.diffLoaded(d.isEmpty ? "(ingen ændringer)" : d))
+        }
+    }
+
+    /// /restore [n] (or /undo) — revert the working tree to before turn n (default: the
+    /// last turn) via its pre-turn checkpoint, then drop that turn from history.
+    private func restoreToTurn(_ arg: String) {
+        guard let cont = channel else { return }
+        let users = userTurns
+        guard !users.isEmpty else { transcript.append(Line(role: .system, text: "ingen checkpoints at gendanne")); return }
+        let n = Int(arg) ?? users.count
+        guard n >= 1, n <= users.count, let sha = users[n - 1].checkpointSHA else {
+            transcript.append(Line(role: .system, text: "ugyldigt tur-nummer (1–\(users.count))")); return
+        }
+        let engine = self.engine
+        status = "Gendanner…"
+        Task {
+            let ok = await engine.checkpoints.restore(to: sha)
+            cont.yield(.restored(n, ok))
+        }
+    }
+
+    private func applyRestore(_ n: Int, _ ok: Bool) {
+        if ok {
+            let keep = (n - 1) * 2                                 // each completed turn = 2 session entries
+            if keep <= sessionTurns.count { sessionTurns = Array(sessionTurns.prefix(keep)) }
+            history = sessionTurns.compactMap {
+                $0.role == "user" ? ChatMessage(role: .user, content: $0.content)
+                    : $0.role == "assistant" ? ChatMessage(role: .assistant, content: $0.content) : nil
+            }
+            lastSHA = userTurns.last?.checkpointSHA
+            saveSession()
+            transcript.append(Line(role: .system, text: "↩ gendannet til før tur \(n) — filer rullet tilbage."))
+            status = "Gendannet."
+        } else {
+            transcript.append(Line(role: .error, text: "kunne ikke gendanne (ugyldig checkpoint)"))
+            status = "Klar."
+        }
+        needsRender = true
+    }
+
+    private func listCheckpoints() {
+        let users = userTurns
+        guard !users.isEmpty else { transcript.append(Line(role: .system, text: "ingen checkpoints endnu")); return }
+        transcript.append(Line(role: .system, text: "checkpoints:"))
+        for (i, t) in users.enumerated() {
+            transcript.append(Line(role: .system, text: "  \(i + 1)) \(t.checkpointSHA?.prefix(7) ?? "—") · \(t.content.prefix(50))"))
         }
     }
 
