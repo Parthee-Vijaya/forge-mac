@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `7a35e83` 2026-06-17 — fix(engine): hæv max output-tokens 8k → 16k
 - `10a7ced` 2026-06-17 — docs(handoff): opdater commit-log
 - `0ffcd2b` 2026-06-17 — feat(metrics): vis metrics pr. besked direkte i chatten
 - `3e75a76` 2026-06-17 — docs(handoff): opdater commit-log
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `ff04751` 2026-06-16 — feat(mcp): finish the forge-mcp server — external agents can drive Forge (Phase 3, part 1)
 - `2a899f2` 2026-06-16 — feat(skills): surface skills in the GUI composer (roadmap Phase 2, part 2)
 - `4528258` 2026-06-16 — feat(skills): user-extensible skills — engine + CLI (roadmap Phase 2, part 1)
-- `674dd2e` 2026-06-16 — feat(cli): `forge` — drive the engine from the terminal (roadmap Phase 1)
 <!-- COMMITLOG:END -->
