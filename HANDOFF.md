@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `b6e3ea2` 2026-06-17 — Fase 2a (opencode): editor-diagnostics (tsc squiggles)
 - `c0dc38b` 2026-06-17 — Fase 2b (opencode): cost-tracking (kr/$) på metrics
 - `9829233` 2026-06-17 — Fase 1b (opencode): approval-gate — GUI
 - `09bd6e2` 2026-06-17 — Fase 1a (opencode): approval-gate — motor + CLI
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `8d8aedb` 2026-06-16 — A11 + A13 + A6: motor-hærdning (self-correction, node-cache, fuzz)
 - `7fb9d1f` 2026-06-16 — docs(roadmap): backlog-oprydning — audit af kode mod plan
 - `eb3e250` 2026-06-16 — docs(handoff): nanocoder-køreplan (CLI + Skills + MCP) leveret
-- `b5c0c3c` 2026-06-16 — Phase 3 (MCP) part 2b: agenten kan kalde eksterne MCP-værktøjer
 <!-- COMMITLOG:END -->

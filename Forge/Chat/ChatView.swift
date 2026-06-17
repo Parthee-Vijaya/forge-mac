@@ -153,7 +153,7 @@ struct ChatView: View {
         if model.askMode { return "Spørg om koden (read-only)…" }
         if let element = model.selectedElement { return "Change the selected \(element.tag)…" }
         return model.chatMode == .plan ? "Describe what to plan — or type / for commands…"
-                                       : "Describe a change — or type / for commands…"
+                                       : "Describe a change — / for commands, @fil for kontekst…"
     }
 
     private var messageList: some View {

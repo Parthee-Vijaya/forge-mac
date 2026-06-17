@@ -22,6 +22,7 @@ public struct ContextBuilder: Sendable {
     public func build(
         files: [String],
         touched: [String],
+        pinned: [String] = [],
         read: (String) async -> String?
     ) async -> String? {
         guard !files.isEmpty else { return nil }
@@ -30,36 +31,58 @@ public struct ContextBuilder: Sendable {
 
         var budget = tokenBudget
         var includedPaths = Set<String>()
-        for path in Self.prioritize(files: files, touched: touched) {
-            guard !includedPaths.contains(path), Self.isSource(path) else { continue }
+        let pinnedSet = Set(pinned)
+        var pinnedRemaining = pinnedSet
+        for path in Self.prioritize(files: files, touched: touched, pinned: pinned) {
+            // Pinned files (@file) bypass the source-only filter — the user asked for them.
+            guard !includedPaths.contains(path), pinnedSet.contains(path) || Self.isSource(path) else { continue }
             guard let content = await read(path) else { continue }
             let cost = Self.estimateTokens(content)
             let body: String
-            if cost <= budget {
+            if pinnedSet.contains(path) {
+                body = content              // always include a pinned file fully
+                budget -= cost
+                pinnedRemaining.remove(path)
+            } else if cost <= budget {
                 body = content
                 budget -= cost
             } else if includedPaths.isEmpty {
                 // Even the top-priority file is bigger than the whole budget —
                 // include a head slice so the model still sees the entry file.
-                body = Self.truncate(content, toTokens: budget)
+                body = Self.truncate(content, toTokens: max(budget, 0))
                 budget = 0
             } else {
                 continue
             }
             includedPaths.insert(path)
             out += "\n\n\(path):\n```\(Self.lang(path))\n\(body)\n```"
-            if budget <= 0 { break }
+            if budget <= 0, pinnedRemaining.isEmpty { break }
         }
         return out
     }
 
     // MARK: - Helpers (static + internal for tests)
 
+    /// Files @-mentioned in a prompt (`@src/App.tsx` or `@Header.tsx`), matched to
+    /// known project files by full path or filename. Shared by the app + CLI.
+    public static func pinned(from prompt: String, files: [String]) -> [String] {
+        guard let re = try? NSRegularExpression(pattern: #"@([\w./-]+)"#) else { return [] }
+        let ns = prompt as NSString
+        var result: [String] = []
+        for m in re.matches(in: prompt, range: NSRange(location: 0, length: ns.length)) {
+            let token = ns.substring(with: m.range(at: 1))
+            if let match = files.first(where: { $0 == token || ($0 as NSString).lastPathComponent == token }) {
+                result.append(match)
+            }
+        }
+        return Array(Set(result))
+    }
+
     static func estimateTokens(_ text: String) -> Int { max(1, text.count / 4) }
 
     /// Priority: recently-touched (most recent first) → entry points → the rest
     /// of `src/`, alphabetical. Deduplicated, only existing files.
-    static func prioritize(files: [String], touched: [String]) -> [String] {
+    static func prioritize(files: [String], touched: [String], pinned: [String] = []) -> [String] {
         let known = Set(files)
         var ordered: [String] = []
         var seen = Set<String>()
@@ -67,6 +90,7 @@ public struct ContextBuilder: Sendable {
             guard known.contains(p), seen.insert(p).inserted else { return }
             ordered.append(p)
         }
+        for p in pinned { push(p) }      // user-pinned (@file) — highest priority
         for p in touched { push(p) }
         for p in ["src/App.tsx", "src/App.jsx", "src/main.tsx", "src/index.css"] { push(p) }
         for p in files.filter({ $0.hasPrefix("src/") }).sorted(by: depthThenName) { push(p) }

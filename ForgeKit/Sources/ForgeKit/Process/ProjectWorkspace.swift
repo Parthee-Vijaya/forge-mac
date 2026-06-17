@@ -4,7 +4,7 @@ import Foundation
 /// writes every file through here, so a path that escapes the project root
 /// (e.g. `../../etc/passwd`) is rejected rather than written.
 public actor ProjectWorkspace {
-    public let root: URL
+    public nonisolated let root: URL   // immutable + Sendable → safe to read from any context
 
     public init(root: URL) {
         self.root = root.standardizedFileURL

@@ -139,18 +139,22 @@ func prepareEngine(dir: URL, framework: Framework, config: ModelConfig) async th
                   collector: ErrorCollector(devServer: devServer), config: config, mcp: mcp)
 }
 
-func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)? = nil) -> AgentLoop.Dependencies {
+func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)? = nil,
+              pinned: [String] = []) -> AgentLoop.Dependencies {
     let processLayer = ForgeProcessLayer(workspace: engine.workspace, devServer: engine.devServer)
     let base = mode == .plan ? SystemPrompt.plan : SystemPrompt.forge
-    let systemPrompt = engine.mcp.promptSection().map { base + "\n\n" + $0 } ?? base
+    var systemPrompt = engine.mcp.promptSection().map { base + "\n\n" + $0 } ?? base
+    if let rules = RulesLoader.read(projectRoot: engine.workspace.root) {   // AGENTS.md + AI_RULES.md
+        systemPrompt += "\n\n" + rules
+    }
     return AgentLoop.Dependencies(
         provider: ModelRouter.provider(for: engine.config),
         options: ModelRouter.options(for: engine.config),
         process: processLayer,
         systemPrompt: systemPrompt,
-        projectContext: { [workspace = engine.workspace] in
+        projectContext: { [workspace = engine.workspace, pinned] in
             let files = await workspace.fileMap()
-            return await ContextBuilder().build(files: files, touched: []) { try? await workspace.readFile($0) }
+            return await ContextBuilder().build(files: files, touched: [], pinned: pinned) { try? await workspace.readFile($0) }
         },
         collectErrors: { [collector = engine.collector] in await collector.collect() },
         onTurnStart: { [collector = engine.collector] in await collector.reset() },
@@ -226,7 +230,8 @@ func runTurn(_ engine: Engine, prompt: String, history: [ChatMessage], mode: Age
              gate: (any PermissionGate)? = nil)
     async -> (assistant: String, preview: URL?, clean: Bool)
 {
-    let loop = AgentLoop(makeDeps(engine, mode: mode, gate: gate))
+    let pinnedFiles = ContextBuilder.pinned(from: prompt, files: await engine.workspace.fileMap())
+    let loop = AgentLoop(makeDeps(engine, mode: mode, gate: gate, pinned: pinnedFiles))
     var assistant = ""
     var preview: URL?
     var clean = false

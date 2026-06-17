@@ -82,4 +82,21 @@ final class ContextBuilderTests: XCTestCase {
             .build(files: files, touched: [], read: { _ in nil })
         XCTAssertEqual(out?.contains("and 50 more files"), true)
     }
+
+    // Fase 3b: a pinned (@file) file is included fully even past the budget.
+    func testPinnedFileIncludedDespiteTinyBudget() async {
+        let big = String(repeating: "x", count: 100_000)
+        let files = ["src/App.tsx", "src/lib/special.ts"]
+        let out = await ContextBuilder(tokenBudget: 100)
+            .build(files: files, touched: [], pinned: ["src/lib/special.ts"]) { $0 == "src/lib/special.ts" ? big : "// other" }
+        XCTAssertEqual(out?.contains("src/lib/special.ts:"), true)
+        XCTAssertEqual(out?.contains(big), true, "pinned content included in full")
+    }
+
+    func testPinnedHelperMatchesPathOrFilename() {
+        let files = ["src/components/Header.tsx", "src/App.tsx"]
+        XCTAssertEqual(ContextBuilder.pinned(from: "change @Header.tsx please", files: files), ["src/components/Header.tsx"])
+        XCTAssertEqual(ContextBuilder.pinned(from: "edit @src/App.tsx", files: files), ["src/App.tsx"])
+        XCTAssertTrue(ContextBuilder.pinned(from: "no mentions", files: files).isEmpty)
+    }
 }

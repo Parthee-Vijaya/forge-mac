@@ -146,6 +146,7 @@ final class AppModel: PermissionGate {
 
     // Code view
     var projectFiles: [String] = []
+    var pinnedFiles: [String] = []   // Fase 3b: files @-mentioned in the current prompt
     var selectedFile: String?
     var openTabs: [String] = []         // editor tabs — open files, in order opened
     var editorText: String = ""
@@ -516,9 +517,8 @@ final class AppModel: PermissionGate {
         if !memory.isEmpty {
             parts.append("User preferences and context to always respect:\n\(memory)")
         }
-        if let rules = try? await workspace.readFile("AI_RULES.md"),
-           !rules.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            parts.append("Project-specific rules (AI_RULES.md):\n\(rules)")
+        if let rules = RulesLoader.read(projectRoot: workspace.root) {   // AGENTS.md + AI_RULES.md
+            parts.append(rules)
         }
         // Non-React frameworks override the React-centric base prompt (high
         // salience at the end).
@@ -1751,6 +1751,7 @@ final class AppModel: PermissionGate {
             return
         }
         let mode = chatMode
+        pinnedFiles = Self.extractPinned(from: prompt, files: projectFiles)   // Fase 3b: @file
         let modelPrompt = Self.composeModelPrompt(prompt: prompt, hasImages: !images.isEmpty, mode: mode)
         let visiblePrompt = prompt.isEmpty ? "Kopiér dette design" : prompt
         if mode == .build { presentLessonIfNew("welcome") }
@@ -2010,7 +2011,7 @@ final class AppModel: PermissionGate {
             options: ModelRouter.options(for: config),
             process: processLayer,
             systemPrompt: systemPrompt,
-            projectContext: { [workspace] in await AppModel.buildContext(workspace, touched: touched) },
+            projectContext: { [workspace, pinned = pinnedFiles] in await AppModel.buildContext(workspace, touched: touched, pinned: pinned) },
             collectErrors: { [weak self] in await self?.collectWithSmokeTest() ?? ErrorReport() },
             onTurnStart: { [errorCollector] in await errorCollector.reset() },
             readFile: { [workspace] path in try? await workspace.readFile(path) },
@@ -2129,7 +2130,7 @@ final class AppModel: PermissionGate {
             options: ModelRouter.options(for: config),
             process: processLayer,
             systemPrompt: systemPrompt,
-            projectContext: { [workspace] in await AppModel.buildContext(workspace, touched: touched) },
+            projectContext: { [workspace, pinned = pinnedFiles] in await AppModel.buildContext(workspace, touched: touched, pinned: pinned) },
             collectErrors: { ErrorReport() })
 
         for await event in ForgeEngineFactory.make(.forge, deps: deps)
@@ -2522,11 +2523,17 @@ final class AppModel: PermissionGate {
         messages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.text) }
     }
 
-    nonisolated static func buildContext(_ workspace: ProjectWorkspace, touched: [String]) async -> String? {
+    nonisolated static func buildContext(_ workspace: ProjectWorkspace, touched: [String],
+                                         pinned: [String] = []) async -> String? {
         let files = await workspace.fileMap()
-        return await ContextBuilder().build(files: files, touched: touched) {
+        return await ContextBuilder().build(files: files, touched: touched, pinned: pinned) {
             try? await workspace.readFile($0)
         }
+    }
+
+    /// Fase 3b: project files the user pinned via @file (delegates to ForgeKit).
+    static func extractPinned(from prompt: String, files: [String]) -> [String] {
+        ContextBuilder.pinned(from: prompt, files: files)
     }
 
     /// Most-recently-written unique files (across prior assistant turns), so the
