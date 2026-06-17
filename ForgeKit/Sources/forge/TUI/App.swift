@@ -23,6 +23,8 @@ enum AppEvent: Sendable {
     case modelsLoaded([ModelConfig])
     case restored(Int, Bool)
     case reviewLoaded(ReviewReport)
+    case gitStatusLoaded(GitStatus)
+    case gitOpDone(GitService.OpResult, GitStatus)
     case turnEnded
 }
 
@@ -101,6 +103,9 @@ final class TUIApp {
     private var reviewing = false
     private var lastRequest: String?           // the just-finished turn's prompt (for /review)
     private var lastReview: ReviewReport?      // last reviewer result (Kontekst sidebar)
+    private var git: GitStatus = .none         // the project's REAL .git state (GIT sidebar section)
+    private var gitChecked = false             // first status probe has completed
+    private var gitBusy = false                // a git/gh operation is in flight
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
     private var running = true
@@ -159,6 +164,7 @@ final class TUIApp {
         }
 
         render(force: true)
+        refreshGit()                         // probe the project's git state once up front
         for await ev in stream {
             switch ev {
             case .key(let k):           handle(k)
@@ -171,6 +177,8 @@ final class TUIApp {
             case .modelsLoaded(let ms): modelChoices = Array(ms.prefix(9)); status = "Vælg model (1–\(min(ms.count, 9))) · Esc"; needsRender = true
             case .restored(let n, let ok): applyRestore(n, ok)
             case .reviewLoaded(let r):  applyReview(r)
+            case .gitStatusLoaded(let s): git = s; gitChecked = true; needsRender = true
+            case .gitOpDone(let r, let s): applyGitOp(r, s)
             case .turnEnded:            endTurn()
             }
             if !running { break }
@@ -297,6 +305,7 @@ final class TUIApp {
         } else if status.hasPrefix("Tænker") || status.hasPrefix("…") {
             status = "Klar."
         }
+        refreshGit()                          // a build changes the dirty count / branch
         needsRender = true
     }
 
@@ -645,6 +654,38 @@ final class TUIApp {
         line(prettyPath(engine.workspace.root.path), dimStyle)
         gap()
 
+        head("GIT")
+        if !gitChecked {
+            line("tjekker…", dimStyle)
+        } else if !git.isRepo {
+            line("ikke et git-repo", dimStyle)
+            line("/github udgiver til GitHub", theme.accentStyle)
+        } else {
+            line("\(git.repoName ?? shortName(engine.workspace.root.path)) · \(git.branch)")
+            if git.hasRemote {
+                if git.hasUpstream {
+                    var parts: [String] = []
+                    if git.ahead > 0  { parts.append("↑\(git.ahead)") }
+                    if git.behind > 0 { parts.append("↓\(git.behind)") }
+                    let synced = parts.isEmpty && git.dirty == 0
+                    let dirtyTxt = git.dirty > 0 ? "\(git.dirty) ændr." : ""
+                    let label = parts.isEmpty
+                        ? (dirtyTxt.isEmpty ? "synkroniseret ✓" : dirtyTxt + " · /push")
+                        : (parts.joined(separator: " ") + (dirtyTxt.isEmpty ? "" : " · " + dirtyTxt))
+                    line(label, synced ? theme.on(theme.ok) : theme.on(theme.warn))
+                } else {
+                    line(git.dirty > 0 ? "\(git.dirty) ændr. · /push" : "ikke pushet · /push", theme.on(theme.warn))
+                }
+                line(prettyRemote(git.remoteURL), dimStyle)
+            } else {
+                line(git.dirty > 0 ? "\(git.dirty) ændringer · /commit" : "rent træ", dimStyle)
+                line("ingen remote · /github", theme.accentStyle)
+            }
+            if let pr = git.openPR { line("PR " + pr, theme.accentStyle) }
+            if gitBusy { line("arbejder…", theme.accentStyle) }
+        }
+        gap()
+
         head("FORBRUG")
         if mCalls == 0 {
             line("ingen kald endnu", dimStyle)
@@ -697,6 +738,12 @@ final class TUIApp {
         let root = engine.workspace.root.path
         return p.hasPrefix(root) ? String(p.dropFirst(root.count).drop(while: { $0 == "/" })) : shortName(p)
     }
+    /// "github.com/owner/repo" from any remote URL (SSH or HTTPS), else the raw URL.
+    private func prettyRemote(_ url: String?) -> String {
+        guard let url else { return "" }
+        if let (o, r) = GitService.ownerRepo(url) { return "github.com/\(o)/\(r)" }
+        return url
+    }
     private func fmtTTFT(_ s: Double?) -> String { s.map { String(format: "%.2fs", $0) } ?? "—" }
     private func fmtCost() -> String {
         if engine.config.source != .cloud { return "gratis" }
@@ -719,6 +766,12 @@ final class TUIApp {
         case "fix":        applyFix()
         case "theme":      switchTheme(arg)
         case "init":       writeAgentsFile()
+        case "github", "publish": gitPublish(arg)
+        case "commit":     gitCommit(arg)
+        case "push":       gitPushPull(push: true)
+        case "pull":       gitPushPull(push: false)
+        case "pr":         gitPR(arg)
+        case "git":        refreshGit(manual: true)
         case "quit", "q":  running = false
         case "help":       transcript.append(Line(role: .system, text: Self.slashCommands.map { "\($0.0) — \($0.1)" }.joined(separator: "\n")))
         default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
@@ -840,6 +893,11 @@ final class TUIApp {
         ("/fix", "ret reviewer-fund"),
         ("/theme", "skift farvetema"),
         ("/init", "skriv AGENTS.md"),
+        ("/github", "udgiv projektet til GitHub"),
+        ("/commit", "gem ændringer (commit)"),
+        ("/push", "send commits til GitHub"),
+        ("/pull", "hent ændringer fra GitHub"),
+        ("/pr", "opret et pull request"),
         ("/help", "vis kommandoer"),
         ("/quit", "afslut"),
     ]
@@ -869,6 +927,75 @@ final class TUIApp {
         } catch {
             transcript.append(Line(role: .error, text: "kunne ikke skrive AGENTS.md"))
         }
+    }
+
+    // MARK: - GitHub (the project's REAL .git + gh)
+
+    /// Probe the project's git state and refresh the GIT sidebar section. Runs off
+    /// the main loop; the result returns via `.gitStatusLoaded`.
+    private func refreshGit(manual: Bool = false) {
+        guard let cont = channel else { return }
+        let svc = GitService(root: engine.workspace.root)
+        if manual { status = "Tjekker git…"; needsRender = true }
+        Task { cont.yield(.gitStatusLoaded(await svc.status())) }
+    }
+
+    /// Run a git/gh operation, then re-probe status so the sidebar reflects the
+    /// new state. The op + the refresh both run off the cooperative pool.
+    private func runGitOp(_ label: String, _ op: @escaping @Sendable (GitService) async -> GitService.OpResult) {
+        guard let cont = channel else { return }
+        guard !gitBusy else { return }                    // one git op at a time
+        let svc = GitService(root: engine.workspace.root)
+        gitBusy = true; status = label; needsRender = true
+        Task {
+            let r = await op(svc)
+            let st = await svc.status()
+            cont.yield(.gitOpDone(r, st))
+        }
+    }
+
+    private func applyGitOp(_ r: GitService.OpResult, _ st: GitStatus) {
+        gitBusy = false; git = st; gitChecked = true
+        transcript.append(Line(role: r.ok ? .system : .error,
+                               text: (r.ok ? "✓ " : "✗ ") + r.message))
+        if let url = r.url { transcript.append(Line(role: .system, text: "  " + url)) }
+        status = "Klar."; scroll = 0; needsRender = true
+    }
+
+    /// /github [navn] [public] — create a GitHub repo from this project and push.
+    /// Defaults to a PRIVATE repo (the privacy-preserving choice); add `public`
+    /// to publish openly.
+    private func gitPublish(_ arg: String) {
+        let tokens = arg.split(separator: " ").map(String.init)
+        let isPublic = tokens.contains(where: { $0 == "public" || $0 == "offentlig" })
+        let name = tokens.first(where: { $0 != "public" && $0 != "offentlig" })
+            ?? shortName(engine.workspace.root.path)
+        transcript.append(Line(role: .system,
+            text: "Udgiver “\(name)” som \(isPublic ? "offentligt" : "privat") GitHub-repo…"))
+        runGitOp("Udgiver til GitHub…") { await $0.publish(name: name, isPrivate: !isPublic) }
+    }
+
+    /// /commit [besked] — stage everything and commit.
+    private func gitCommit(_ arg: String) {
+        runGitOp("Committer…") { await $0.commitAll(message: arg) }
+    }
+
+    /// /push and /pull — sync with the remote. Both need a published repo.
+    private func gitPushPull(push: Bool) {
+        guard git.isRepo else {
+            transcript.append(Line(role: .system, text: "ikke et git-repo endnu — kør /github")); needsRender = true; return
+        }
+        if push { runGitOp("Pusher…") { await $0.push() } }
+        else    { runGitOp("Puller…") { await $0.pull() } }
+    }
+
+    /// /pr [titel] — open a draft PR (carves off a feature branch if on main).
+    private func gitPR(_ arg: String) {
+        guard git.hasRemote else {
+            transcript.append(Line(role: .system, text: "udgiv først med /github")); needsRender = true; return
+        }
+        let title = arg.isEmpty ? (lastRequest ?? "Forge-ændringer") : arg
+        runGitOp("Opretter PR…") { await $0.openPR(title: title) }
     }
 
     /// Discovery popover above the input while typing a / command.

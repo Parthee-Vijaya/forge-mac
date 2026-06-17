@@ -83,6 +83,7 @@ ollama list | grep qwen2.5-coder
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `2e12ddf` 2026-06-18 — GitHub G1 (agentic-SDLC borrow): GitService + GitStatus in ForgeKit
 - `4ef6e5f` 2026-06-18 — Reviewer RA3 (agentic-SDLC borrow): reviewer in the Mac app
 - `c3f12fb` 2026-06-18 — Reviewer RA2 (agentic-SDLC borrow): reviewer in the CLI/TUI
 - `788f696` 2026-06-17 — Reviewer RA1 (agentic-SDLC borrow): ReviewAgent core + parser
@@ -102,5 +103,4 @@ ollama list | grep qwen2.5-coder
 - `9d9bc7c` 2026-06-17 — TUI P3 (opencode/nanocoder): layout solver + Forge screen skeleton
 - `64f4be1` 2026-06-17 — TUI P2 (opencode/nanocoder): pure render core in ForgeKit
 - `491153e` 2026-06-17 — TUI P1 (opencode/nanocoder): terminal lifecycle + guaranteed teardown
-- `6c4a8dd` 2026-06-17 — docs(handoff): opdater commit-log
 <!-- COMMITLOG:END -->
