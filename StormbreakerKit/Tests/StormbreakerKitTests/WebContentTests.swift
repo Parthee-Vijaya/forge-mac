@@ -39,4 +39,48 @@ final class WebContentTests: XCTestCase {
         XCTAssertFalse(text.contains(".x{}"))        // style dropped
         XCTAssertFalse(text.contains("<"))           // tags stripped
     }
+
+    func testDecodeDDGRedirect() {
+        XCTAssertEqual(WebContent.decodeDDGRedirect("//duckduckgo.com/l/?uddg=https%3A%2F%2Fa.com%2Fb&rut=x"),
+                       "https://a.com/b")
+        XCTAssertEqual(WebContent.decodeDDGRedirect("//example.com/p"), "https://example.com/p")  // protocol-relative
+        XCTAssertEqual(WebContent.decodeDDGRedirect("https://direct.com"), "https://direct.com")  // already absolute
+    }
+
+    // DDG lite markup: result-link anchors (href before class, single quotes, &amp;) + result-snippet <td>.
+    func testParseSearchResults() {
+        let html = """
+        <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freactrouter.com%2Fdocs&amp;rut=z" class='result-link'>React Router Docs</a>
+        <td class='result-snippet'>The official React Router documentation.</td>
+        <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com&amp;rut=y" class='result-link'>Example &amp; Co</a>
+        <td class='result-snippet'>An example &amp; more.</td>
+        """
+        let results = WebContent.parseSearchResults(html, max: 5)
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(results[0].title, "React Router Docs")
+        XCTAssertEqual(results[0].url, "https://reactrouter.com/docs")    // uddg-decoded
+        XCTAssertTrue(results[0].snippet.contains("official"))
+        XCTAssertEqual(results[1].url, "https://example.com")
+        XCTAssertTrue(results[1].snippet.contains("&"), "HTML entity decoded in snippet")
+    }
+
+    // Ads/“more info” links are interleaved — they must be dropped WITHOUT shifting
+    // the real result's snippet.
+    func testParseSearchResultsSkipsAdsAndKeepsAlignment() {
+        let html = """
+        <a href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fduckduckgo.com%2Fy.js%3Fad_domain%3Dudemy.com&amp;rut=1" class='result-link'>Sponsored Course</a>
+        <a rel="nofollow" class="result-link">more info</a>
+        <td class='result-snippet'>Ad snippet.</td>
+        <a href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freal.com%2Fa&amp;rut=2" class='result-link'>Real Result</a>
+        <td class='result-snippet'>Real snippet here.</td>
+        """
+        let results = WebContent.parseSearchResults(html, max: 5)
+        XCTAssertEqual(results.count, 1, "ad + 'more info' dropped")
+        XCTAssertEqual(results[0].url, "https://real.com/a")
+        XCTAssertTrue(results[0].snippet.contains("Real snippet"), "snippet stayed aligned with the real result")
+    }
+
+    func testParseSearchResultsEmptyOnUnknownMarkup() {
+        XCTAssertTrue(WebContent.parseSearchResults("<html><body>no results here</body></html>", max: 5).isEmpty)
+    }
 }

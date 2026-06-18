@@ -64,6 +64,27 @@ final class StreamingArtifactParserTests: XCTestCase {
         }
     }
 
+    func testWebActionsEmitRequests() {
+        let input = """
+        <forgeArtifact id="x" title="X">
+        <forgeAction type="web-search">react router v7 api</forgeAction>
+        <forgeAction type="web-fetch">https://example.com/docs</forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 9] {
+            let events = parse(input, chunkSize: chunk)
+            let web = events.compactMap { e -> (WebRequestKind, String)? in
+                if case .webRequest(let k, let q) = e { return (k, q) }; return nil
+            }
+            XCTAssertEqual(web.count, 2, "chunk \(chunk)")
+            XCTAssertEqual(web.first?.0, .search, "chunk \(chunk)")
+            XCTAssertEqual(web.first?.1, "react router v7 api", "chunk \(chunk)")
+            XCTAssertEqual(web.last?.0, .fetch, "chunk \(chunk)")
+            XCTAssertEqual(web.last?.1, "https://example.com/docs", "chunk \(chunk)")
+            XCTAssertTrue(files(events).isEmpty, "web must not write a file (chunk \(chunk))")
+        }
+    }
+
     /// Regression (dogfood, Svelte/qwen): the model wrote the file but omitted the
     /// inner </forgeAction>, jumping straight to </forgeArtifact>. The close tag must
     /// NOT leak into the file body — it made Svelte components end with a literal

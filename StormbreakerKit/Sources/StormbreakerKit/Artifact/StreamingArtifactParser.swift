@@ -259,6 +259,10 @@ public final class StreamingArtifactParser {
             let payload = inlineBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
             if type == "mcp" {
                 events.append(.mcpRequest(server: mcpServer, tool: mcpTool, arguments: payload))
+            } else if type == "web-fetch" {
+                events.append(.webRequest(kind: .fetch, query: payload))
+            } else if type == "web-search" {
+                events.append(.webRequest(kind: .search, query: payload))
             } else if let action = makeInlineAction(type: type, payload: payload) {
                 events.append(.inlineAction(action))
             }

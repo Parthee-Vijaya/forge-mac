@@ -53,6 +53,15 @@ private actor ScriptedErrors {
     }
 }
 
+/// Records web-tool calls and returns canned content.
+private actor WebRecorder {
+    private(set) var calls: [(WebRequestKind, String)] = []
+    func fetch(_ kind: WebRequestKind, _ query: String) -> String {
+        calls.append((kind, query))
+        return "REFERENCE about \(query)"
+    }
+}
+
 final class AgentLoopTests: XCTestCase {
     private let artifact = """
     Building it now.
@@ -113,6 +122,34 @@ final class AgentLoopTests: XCTestCase {
         let s = states(await collect(loop.run(userPrompt: "x", history: [])))
         XCTAssertTrue(s.contains(.repairing(attempt: 1)))
         XCTAssertTrue(s.contains(.clean))
+        XCTAssertFalse(hasFailure(s))
+    }
+
+    func testWebRoundFeedsResultsBackThenBuilds() async throws {
+        let lookup = """
+        Let me check the current API.
+        <forgeArtifact id="r" title="Look it up">
+        <forgeAction type="web-search">react router v7 api</forgeAction>
+        </forgeArtifact>
+        """
+        let web = WebRecorder()
+        let errors = ScriptedErrors([ErrorReport()])  // clean once the build response lands
+        let loop = AgentLoop(.init(
+            provider: ScriptedModel([lookup, artifact]),  // 1) web lookup, 2) the build
+            options: GenerationOptions(),
+            process: NoopProcess(),
+            collectErrors: { await errors.next() },
+            fetchWeb: { kind, q in await web.fetch(kind, q) },
+            settleDelay: .milliseconds(1)))
+
+        let events = await collect(loop.run(userPrompt: "use react router v7", history: []))
+        let s = states(events)
+
+        let calls = await web.calls
+        XCTAssertEqual(calls.count, 1, "web tool called exactly once")
+        XCTAssertEqual(calls.first?.0, .search)
+        XCTAssertEqual(calls.first?.1, "react router v7 api")
+        XCTAssertTrue(s.contains(.clean), "the web round is not a repair — build still converges")
         XCTAssertFalse(hasFailure(s))
     }
 

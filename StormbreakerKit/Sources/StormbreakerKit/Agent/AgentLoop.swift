@@ -21,6 +21,8 @@ public actor AgentLoop {
         public var readFile: @Sendable (String) async -> String?
         /// Call an external MCP tool (server, tool, JSON arguments) → text result.
         public var callMCP: @Sendable (String, String, String) async -> String
+        /// Fetch a URL or run a web search when the model asks (web-fetch/web-search).
+        public var fetchWeb: @Sendable (WebRequestKind, String) async -> String
         /// Optional approval gate for side-effectful actions (shell, new deps, MCP).
         /// nil = allow everything (CLI/tests/dogfood default → behaviour unchanged).
         public var permissionGate: (any PermissionGate)?
@@ -37,6 +39,12 @@ public actor AgentLoop {
             onTurnStart: @escaping @Sendable () async -> Void = {},
             readFile: @escaping @Sendable (String) async -> String? = { _ in nil },
             callMCP: @escaping @Sendable (String, String, String) async -> String = { _, _, _ in "" },
+            fetchWeb: @escaping @Sendable (WebRequestKind, String) async -> String = { kind, query in
+                switch kind {
+                case .fetch:  return await WebContent.fetch(query) ?? "Kunne ikke hente \(query) — sig ærligt at du ikke kunne læse den og fortsæt uden."
+                case .search: return await WebContent.search(query) ?? "Ingen søgeresultater for \(query)."
+                }
+            },
             permissionGate: (any PermissionGate)? = nil,
             settleDelay: Duration = .seconds(2),
             maxRepairAttempts: Int = 3
@@ -50,6 +58,7 @@ public actor AgentLoop {
             self.onTurnStart = onTurnStart
             self.readFile = readFile
             self.callMCP = callMCP
+            self.fetchWeb = fetchWeb
             self.permissionGate = permissionGate
             self.settleDelay = settleDelay
             self.maxRepairAttempts = maxRepairAttempts
@@ -161,13 +170,14 @@ public actor AgentLoop {
             var lastSignature: String?
             var readRounds = 0
             var toolRounds = 0
+            var webRounds = 0
             var deniedRounds = 0
 
             while !Task.isCancelled {
                 await deps.onTurnStart()
 
                 continuation.yield(.state(.building))
-                let (rawAssistant, reads, mcpReqs, denied) = try await streamAndApply(messages: messages, continuation)
+                let (rawAssistant, reads, mcpReqs, webReqs, denied) = try await streamAndApply(messages: messages, continuation)
 
                 // A2b: the model asked to see files before building. Fetch them,
                 // feed them back, and let it continue — not counted as a repair.
@@ -195,6 +205,17 @@ public actor AgentLoop {
                     }
                     messages.append(ChatMessage(role: .assistant, content: rawAssistant))
                     messages.append(MessageBuilder().mcpResultTurn(results))
+                    continue
+                }
+
+                // The model asked to fetch a URL or search the web. Do it, feed the
+                // results back, and continue — like the tool round, not a repair.
+                if !webReqs.isEmpty, webRounds < 3 {
+                    webRounds += 1
+                    var results: [(query: String, output: String)] = []
+                    for r in webReqs { results.append((r.query, await deps.fetchWeb(r.kind, r.query))) }
+                    messages.append(ChatMessage(role: .assistant, content: rawAssistant))
+                    messages.append(MessageBuilder().webResultTurn(results))
                     continue
                 }
 
@@ -254,13 +275,14 @@ public actor AgentLoop {
     private func streamAndApply(
         messages: [ChatMessage],
         _ continuation: AsyncStream<AgentEvent>.Continuation
-    ) async throws -> (raw: String, reads: [String], mcp: [(server: String, tool: String, arguments: String)], denied: [String]) {
+    ) async throws -> (raw: String, reads: [String], mcp: [(server: String, tool: String, arguments: String)], web: [(kind: WebRequestKind, query: String)], denied: [String]) {
         let parser = StreamingArtifactParser()
         let executor = ActionExecutor(process: deps.process, gate: deps.permissionGate)
         let splitter = ReasoningSplitter()
         var raw = ""
         var reads: [String] = []
         var mcpReqs: [(server: String, tool: String, arguments: String)] = []
+        var webReqs: [(kind: WebRequestKind, query: String)] = []
         var sawArtifactClose = false
         var wroteFiles = false
 
@@ -278,7 +300,12 @@ public actor AgentLoop {
                 mcpReqs.append((server, tool, arguments))
                 continuation.yield(.assistantText("\n_Kalder \(server)/\(tool)…_\n"))
                 return nil
-            case .artifactClose where !reads.isEmpty || !mcpReqs.isEmpty:
+            case .webRequest(let kind, let query):
+                webReqs.append((kind, query))
+                continuation.yield(.assistantText(kind == .search ? "\n_Søger på nettet: \(query)…_\n"
+                                                                   : "\n_Henter \(query)…_\n"))
+                return nil
+            case .artifactClose where !reads.isEmpty || !mcpReqs.isEmpty || !webReqs.isEmpty:
                 return nil   // tool-request artifact: don't install/start — the tool round handles it
             case .artifactClose:
                 sawArtifactClose = true
@@ -365,7 +392,7 @@ public actor AgentLoop {
         // less-familiar frameworks and smaller models), flush anyway — otherwise the
         // loop settles and reports CLEAN against a server that never started (a blank
         // "done"). Skipped on read-rounds and when artifact-close already flushed.
-        if reads.isEmpty, mcpReqs.isEmpty, !sawArtifactClose, wroteFiles {
+        if reads.isEmpty, mcpReqs.isEmpty, webReqs.isEmpty, !sawArtifactClose, wroteFiles {
             continuation.yield(.state(.applying))
             try await executor.flush()
             if let url = await deps.process.serverReadyURL {
@@ -373,7 +400,7 @@ public actor AgentLoop {
             }
         }
 
-        return (raw, reads, mcpReqs, await executor.denied)
+        return (raw, reads, mcpReqs, webReqs, await executor.denied)
     }
 
     private func apply(

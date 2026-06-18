@@ -14,5 +14,9 @@ public enum ParserEvent: Sendable, Equatable {
     case inlineAction(StormbreakerAction)                  // shell / start / add-dependency (queued)
     case readRequest(path: String)                  // A2b: model asks to see a file's contents
     case mcpRequest(server: String, tool: String, arguments: String)  // model asks to call an MCP tool
+    case webRequest(kind: WebRequestKind, query: String)  // model asks to fetch a URL or search the web
     case artifactClose
 }
+
+/// What the model wants from the web tool: fetch a specific URL, or run a search.
+public enum WebRequestKind: Sendable, Equatable { case fetch, search }

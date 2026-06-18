@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `bbcca2e` 2026-06-18 — Per-command shell permissions: allow safe dev tooling, refuse catastrophic, ask the rest
 - `278b99c` 2026-06-18 — Read URLs the user pastes (GitHub repos / pages) instead of hallucinating
 - `1ab5eae` 2026-06-18 — Audit fixes: persist /model + show picker when no model configured
 - `e254b02` 2026-06-18 — Multi-agent review panel: /review spins up 4 parallel agents
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `4ef6e5f` 2026-06-18 — Reviewer RA3 (agentic-SDLC borrow): reviewer in the Mac app
 - `c3f12fb` 2026-06-18 — Reviewer RA2 (agentic-SDLC borrow): reviewer in the CLI/TUI
 - `788f696` 2026-06-17 — Reviewer RA1 (agentic-SDLC borrow): ReviewAgent core + parser
-- `1d5837b` 2026-06-17 — TUI: persistent Kontekst sidebar (opencode-style)
 <!-- COMMITLOG:END -->
