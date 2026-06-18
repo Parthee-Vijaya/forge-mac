@@ -167,7 +167,12 @@ final class TUIApp {
         }
         signal(SIGWINCH, SIG_IGN)
         let ws = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .global())
-        ws.setEventHandler { cont.yield(.resize(currentTerminalSize())) }
+        // The handler MUST be @Sendable so it does NOT inherit run()'s @MainActor
+        // isolation: DispatchSource calls it on a background queue, and a main-actor
+        // closure would hit a `dispatch_assert_queue` executor check and crash on the
+        // first resize (Swift 6). Yielding to the (Sendable) continuation is safe off-main.
+        let onResize: @Sendable () -> Void = { cont.yield(.resize(currentTerminalSize())) }
+        ws.setEventHandler(handler: onResize)
         ws.resume()
         winch = ws
         defer {

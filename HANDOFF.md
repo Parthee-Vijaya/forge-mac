@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `f70aa56` 2026-06-18 — Rename Forge → Stormbreaker across the codebase (command: storm)
 - `d3dae9b` 2026-06-18 — docs: Avanceret CLI-side + curl-installer
 - `8057d5d` 2026-06-18 — v0.3.0: website — CLI/terminal section + new features, version bump
 - `5536484` 2026-06-18 — AgentLoop: keep token accounting when a build fails at artifact-close
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `c444ef2` 2026-06-17 — TUI P11 (opencode/nanocoder): session resume + undo/restore
 - `9843f64` 2026-06-17 — TUI P10 (opencode/nanocoder): mid-session model switch (/model)
 - `d5d8160` 2026-06-17 — TUI P9 (opencode/nanocoder): colored diffs + /diff
-- `d8ab049` 2026-06-17 — TUI P8 (opencode/nanocoder): live file-streaming + syntax highlight
 <!-- COMMITLOG:END -->
