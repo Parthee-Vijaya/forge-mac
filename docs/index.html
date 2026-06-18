@@ -9,148 +9,7 @@
 <meta property="og:description" content="Skriv en prompt; en AI-agent bygger en rigtig app på din Mac. Gratis, open source, og lokalt — uden abonnement eller API-regninger.">
 <meta property="og:image" content="screenshots/03-preview.png">
 <meta property="og:type" content="website">
-<style>
-  :root{
-    --bg:#0A0C11; --bg2:#0E1017; --surface:#14171F; --surface2:#171B24;
-    --border:#222632; --border2:#2C3140;
-    --ink:#ECEDF1; --soft:#9094A0; --faint:#626775;
-    --accent:#7C6CFF; --accent-2:#A99CFF; --positive:#3FCF8E;
-    --radius:16px; --maxw:1080px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{
-    background:var(--bg); color:var(--ink);
-    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased; letter-spacing:-.003em;
-  }
-  a{color:var(--accent-2); text-decoration:none}
-  a:hover{text-decoration:underline}
-  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 28px}
-  em{color:var(--ink); font-style:italic}
-  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86em; color:var(--accent-2);
-    background:rgba(124,108,255,.10); padding:1px 6px; border-radius:5px}
-  svg{display:block}
-
-  /* Nav */
-  nav{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(12px);
-    background:rgba(10,12,17,.72); border-bottom:1px solid var(--border)}
-  nav .row{display:flex; align-items:center; gap:14px; height:60px}
-  .logo{display:flex; align-items:center; gap:10px; font-weight:650; font-size:16px; color:var(--ink)}
-  .logo .mark{width:28px;height:28px;border-radius:8px;
-    background:linear-gradient(150deg,var(--accent),#5A48E6);
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 4px 14px rgba(124,108,255,.4)}
-  .logo .mark svg{width:16px;height:16px;color:#fff}
-  nav .spacer{flex:1}
-  nav .links{display:flex; gap:24px; align-items:center}
-  nav .links a{color:var(--soft); font-size:14px}
-  nav .links a:hover{color:var(--ink); text-decoration:none}
-  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;
-    padding:9px 16px;border-radius:10px;border:1px solid transparent;transition:transform .12s, box-shadow .12s, background .12s}
-  .btn:hover{text-decoration:none;transform:translateY(-1px)}
-  .btn.primary{background:var(--accent);color:#fff;box-shadow:0 6px 20px rgba(124,108,255,.35)}
-  .btn.primary:hover{box-shadow:0 9px 28px rgba(124,108,255,.5)}
-  .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--border2)}
-  .btn.ghost:hover{border-color:var(--accent)}
-  @media (max-width:720px){ nav .links{display:none} }
-
-  /* Hero */
-  header.hero{position:relative; overflow:hidden; padding:90px 0 70px;
-    background:
-      radial-gradient(1000px 480px at 72% -8%, rgba(124,108,255,.26), transparent 60%),
-      radial-gradient(760px 380px at 8% 4%, rgba(124,108,255,.12), transparent 55%);
-    border-bottom:1px solid var(--border)}
-  .pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent-2);
-    background:rgba(124,108,255,.10);border:1px solid rgba(124,108,255,.28);
-    padding:6px 13px;border-radius:999px;margin-bottom:22px}
-  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--positive);box-shadow:0 0 10px var(--positive)}
-  .hero h1{font-size:clamp(36px,5.2vw,60px);line-height:1.06;letter-spacing:-.025em;font-weight:680;max-width:17ch}
-  .hero h1 .grad{background:linear-gradient(110deg,var(--accent-2),#D7CEFF);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .hero p.sub{margin-top:22px;font-size:clamp(16px,2vw,19px);line-height:1.6;max-width:64ch;color:var(--soft)}
-  .hero p.sub b{color:var(--ink);font-weight:600}
-  .cta{display:flex;gap:13px;flex-wrap:wrap;margin-top:32px;align-items:center}
-  .cta .meta{font-size:13px;color:var(--faint);margin-left:4px}
-  .heroshot{margin-top:54px;position:relative}
-  .heroshot img{display:block;width:100%;height:auto;border-radius:var(--radius);
-    border:1px solid var(--border2);box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 1px rgba(124,108,255,.06)}
-
-  /* Sektioner */
-  section{padding:84px 0;border-bottom:1px solid var(--border)}
-  .eyebrow{color:var(--accent-2);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
-  h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.02em;font-weight:680;margin-bottom:12px}
-  .lead{color:var(--soft);max-width:64ch;font-size:17px;margin-bottom:40px}
-
-  .grid{display:grid;gap:18px}
-  .grid.c3{grid-template-columns:repeat(3,1fr)}
-  .grid.c2{grid-template-columns:repeat(2,1fr)}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-    padding:24px;transition:transform .14s, border-color .14s, background .14s}
-  .card:hover{transform:translateY(-3px);border-color:var(--border2);background:var(--surface2)}
-  .ico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-    color:var(--accent);background:rgba(124,108,255,.12);border:1px solid rgba(124,108,255,.22);margin-bottom:16px}
-  .ico svg{width:19px;height:19px}
-  .card h3{font-size:16.5px;font-weight:640;margin-bottom:7px}
-  .card p{font-size:14.5px;color:var(--soft);line-height:1.6}
-
-  /* Free section accent */
-  .free{background:
-    radial-gradient(640px 320px at 88% 0%, rgba(63,207,142,.10), transparent 62%), var(--bg2)}
-  .free .ico{color:var(--positive);background:rgba(63,207,142,.12);border-color:rgba(63,207,142,.22)}
-
-  /* Tour */
-  .tour{display:flex;flex-direction:column;gap:64px;margin-top:8px}
-  .step{display:grid;grid-template-columns:1fr 1.3fr;gap:40px;align-items:center}
-  .step:nth-child(even){grid-template-columns:1.3fr 1fr}
-  .step:nth-child(even) .copy{order:2}
-  .step .frame img{display:block;width:100%;height:auto;border-radius:12px;
-    border:1px solid var(--border2);box-shadow:0 24px 60px rgba(0,0,0,.5)}
-  .step .k{display:inline-flex;align-items:center;gap:8px;color:var(--accent-2);font-weight:600;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
-  .step .k .n{width:22px;height:22px;border-radius:7px;background:rgba(124,108,255,.14);border:1px solid rgba(124,108,255,.28);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--accent-2)}
-  .step h3{font-size:22px;font-weight:660;letter-spacing:-.015em;margin-bottom:10px}
-  .step p{color:var(--soft);font-size:15.5px;max-width:54ch}
-
-  /* Features */
-  .feat{columns:2;column-gap:36px}
-  .feat .f{break-inside:avoid;display:flex;gap:12px;margin-bottom:16px}
-  .feat .f .ck{flex:none;width:20px;height:20px;color:var(--accent);margin-top:1px}
-  .feat .f p{font-size:14.5px;color:var(--soft);line-height:1.55}
-  .feat .f b{color:var(--ink);font-weight:600}
-
-  /* Install */
-  .install ol{margin-left:20px;color:var(--soft);font-size:15.5px}
-  .install li{margin-bottom:11px;padding-left:6px}
-  .callout{margin-top:26px;background:rgba(224,163,58,.07);border:1px solid rgba(224,163,58,.32);
-    border-radius:12px;padding:16px 18px;font-size:14.5px;color:var(--soft)}
-  .callout b{color:#E0A33A}
-
-  /* CLI */
-  .cli{background:radial-gradient(720px 360px at 12% 0%, rgba(124,108,255,.10), transparent 60%), var(--bg2)}
-  .clibox{margin:30px 0 6px;background:#0B0D13;border:1px solid var(--border2);border-radius:12px;overflow:hidden;
-    box-shadow:0 20px 50px rgba(0,0,0,.45)}
-  .clibox .bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
-  .clibox .bar i{width:11px;height:11px;border-radius:50%;display:block}
-  .clibox .bar .r{background:#FF5F57}.clibox .bar .y{background:#FEBC2E}.clibox .bar .g{background:#28C840}
-  .clibox .bar span{margin-left:8px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint)}
-  .clibox pre{margin:0;padding:18px 20px;overflow-x:auto;
-    font:13.5px/1.85 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
-  .clibox pre .c{color:var(--faint)}
-  .clibox pre .p{color:var(--positive)}
-  .clibox pre b{color:var(--accent-2);font-weight:600}
-
-  footer{padding:50px 0 80px;color:var(--faint);font-size:14px}
-  footer a{color:var(--soft)}
-  footer .fr{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  footer .mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(150deg,var(--accent),#5A48E6);display:flex;align-items:center;justify-content:center}
-  footer .mark svg{width:13px;height:13px;color:#fff}
-
-  @media (max-width:760px){
-    .grid.c3,.grid.c2{grid-template-columns:1fr}
-    .step,.step:nth-child(even){grid-template-columns:1fr}
-    .step:nth-child(even) .copy{order:0}
-    .feat{columns:1}
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -163,6 +22,7 @@
       <a href="#saadan">Sådan virker det</a>
       <a href="#cli">Terminal</a>
       <a href="#features">Funktioner</a>
+      <a href="avanceret.html">Avanceret</a>
       <a href="https://github.com/Parthee-Vijaya/forge-mac">GitHub</a>
     </span>
     <a class="btn primary" href="https://github.com/Parthee-Vijaya/forge-mac/releases/latest">Hent til macOS</a>
@@ -286,6 +146,10 @@ git clone https://github.com/Parthee-Vijaya/forge-mac
 <span class="c"># Kom i gang</span>
 <span class="p">forge</span> new <b>min-app</b>      <span class="c"># nyt projekt</span>
 <span class="p">forge</span> <b>chat</b>             <span class="c"># fuldskærms-TUI · skriv / for kommandoer</span></pre>
+    </div>
+    <div class="cta" style="margin-top:26px">
+      <a class="btn primary" href="avanceret.html">Se hele CLI-guiden → Avanceret</a>
+      <span class="meta">installation med én curl-kommando · alle kommandoer</span>
     </div>
     <div class="tour" style="margin-top:58px">
       <div class="step">

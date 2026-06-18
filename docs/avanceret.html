@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — Avanceret: CLI'en til terminalen</title>
+<meta name="description" content="Forge CLI: en lige så stærk Forge i terminalen. Fuldskærms-TUI med live fil-streaming, farvede diffs, reviewer-agent, GitHub og swarm/kø. Installér med én curl-kommando.">
+<meta property="og:title" content="Forge CLI — Forge i terminalen">
+<meta property="og:description" content="Samme motor som appen, i terminalen. Installér med én curl-kommando.">
+<meta property="og:image" content="screenshots/10-cli.png">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Avanceret-specifikke små tilføjelser */
+  .cmds{display:flex;flex-direction:column;gap:9px}
+  .cmds .cmd{display:flex;gap:12px;align-items:baseline;font-size:14px}
+  .cmds .cmd code{flex:none;min-width:128px;color:var(--accent-2);background:rgba(124,108,255,.10);
+    padding:2px 8px;border-radius:6px;font-size:12.5px}
+  .cmds .cmd span{color:var(--soft);line-height:1.5}
+  .card h3.grp{display:flex;align-items:center;gap:9px;margin-bottom:14px;font-size:14px;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--accent-2)}
+  .bignote{margin-top:14px;color:var(--faint);font-size:13.5px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap row">
+    <a class="logo" href="index.html" style="color:var(--ink)"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> Forge</a>
+    <span class="spacer"></span>
+    <span class="links">
+      <a href="index.html#gratis">Gratis</a>
+      <a href="index.html#saadan">Sådan virker det</a>
+      <a href="index.html#features">Funktioner</a>
+      <a href="avanceret.html" style="color:var(--ink)">Avanceret</a>
+      <a href="https://github.com/Parthee-Vijaya/forge-mac">GitHub</a>
+    </span>
+    <a class="btn primary" href="#install">Installér CLI</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span> Avanceret · til power-brugere</span>
+    <h1>Forge i <span class="grad">terminalen</span>.</h1>
+    <p class="sub">For dig der hellere bliver i terminalen — eller arbejder over SSH. <code>forge chat</code> er en <b>fuldskærms-TUI med præcis samme motor som appen</b>: live fil-streaming med syntaksfarver, farvede diffs, model-skift midt i en session, gendan via checkpoints, en reviewer-agent, indbygget GitHub og en swarm-kø. Nul nye afhængigheder — bare en lille Swift-binær. Installér med <b>én kommando</b>.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">↓ Installér CLI'en</a>
+      <a class="btn ghost" href="#kommandoer">Se kommandoer</a>
+      <span class="meta">Apple Silicon · macOS · ingen Gatekeeper-bøvl</span>
+    </div>
+    <div class="heroshot"><img src="screenshots/10-cli.png" alt="forge chat — fuldskærms-TUI med Kontekst-sidebar" loading="eager"></div>
+  </div>
+</header>
+
+<section class="cli" id="install">
+  <div class="wrap">
+    <div class="eyebrow">Installér</div>
+    <h2>Én kommando i terminalen</h2>
+    <p class="lead">Kopiér linjen ind i Terminal. Den henter den prebuildede, selvstændige <code>forge</code>-binær fra seneste release og lægger den på din PATH. Ingen Xcode eller Swift-toolchain nødvendig — og fordi <code>curl</code> ikke quarantine'er hentede filer, er der <b style="color:var(--ink)">ingen Gatekeeper-advarsel</b> som ved appen.</p>
+    <div class="clibox">
+      <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>zsh — installér forge</span></div>
+<pre><span class="c"># Installér Forge CLI (Apple Silicon · macOS)</span>
+curl -fsSL <b>https://parthee-vijaya.github.io/forge-mac/install.sh</b> | bash
+
+<span class="c"># Kom i gang</span>
+<span class="p">forge</span> new min-app      <span class="c"># nyt projekt (React/Svelte/Vue/Next.js)</span>
+<span class="p">forge</span> chat             <span class="c"># fuldskærms-TUI · skriv / for kommandoer</span></pre>
+    </div>
+    <p class="bignote">Installeren lægger <code>forge</code> i <code>~/.local/bin</code> (eller en anden skrivbar PATH-mappe) og fortæller dig hvis mappen mangler i din PATH. Vil du hellere bygge fra kilde, så kør <code>git clone</code> + <code>bash scripts/install-cli.sh</code> (kræver Xcode/Swift).</p>
+    <div class="callout"><b>Bemærk:</b> CLI'en kører på Apple Silicon. For at <em>bygge</em> apps skal du have en model-backend (gratis lokal model via Ollama/LM Studio — første <code>forge chat</code> guider dig) samt Node til dev-serveren.</div>
+  </div>
+</section>
+
+<section id="brug">
+  <div class="wrap">
+    <div class="eyebrow">Sådan bruger du den</div>
+    <h2>Alt fra appen — i et terminalvindue</h2>
+    <p class="lead">Skriv hvad du vil bygge og tryk Enter. Agenten streamer sine ændringer live, mens en Kontekst-sidebar til højre hele tiden viser hvor du er.</p>
+    <div class="tour">
+      <div class="step">
+        <div class="copy"><div class="k">Live build &amp; sidebar</div><h3>Byg, og se konteksten</h3><p>Filer skrives live med syntaksfarver. Sidebaren viser forbrug (tokens, hastighed, pris), ændrede filer, reviewer-status, dit git-repo og en swarm-kø — alt sammen mens du bygger. Skift panel med <code>⇥</code>, afbryd med <code>^C</code>.</p></div>
+        <div class="frame"><img src="screenshots/10-cli.png" alt="Hovedskærm med Kontekst-sidebar" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="k">Farvede diffs &amp; reviewer</div><h3>Se ændringerne — og få dem gennemgået</h3><p>Hver tur gemmes som et checkpoint, så <code>/diff</code> viser præcis hvad der blev ændret, med farver. Bagefter gennemgår en <b style="color:var(--ink)">2. agent</b> automatisk dit build for fejl, sikkerhed og tilgængelighed — ret fundene med <code>/fix</code>, eller rul hele turen tilbage med <code>/undo</code>.</p></div>
+        <div class="frame"><img src="screenshots/12-cli-diff.png" alt="Farvet diff + reviewer-fund i terminalen" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="k">GitHub &amp; swarm</div><h3>Git og en kø — uden at forlade terminalen</h3><p>Udgiv og synk med <code>/github</code>, <code>/push</code>, <code>/pull</code> og <code>/pr</code> — git-status (gren, ændringer, foran/bagud) står live i sidebaren. Og med <code>/kø</code> stiller du flere byggeopgaver i kø; Forge arbejder dem igennem én ad gangen og viser status undervejs.</p></div>
+        <div class="frame"><img src="screenshots/11-cli-swarm.png" alt="Kontekst-sidebar med git-status og swarm-kø" loading="lazy"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cli" id="kommandoer">
+  <div class="wrap">
+    <div class="eyebrow">Reference</div>
+    <h2>Kommandoer &amp; genveje</h2>
+    <p class="lead">Subkommandoer starter Forge; inde i <code>forge chat</code> skriver du <code>/</code> for menuen. Her er det hele.</p>
+    <div class="grid c3">
+      <div class="card">
+        <h3 class="grp">Kom i gang</h3>
+        <div class="cmds">
+          <div class="cmd"><code>forge new &lt;navn&gt;</code><span>Nyt projekt (vælg framework med <code>--framework</code>).</span></div>
+          <div class="cmd"><code>forge chat</code><span>Åbn fuldskærms-TUI i projektet.</span></div>
+          <div class="cmd"><code>forge build "…"</code><span>Ét build uden TUI (godt til scripts).</span></div>
+          <div class="cmd"><code>forge chat --resume</code><span>Genoptag forrige session.</span></div>
+          <div class="cmd"><code>forge skills</code><span>Vis tilgængelige skills/presets.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Byg &amp; gennemgå</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/diff</code><span>Farvet diff af sidste tur.</span></div>
+          <div class="cmd"><code>/review</code><span>Kør reviewer-agenten igen.</span></div>
+          <div class="cmd"><code>/fix</code><span>Ret reviewerens fund.</span></div>
+          <div class="cmd"><code>/model</code><span>Skift AI-model midt i en session.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Git &amp; GitHub</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/github</code><span>Udgiv projektet til GitHub.</span></div>
+          <div class="cmd"><code>/commit</code><span>Gem ændringer (commit).</span></div>
+          <div class="cmd"><code>/push</code> <span>Send commits til GitHub.</span></div>
+          <div class="cmd"><code>/pull</code><span>Hent ændringer ned.</span></div>
+          <div class="cmd"><code>/pr</code><span>Opret et pull request.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Kø / swarm</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/kø &lt;opgave&gt;</code><span>Stil en byggeopgave i kø.</span></div>
+          <div class="cmd"><code>/kø</code><span>Vis køen / genoptag.</span></div>
+          <div class="cmd"><code>/kø ryd</code><span>Ryd ventende opgaver.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Session &amp; fortryd</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/undo</code><span>Fortryd sidste tur.</span></div>
+          <div class="cmd"><code>/restore &lt;n&gt;</code><span>Gendan til tur n.</span></div>
+          <div class="cmd"><code>/checkpoints</code><span>Liste over ture.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Udseende &amp; opsætning</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/theme</code><span>Skift farvetema.</span></div>
+          <div class="cmd"><code>/init</code><span>Skriv AGENTS.md (læses hver tur).</span></div>
+          <div class="cmd"><code>/help</code><span>Vis alle kommandoer.</span></div>
+          <div class="cmd"><code>/quit</code><span>Afslut (<code>^C</code> virker også).</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="bignote">Tip: <code>⇥</code> skifter sidepanel (Kontekst / live kode / diff), <code>↑ ↓</code> scroller, og <code>Esc</code>/<code>^C</code> afbryder en kørende tur.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fr"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> <b style="color:var(--ink);font-weight:600">Forge</b></div>
+    <a href="index.html">← Tilbage til forsiden</a> · Open source · <a href="https://github.com/Parthee-Vijaya/forge-mac">github.com/Parthee-Vijaya/forge-mac</a><br>
+    Bygget med SwiftUI + ForgeKit.
+  </div>
+</footer>
+
+</body>
+</html>
