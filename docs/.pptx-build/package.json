@@ -1,0 +1,12 @@
+{
+  "name": "stormbreaker-cli-architecture-deck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generator for ../Stormbreaker-CLI-Arkitektur.pptx (pptxgenjs)",
+  "scripts": {
+    "build": "node gen.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}

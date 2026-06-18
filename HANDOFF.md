@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `81ce686` 2026-06-18 — docs: thorough CLI architecture doc with diagrams
 - `a20cb42` 2026-06-18 — Cross-session memory: storm now remembers the user + project between sessions
 - `bb4be3d` 2026-06-18 — Conversation compaction: summarize old turns so local context windows don't overflow
 - `6d1d357` 2026-06-18 — Live plan checklist (todowrite): show the agent's plan as a checklist during a build
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `41384d3` 2026-06-18 — TUI: token-forbrug altid ved siden af modelnavnet i headeren
 - `36b34f0` 2026-06-18 — docs(handoff): document the agentic-SDLC køreplan (reviewer · GitHub · swarm)
 - `1dc4b23` 2026-06-18 — Swarm/kø S1+S2 (agentic-SDLC borrow): task queue runner + KØ sidebar
-- `799678c` 2026-06-18 — GitHub G2 (agentic-SDLC borrow): GIT sidebar section + slash commands
 <!-- COMMITLOG:END -->
