@@ -86,6 +86,7 @@ final class TUIApp {
     private var cursor = 0
     private var scroll = 0
     private var status = "Klar."
+    private var statusIsQuote = false           // status is a rotating fun quote (vs a literal label)
     private var liveFile: String?              // file currently streaming (side pane)
     private var liveBuffer = ""                // its contents so far
     enum SidePane { case context, live, diff }
@@ -209,7 +210,13 @@ final class TUIApp {
             switch ev {
             case .key(let k):           handle(k)
             case .resize(let s):        size = s; prev = nil; needsRender = true
-            case .tick:                 if isBusy || reviewing { spinnerFrame += 1; needsRender = true }
+            case .tick:
+                if isBusy || reviewing {
+                    spinnerFrame += 1
+                    // Rotate the fun quote every ~2.8s during a long build.
+                    if isBusy, statusIsQuote, spinnerFrame % 28 == 0 { status = StormQuotes.working.randomElement() ?? status }
+                    needsRender = true
+                }
             case .agent(let e):         applyAgent(e)
             case .permission(let r, let c): pendingPermission = (r, c); status = "Tilladelse kræves"; needsRender = true
             case .turnSnapshot(let sha): lastSHA = sha
@@ -302,7 +309,7 @@ final class TUIApp {
         transcript.append(Line(role: .user, text: text))
         pendingUser = text
         liveFile = nil; liveBuffer = ""
-        isBusy = true; status = "Tænker…"; spinnerFrame = 0
+        isBusy = true; status = StormQuotes.working.randomElement() ?? "Tænker…"; statusIsQuote = true; spinnerFrame = 0
         let engine = self.engine
         let prior = history
         turnTask = Task {
@@ -319,7 +326,7 @@ final class TUIApp {
     private func cancelTurn() {
         turnTask?.cancel(); turnTask = nil
         if let (_, c) = pendingPermission { pendingPermission = nil; c.resume(returning: .deny) }
-        isBusy = false; status = "Afbrudt."
+        isBusy = false; status = "Afbrudt."; statusIsQuote = false
         pendingUser = nil; currentAssistant = nil; assistantLineIndex = nil
         // A deliberate stop pauses the kø: mark the current task failed and DON'T
         // auto-drain — the rest stay queued, resumable with /kø.
@@ -429,7 +436,8 @@ final class TUIApp {
     private func applyAgent(_ ev: AgentEvent) {
         switch ev {
         case .state(let s):
-            status = Self.label(for: s)
+            if let quote = StormQuotes.line(for: s) { status = quote; statusIsQuote = true }
+            else { status = Self.label(for: s); statusIsQuote = false }
             if case .failed(let why) = s {
                 transcript.append(Line(role: .error, text: "✗ \(why.prefix(200))"))
                 if let hint = Self.failureHint(why) { transcript.append(Line(role: .system, text: "  → \(hint)")) }
@@ -686,6 +694,10 @@ final class TUIApp {
         }
         if w.contains("more system memory") || w.contains("out of memory") {
             return "Modellen er for stor til din maskines RAM — vælg en mindre model med /model."
+        }
+        if w.contains("model not found") || w.contains("no models loaded") || w.contains("failed to load")
+            || w.contains("model_not_found") || w.contains("404") {
+            return "Modellen er ikke indlæst — åbn den i LM Studio (slå 'JIT model loading' til) eller kør `ollama pull`, og vælg evt. en anden med /model."
         }
         if w.contains("timed out") || w.contains("-1001") {
             return "Modellen svarede ikke i tide — prøv en mindre/hurtigere model med /model."
@@ -999,8 +1011,10 @@ final class TUIApp {
     }
     private func fmtTTFT(_ s: Double?) -> String { s.map { String(format: "%.2fs", $0) } ?? "—" }
     private func fmtCost() -> String {
-        if engine.config.source != .cloud { return "gratis" }
-        return mCostUSD > 0 ? String(format: "≈ $%.3f", mCostUSD) : "—"
+        if engine.config.source != .cloud { return "lokal" }            // Ollama / LM Studio
+        if mCostUSD > 0 { return String(format: "≈ $%.3f", mCostUSD) }
+        if engine.config.modelID.hasSuffix(":free") { return "gratis" } // OpenRouter free tier
+        return "—"                                                       // cloud, price unknown
     }
 
     // MARK: - Slash commands (minimal; the full menu lands in P12)
@@ -1026,6 +1040,7 @@ final class TUIApp {
         case "pr":         gitPR(arg)
         case "git":        refreshGit(manual: true)
         case "kø", "ko", "queue", "swarm": queueCommand(arg)
+        case "copy", "kopier", "yank": copyLast()
         case "quit", "q":  running = false
         case "help":       transcript.append(Line(role: .system, text: Self.slashCommands.map { "\($0.0) — \($0.1)" }.joined(separator: "\n")))
         default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
@@ -1153,6 +1168,7 @@ final class TUIApp {
         ("/pull", "hent ændringer fra GitHub"),
         ("/pr", "opret et pull request"),
         ("/kø", "stil byggeopgaver i kø (kører én ad gangen)"),
+        ("/copy", "kopiér sidste svar til udklipsholderen"),
         ("/help", "vis kommandoer"),
         ("/quit", "afslut"),
     ]
@@ -1182,6 +1198,29 @@ final class TUIApp {
         } catch {
             transcript.append(Line(role: .error, text: "kunne ikke skrive AGENTS.md"))
         }
+    }
+
+    /// /copy — copy the last assistant reply to the macOS clipboard. A full-screen
+    /// TUI makes mouse-selection grab the whole layout (borders + sidebar), so this
+    /// gives a clean way to grab just the answer.
+    private func copyLast() {
+        let text = history.last(where: { $0.role == .assistant })?.content ?? currentAssistant
+        guard let text, !text.isEmpty else {
+            transcript.append(Line(role: .system, text: "intet svar at kopiere endnu")); needsRender = true; return
+        }
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/pbcopy")
+        let pipe = Pipe(); p.standardInput = pipe
+        do {
+            try p.run()
+            pipe.fileHandleForWriting.write(Data(text.utf8))
+            try? pipe.fileHandleForWriting.close()
+            p.waitUntilExit()
+            transcript.append(Line(role: .system, text: "📋 kopierede sidste svar (\(text.count) tegn) til udklipsholderen"))
+        } catch {
+            transcript.append(Line(role: .system, text: "kunne ikke kopiere (pbcopy utilgængelig)"))
+        }
+        needsRender = true
     }
 
     // MARK: - GitHub (the project's REAL .git + gh)

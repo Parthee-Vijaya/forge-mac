@@ -55,6 +55,14 @@ public struct GitService: Sendable {
               inside.output.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
         else { return .none }
 
+        // Only report THIS project's own repo. If the project sits inside a parent
+        // repo (e.g. a scaffold dropped into an existing clone), git would walk up
+        // and show the wrong repo — so require the project root to BE the toplevel.
+        let top = await run(["rev-parse", "--show-toplevel"], tool: Self.gitPath)
+        let topPath = URL(fileURLWithPath: top.output.trimmingCharacters(in: .whitespacesAndNewlines))
+            .resolvingSymlinksInPath().path
+        guard top.status == 0, topPath == root.resolvingSymlinksInPath().path else { return .none }
+
         async let branchR = run(["rev-parse", "--abbrev-ref", "HEAD"], tool: Self.gitPath)
         async let remoteR = run(["remote", "get-url", "origin"], tool: Self.gitPath)
         async let upstreamR = run(["rev-list", "--left-right", "--count", "@{u}...HEAD"], tool: Self.gitPath)
