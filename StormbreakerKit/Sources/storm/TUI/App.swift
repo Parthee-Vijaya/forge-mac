@@ -316,12 +316,44 @@ final class TUIApp {
         turnTask = Task {
             // Snapshot the pre-turn state first, so /diff + /undo (P9/P11) can compare.
             if let sha = await engine.checkpoints.snapshot(label: text) { cont.yield(.turnSnapshot(sha)) }
+            // Fetch any URLs in the prompt so the model reads REAL content instead of
+            // guessing from the URL's words. The model sees the augmented prompt; the
+            // transcript keeps showing the user's original line.
+            let prompt = await self.augmentWithURLs(text)
             let gate = TUIPermissionGate(channel: cont)
             let loop = AgentLoop(makeDeps(engine, mode: .build, gate: gate))
-            for await ev in loop.run(userPrompt: text, history: prior, mode: .build) { cont.yield(.agent(ev)) }
+            for await ev in loop.run(userPrompt: prompt, history: prior, mode: .build) { cont.yield(.agent(ev)) }
             cont.yield(.turnEnded)
         }
         needsRender = true
+    }
+
+    /// Fetch any URLs in the prompt and fold their real content into the prompt the
+    /// MODEL sees (the transcript still shows the user's original line). On a fetch
+    /// failure the model is told to admit it — so it can't fabricate repo contents.
+    private func augmentWithURLs(_ text: String) async -> String {
+        let urls = WebContent.extractURLs(text)
+        guard !urls.isEmpty else { return text }
+        var blocks: [String] = []
+        var failed: [String] = []
+        for u in urls.prefix(3) {
+            transcript.append(Line(role: .system, text: "📄 henter \(u)…")); needsRender = true
+            if let content = await WebContent.fetch(u) {
+                blocks.append("KILDE — \(u):\n\(content)")
+            } else {
+                failed.append(u)
+                transcript.append(Line(role: .system, text: "  ⚠ kunne ikke hente \(u)")); needsRender = true
+            }
+        }
+        var prompt = text
+        if !blocks.isEmpty {
+            prompt += "\n\n--- HENTET WEB-INDHOLD (svar KUN ud fra dette — find ikke på) ---\n"
+                + blocks.joined(separator: "\n\n")
+        }
+        if !failed.isEmpty {
+            prompt += "\n\n(Kunne IKKE hente: \(failed.joined(separator: ", ")). Sig ærligt at du ikke kunne læse dem — gæt ikke indholdet.)"
+        }
+        return prompt
     }
 
     private func cancelTurn() {
