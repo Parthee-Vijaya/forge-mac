@@ -502,9 +502,17 @@ final class TUIApp {
     private func drawHeader(_ buf: ScreenBuffer, _ r: Rect) {
         buf.fill(r, " ", base)
         buf.text("⬢ forge", x: r.x + 1, y: r.y, theme.accentBold)
-        var right = modelName
-        if sessionTokens > 0 { right += "  ·  \(fmtTok(sessionTokens)) tok" }
-        buf.text(right, x: max(r.x + 10, r.maxX - TextWidth.width(right) - 1), y: r.y, theme.dimStyle, clip: r)
+        // Right side: model name (dim) + ALWAYS-on token usage in a brighter style
+        // so it's the glanceable figure next to the model · cost once a call lands.
+        let model = modelName
+        let sep = "  ·  "
+        var usage = "\(fmtTok(sessionTokens)) tok"
+        if mCalls > 0 { usage += "  ·  " + fmtCost() }
+        let total = TextWidth.width(model) + TextWidth.width(sep) + TextWidth.width(usage)
+        let x0 = max(r.x + 10, r.maxX - total - 1)
+        buf.text(model, x: x0, y: r.y, theme.dimStyle, clip: r)
+        buf.text(sep, x: x0 + TextWidth.width(model), y: r.y, theme.dimStyle, clip: r)
+        buf.text(usage, x: x0 + TextWidth.width(model) + TextWidth.width(sep), y: r.y, base, clip: r)
     }
 
     private func drawWelcome(_ buf: ScreenBuffer, _ r: Rect) {

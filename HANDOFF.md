@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Forge til et lille team, ikke kun �
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `36b34f0` 2026-06-18 — docs(handoff): document the agentic-SDLC køreplan (reviewer · GitHub · swarm)
 - `1dc4b23` 2026-06-18 — Swarm/kø S1+S2 (agentic-SDLC borrow): task queue runner + KØ sidebar
 - `799678c` 2026-06-18 — GitHub G2 (agentic-SDLC borrow): GIT sidebar section + slash commands
 - `2e12ddf` 2026-06-18 — GitHub G1 (agentic-SDLC borrow): GitService + GitStatus in ForgeKit
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Forge til et lille team, ikke kun �
 - `79e843c` 2026-06-17 — TUI P6 (opencode/nanocoder): wire the real AgentLoop + permission modal
 - `4ef787e` 2026-06-17 — TUI P5 (opencode/nanocoder): full-screen event loop
 - `64a562c` 2026-06-17 — TUI P4 (opencode/nanocoder): input decoder
-- `9d9bc7c` 2026-06-17 — TUI P3 (opencode/nanocoder): layout solver + Forge screen skeleton
 <!-- COMMITLOG:END -->
