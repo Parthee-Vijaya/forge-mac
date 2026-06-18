@@ -297,6 +297,12 @@ public actor AgentLoop {
         let clock = ContinuousClock()
         let started = clock.now
         var firstTokenAt: ContinuousClock.Instant?
+        // An apply failure (e.g. the dev server won't start at artifact-close) is
+        // deferred, not thrown immediately: the provider's final usage chunk + `.done`
+        // arrive AFTER the artifact text, so we keep draining the stream to capture
+        // metrics, then re-raise so the caller still sees the failure (token
+        // accounting must survive a failed build — that's when it matters most).
+        var deferredApplyError: Error?
         for try await event in deps.provider.stream(messages: messages, options: deps.options) {
             try Task.checkCancellation()
             let pieces: [ReasoningSplitter.Piece]
@@ -315,7 +321,25 @@ public actor AgentLoop {
                     totalSeconds: started.duration(to: clock.now).seconds)))
                 continue
             }
+            if deferredApplyError != nil { continue }   // already failed mid-stream; just drain to `.done`
             for piece in pieces {
+                switch piece {
+                case .reasoning(let r): continuation.yield(.reasoning(r))
+                case .text(let text):
+                    raw += text
+                    do {
+                        for parserEvent in parser.consume(text) {
+                            if let event = toApply(parserEvent) {
+                                try await apply(event, executor: executor, continuation)
+                            }
+                        }
+                    } catch { deferredApplyError = error }
+                }
+                if deferredApplyError != nil { break }
+            }
+        }
+        if deferredApplyError == nil {
+            for piece in splitter.finish() {
                 switch piece {
                 case .reasoning(let r): continuation.yield(.reasoning(r))
                 case .text(let text):
@@ -327,24 +351,14 @@ public actor AgentLoop {
                     }
                 }
             }
-        }
-        for piece in splitter.finish() {
-            switch piece {
-            case .reasoning(let r): continuation.yield(.reasoning(r))
-            case .text(let text):
-                raw += text
-                for parserEvent in parser.consume(text) {
-                    if let event = toApply(parserEvent) {
-                        try await apply(event, executor: executor, continuation)
-                    }
+            for parserEvent in parser.finish() {
+                if let event = toApply(parserEvent) {
+                    try await apply(event, executor: executor, continuation)
                 }
             }
         }
-        for parserEvent in parser.finish() {
-            if let event = toApply(parserEvent) {
-                try await apply(event, executor: executor, continuation)
-            }
-        }
+        // Re-raise the deferred failure now that `.done`/metrics have been captured.
+        if let deferredApplyError { throw deferredApplyError }
 
         // Robustness: the dev-server start lives in artifact-close (flush). If the
         // model wrote files but never emitted a clean </forgeArtifact> (seen with
