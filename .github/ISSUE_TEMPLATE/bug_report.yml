@@ -1,11 +1,11 @@
 name: 🐞 Fejlrapport
-description: Noget gik galt i Forge
+description: Noget gik galt i Stormbreaker
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Tak fordi du tester Forge! Jo mere konkret, jo hurtigere kan jeg fikse det.
+        Tak fordi du tester Stormbreaker! Jo mere konkret, jo hurtigere kan jeg fikse det.
   - type: textarea
     id: what-happened
     attributes:
@@ -43,15 +43,15 @@ body:
   - type: input
     id: versions
     attributes:
-      label: Forge-version + macOS
-      placeholder: "fx Forge 0.2.1 · macOS 26.0"
+      label: Stormbreaker-version + macOS
+      placeholder: "fx Stormbreaker 0.2.1 · macOS 26.0"
     validations:
       required: false
   - type: textarea
     id: logs
     attributes:
       label: Logs / fejlbeskeder (valgfrit)
-      description: Indsæt evt. fejltekst fra terminalen/konsollen i Forge.
+      description: Indsæt evt. fejltekst fra terminalen/konsollen i Stormbreaker.
       render: shell
     validations:
       required: false

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Build a distributable Forge.app + .dmg for personal/local use.
+# Build a distributable Stormbreaker.app + .dmg for personal/local use.
 #
-# Signing: ad-hoc ("-") WITH the entitlements applied (NOT unsigned). Forge spawns
+# Signing: ad-hoc ("-") WITH the entitlements applied (NOT unsigned). Stormbreaker spawns
 # a `node` dev server that loads unsigned native addons (esbuild/Rollup/Tailwind
 # oxide); under Hardened Runtime that only works if the app is signed with the
 # `disable-library-validation` entitlement. So unlike a pure-Swift app we must
@@ -9,15 +9,15 @@
 #
 # NOT notarized: that requires a "Developer ID Application" cert + Apple Developer
 # Program membership (none on this machine). First launch therefore needs a
-# right-click -> Open (or `xattr -dr com.apple.quarantine Forge.app`) to clear
+# right-click -> Open (or `xattr -dr com.apple.quarantine Stormbreaker.app`) to clear
 # Gatekeeper. Notarized distribution is a follow-up once a Developer ID exists.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
-APP_NAME="Forge"
-PROJECT="Forge.xcodeproj"
+APP_NAME="Stormbreaker"
+PROJECT="Stormbreaker.xcodeproj"
 BUILD_DIR=".build-release"
 VERSION="$(grep -m1 'MARKETING_VERSION' project.yml | sed 's/.*"\(.*\)".*/\1/' || echo 0.1.0)"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"

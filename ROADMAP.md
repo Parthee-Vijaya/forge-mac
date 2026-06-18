@@ -1,7 +1,7 @@
-# Forge — Roadmap
+# Stormbreaker — Roadmap
 
 > Gennemtænkt plan for videreudvikling. Forankret i den faktiske kodebase
-> (ForgeKit-motoren + SwiftUI-appen). 20 forbedringer, 20 nye features, 20
+> (StormbreakerKit-motoren + SwiftUI-appen). 20 forbedringer, 20 nye features, 20
 > design-forslag, og en faseinddelt implementeringsplan til sidst.
 
 **Nuværende stade (baseline):** Walking skeleton + Lovable-stil UI, multi-model
@@ -19,9 +19,9 @@ Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 > WebView-genbrug, **C17** motion-sprog, **B8** terminal, **B10** Spørg-om-koden,
 > **C11** dashboard-grid, **B7** Next.js (basal), **B15** stemme-diktering (mic
 > uverificeret), **A15** tastatur-nav (Dynamic Type bevidst fravalgt), **B11**
-> pluggbar engine-seam, **B18** forge-mcp MCP-server, **B19** iOS-companion
+> pluggbar engine-seam, **B18** storm-mcp MCP-server, **B19** iOS-companion
 > *host-side* (HTTP-status-server — selve iOS-app'en er det udestående XL-stykke).
-> Se commits 8411318…ae8ff20. **Opdatering 2026-06-16:** B19's iOS-app (`ForgeCompanion`)
+> Se commits 8411318…ae8ff20. **Opdatering 2026-06-16:** B19's iOS-app (`StormbreakerCompanion`)
 > er nu bygget — et iOS/iPadOS-target der poller host'ens `/status`, omskriver
 > preview-URL'en til Mac'ens LAN/Tailscale-adresse og viser den i en WKWebView
 > (simulator-build grøn). Tilbage: notarisering (udskudt til Developer-konto), de
@@ -46,7 +46,7 @@ Prioritet: **P0** (gør først) · **P1** · **P2** (nice-to-have).
 
 **Opdatering 2026-06-16 (eftermiddag): hele P1+P2-backlog'en er nu fejet igennem.**
 Verificeret mod koden + bygget/testet i denne session. Mac-app + CLI bygger; 118
-ForgeKit-tests grønne.
+StormbreakerKit-tests grønne.
 
 ### ✅ Leveret i denne session (var P1+P2-backlog)
 - **A11** self-correction inliner nu de fejlende filers indhold i repair-turen (`errorTurn` + AgentLoop, maks 3 filer). *(+ MessageBuilderTests)*
@@ -75,14 +75,14 @@ ForgeKit-tests grønne.
 - Notarisering / signeret DMG → afventer Apple Developer-konto.
 
 ### Leveret efter denne plan blev skrevet (uden for A/B/C-nummereringen)
-- **`forge` CLI** (nanocoder-køreplan fase 1) · **Skills** projekt+global+builtins (fase 2) · **MCP tool-calling**: agenten kalder eksterne værktøjer + `forge-mcp`-server (fase 3, e2e-verificeret).
+- **`storm` CLI** (nanocoder-køreplan fase 1) · **Skills** projekt+global+builtins (fase 2) · **MCP tool-calling**: agenten kalder eksterne værktøjer + `storm-mcp`-server (fase 3, e2e-verificeret).
 
 ---
 
 ## 0. ONBOARDING & KONFIGURATION (first-run)
 
 **Mål:** Første gang appen åbnes (ingen `preferences.json`) kører en kort wizard
-der sætter Forge op og skriver et `Preferences`-objekt. Alt kan ændres bagefter i
+der sætter Stormbreaker op og skriver et `Preferences`-objekt. Alt kan ændres bagefter i
 Settings (⌘,). Hvert trin har Tilbage/Næste; valgfrie trin har "Spring over";
 lukkes wizard'en, bruges fornuftige defaults.
 
@@ -92,20 +92,20 @@ via en ny `PreferencesStore` (**A22**). Cloud-nøgler i **Keychain** (**A4**).
 
 **Trin (kort-sekvens i ét vindue):**
 
-0. **Velkomst** — Forge-wordmark + kort pitch → "Kom i gang".
+0. **Velkomst** — Stormbreaker-wordmark + kort pitch → "Kom i gang".
 1. **Dit navn** — "Hvad skal vi kalde dig?" Default = `NSFullUserName()`. → `Preferences.userName`. Bruges i UI ("Hej Parthee") + injiceres i system-prompten så agenten tiltaler dig rigtigt. *(→ B21)*
 2. **Projekt-placering** — folder-picker. Defaults: App Support (anbefalet) eller `~/Desktop/Claude/projekter/aktive`. → `Preferences.projectsRoot`; `ProjectStore.root` læser den. *(→ A21)*
 3. **Model** — kør `ModelDiscovery`; vis lokale (Ollama/LM Studio, grupperet) + cloud; vælg default. Tomt? → hjælp til at starte Ollama/LM Studio + "Prøv igen". → `Preferences.defaultModelID`.
 4. **Cloud-nøgle (valgfri)** — provider (NVIDIA NIM / OpenAI / Anthropic) + nøgle-felt + "Spring over". → Keychain. *(→ A4)*
 5. **GitHub** — `gh auth status`: logget ind → vis konto + vælg owner/org (`gh api user`, `/user/orgs`); ellers "Log ind" (åbner `gh auth login --web`) + "Spring over". → `Preferences.githubOwner`. *(→ B23 + Feature 3)*
 6. **Vercel (valgfri)** — `vercel whoami` → vis konto + team-scope (`vercel teams ls`); "Spring over". → `Preferences.vercelScope`. *(→ B23)*
-7. **Global memory** — fritekst: "Hvad skal Forge altid huske om dig?" (fx "TypeScript strict, minimale deps, sort/hvid UI, dansk UI-tekst"). → `Preferences.memory`; injiceres i HVER system-prompt. *(→ B21)*
+7. **Global memory** — fritekst: "Hvad skal Stormbreaker altid huske om dig?" (fx "TypeScript strict, minimale deps, sort/hvid UI, dansk UI-tekst"). → `Preferences.memory`; injiceres i HVER system-prompt. *(→ B21)*
 8. **Standard `AI_RULES.md`** — redigerbar skabelon (fornuftig default) som hvert NYT projekt får i roden + injiceres i dets prompt + committes/deployes med projektet. → `Preferences.defaultRulesTemplate`. *(→ B22)*
 9. **Færdig** — opsummering → "Byg dit første projekt" → empty-state.
 
 **Agent-integration (det der får navn + memory + regler til at virke):**
 `MessageBuilder.build` komponerer system-beskeden som
-`SystemPrompt.forge` + (navn → "The user is called …") + (global memory → "User preferences: …")
+`SystemPrompt.storm` + (navn → "The user is called …") + (global memory → "User preferences: …")
 + (projektets `AI_RULES.md` hvis den findes). Sådan flyder bruger-præferencer +
 projekt-regler ind i hver tur uden ekstra arbejde.
 
@@ -120,13 +120,13 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 > *Audit 2026-06-16: flere poster nedenfor mangler ✅ men ER bygget (A1/A3/A4/A9/A10/A16/A20/A21/A22). Se "Backlog efter audit" øverst for den korrekte status.*
 
-1. **Line-replace / diff-edits for stærke modeller** — pt. altid whole-file writes (dyrt + langsomt på store filer). `ModelConfig.supportsLineReplace` findes allerede. *Sådan:* ny `.inLineReplaceBody`-state i `StreamingArtifactParser`, `ForgeAction.lineReplace(path,search,replace)`, diff-apply i `ActionExecutor`, og en prompt-gren i `SystemPrompt`/`MessageBuilder` valgt på `config.supportsLineReplace`. **L · P0**
+1. **Line-replace / diff-edits for stærke modeller** — pt. altid whole-file writes (dyrt + langsomt på store filer). `ModelConfig.supportsLineReplace` findes allerede. *Sådan:* ny `.inLineReplaceBody`-state i `StreamingArtifactParser`, `StormbreakerAction.lineReplace(path,search,replace)`, diff-apply i `ActionExecutor`, og en prompt-gren i `SystemPrompt`/`MessageBuilder` valgt på `config.supportsLineReplace`. **L · P0**
 
 2. **Smart context-styring** — `AppModel.buildContext` sender hele `App.tsx` + fil-listen hver tur; sprænger `num_ctx` på store projekter (den stille trunkering vi allerede frygter). *Sådan:* token-budgettér; medtag kun filer modellen rørte sidst + dem den eksplicit anmoder om via et nyt `read-file`-værktøj; komprimér fil-mappet. **L · P0** — ✅ **A2b (read-file) bygget:** modellen kan midt i en build bede om en fils indhold via `<forgeAction type="read-file" filePath="…">`; `StreamingArtifactParser` → `.readRequest`, `AgentLoop` kører en læse-runde (henter filerne, fodrer dem tilbage, maks 3 runder, tæller ikke som repair), `Dependencies.readFile` leverer dem fra workspace. Parser-test dækker det.
 
 3. **Afbryd/stop en kørende generering** — ingen stop-knap i dag; en lang/forkert tur kan ikke annulleres. *Sådan:* `AgentLoop.run` returnerer allerede en `AsyncStream` med en `Task` — eksponér `cancel()`; composer-knappen viser "stop" mens `isBusy`, kalder cancel → afslut stream + behold delvist arbejde. **S · P0**
 
-4. **Keychain-baseret nøgleopbevaring + Settings-UI** — cloud-nøgle læses fra `FORGE_CLOUD_API_KEY` env-var (skrøbeligt, ikke brugervenligt). *Sådan:* lille `KeychainStore`-wrapper; et Settings-vindue (⌘,) til nøgler pr. provider + node-sti-override (`NodeResolver.overrideDefaultsKey` findes). **M · P0**
+4. **Keychain-baseret nøgleopbevaring + Settings-UI** — cloud-nøgle læses fra `STORM_CLOUD_API_KEY` env-var (skrøbeligt, ikke brugervenligt). *Sådan:* lille `KeychainStore`-wrapper; et Settings-vindue (⌘,) til nøgler pr. provider + node-sti-override (`NodeResolver.overrideDefaultsKey` findes). **M · P0**
 
 5. **Bedre fejl-klassificering** — `ErrorClassifier` er streng-matchning og fanger støj (HMR-reconnect mm.). *Sådan:* parse Vite/tsc/esbuild struktureret (fil:linje:kol + kode), dedupér på fil+linje, whitelist ægte fejlmønstre, filtrér info-logs fra. Forbedrer self-correction-konvergens direkte. **M · P0**
 
@@ -142,7 +142,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 11. **Self-correction der ser den fejlende fil** — repair-turen får kun fejlteksten, ikke filens nuværende indhold. *Sådan:* `MessageBuilder.errorTurn` inkluderer den/de fil(er) fejlen peger på (fra `ErrorReport.Item`-fil-sti). Færre forkerte fixes. **M · P1**
 
-12. **Robust orphan-håndtering for ALLE projekter** — ✅ *bygget.* `ProcessSupervisor.reclaimAllOrphans(under:)` laver en global sweep ved opstart: matcher processer hvis kommandolinje refererer Forge-projektmappen OG ligner en dev-server (`vite`/`forge-run.sh`), SIGTERM→SIGKILL. Editorer med et projekt åbent og fremmede vite-processer røres ikke. Wiret i `AppModel.init` off-main før resume-`start()`. Supplerer den per-projekt pidfile-reclaim + `forge-run.sh`-watchdog. **S · P1**
+12. **Robust orphan-håndtering for ALLE projekter** — ✅ *bygget.* `ProcessSupervisor.reclaimAllOrphans(under:)` laver en global sweep ved opstart: matcher processer hvis kommandolinje refererer Stormbreaker-projektmappen OG ligner en dev-server (`vite`/`storm-run.sh`), SIGTERM→SIGKILL. Editorer med et projekt åbent og fremmede vite-processer røres ikke. Wiret i `AppModel.init` off-main før resume-`start()`. Supplerer den per-projekt pidfile-reclaim + `storm-run.sh`-watchdog. **S · P1**
 
 13. **NodeResolver-caching + tydelig "mangler Node"-UI** — login-shell-probe (~100-300ms) køres ved hver `start`. *Sådan:* cache resolved sti i UserDefaults m/ invalidation; hvis Node mangler, vis en handlingsrettet besked (de søgte stier findes allerede i `DevServerError.nodeRuntimeNotFound`). **S · P1**
 
@@ -150,7 +150,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 15. **Tilgængelighed (a11y)** — ◑ *delvist bygget.* `.accessibilityLabel` (dansk) på ikon-knapper i composer, preview-toolbar (+ `.isSelected` på aktiv bredde) og chat-header. *Udestår:* Dynamic Type og fuld tastatur-navigation i fil-træ/lister. **M · P2**
 
-16. **App-lags-tests** — kun `ForgeKit` er testet; `AppModel`-logik (auto-navn, projekt-skift, visual-edit-prompt) er uafprøvet. *Sådan:* udtræk ren logik (slug, projectName, prompt-bygning) til testbare funktioner; ViewInspector/snapshot for nøgle-views. **M · P2**
+16. **App-lags-tests** — kun `StormbreakerKit` er testet; `AppModel`-logik (auto-navn, projekt-skift, visual-edit-prompt) er uafprøvet. *Sådan:* udtræk ren logik (slug, projectName, prompt-bygning) til testbare funktioner; ViewInspector/snapshot for nøgle-views. **M · P2**
 
 17. **Migrér det gamle single-projekt** — ✅ *bygget.* `ProjectStore.migrateLegacyProjectIfNeeded()` kører ved opstart (`AppModel.init`): hvis det forældreløse `~/Library/.../Forge/project` (ental) findes med en bygget app, **flyttes** det ind som et `Project` ("Importeret projekt") med en seed-chat så det dukker op i "Seneste"; ellers ryddes det op. Idempotent (move, ikke copy → øjeblikkeligt + væk bagefter). Verificeret end-to-end med en fixture. **S · P2**
 
@@ -176,7 +176,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 3. **Supabase / backend-integration** — ✅ *bygget.* "Tilføj backend (Supabase)" (projekt-menu + ⌘K) → dialog for projekt-URL + anon-nøgle → scaffolder `src/lib/supabase.ts` (konfigureret client), skriver env til `.env.local`, installerer `@supabase/supabase-js` og genstarter dev-serveren. `SystemPrompt.supabaseNote` (gated på at klienten findes) lærer modellen at bruge DB + auth uden at hardcode nøgler. **XL · P1**
 
-4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **Udvidet:** indsæt et **link** → Forge tager et offscreen-screenshot af siden (`DesignCapture`, en skjult WKWebView der scroller for at trigge entrance-animationer) og vedhæfter det som design-reference; `submit()` tilføjer eksplicit “recreate this design”-framing når et billede er vedhæftet (“kopiér dette design”). Verificeret med stripe.com + vercel.com. **L · P1**
+4. **Billede/screenshot-input → UI** — ✅ *bygget.* Drop et mockup/screenshot (eller vedhæft via 📎), modellen bygger matchende UI. *Sådan:* `ChatMessage.imageDataURLs` + multimodal `content`-array i `OpenAICompatProvider` (OpenAI `image_url`-parts); `MessageBuilder`/`AgentLoop` bærer billedet ind i første user-besked; `Composer` får 📎-knap + drag-and-drop drop-zone + thumbnail-strip; `AppModel` nedskalerer til JPEG-data-URL (≤1568px). Kræver en vision-model. Verificeret med `google/gemma-4-26b` (LM Studio): et login-mockup → næsten pixel-præcis match (eksakte hex-farver, felter, knap, links). **Udvidet:** indsæt et **link** → Stormbreaker tager et offscreen-screenshot af siden (`DesignCapture`, en skjult WKWebView der scroller for at trigge entrance-animationer) og vedhæfter det som design-reference; `submit()` tilføjer eksplicit “recreate this design”-framing når et billede er vedhæftet (“kopiér dette design”). Verificeret med stripe.com + vercel.com. **L · P1**
 
 5. **shadcn/ui-integration** — lad modellen bruge shadcn-komponenter (kvalitetsløft på genereret UI). *Sådan:* baked-in template m/ shadcn forudkonfigureret; `add-dependency`/`shell`-handling kører `npx shadcn add`; prompt kender komponentsættet. **M · P1**
 
@@ -190,7 +190,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 10. **Chat-med-kodebasen (RAG)** — stil spørgsmål om projektets kode. *Sådan:* embeddings over `src/**` (lokal embed-model via Ollama/LM Studio — den vi netop filtrerer fra i discovery), sqlite-vec; et "spørg"-tilstand i chatten der ikke redigerer. **L · P2**
 
-11. **Pluggbare agent-backends** — wrap Claude Agent SDK / Aider / Cline bag et `ForgeEngine`-protokol (fra research-doc'et). *Sådan:* abstrahér `AgentLoop` til en protokol; default = vores loop; valgfri adaptere kalder eksterne CLI/SDK. **L · P2**
+11. **Pluggbare agent-backends** — wrap Claude Agent SDK / Aider / Cline bag et `StormbreakerEngine`-protokol (fra research-doc'et). *Sådan:* abstrahér `AgentLoop` til en protokol; default = vores loop; valgfri adaptere kalder eksterne CLI/SDK. **L · P2**
 
 12. **Auto-fix uden prompt** — når preview fejler, tilbyd/auto-anvend et fix proaktivt. *Sådan:* `ErrorCollector` (A5) trigger en self-correction-tur automatisk når `jsErrors`/build-fejl opstår uden for en aktiv tur, bag en toggle. **M · P1**
 
@@ -204,11 +204,11 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 17. **Miljøvariabler-editor** — ✅ *bygget (lokal del).* `.env`/`.env.local` injiceres i dev-serverens barn-proces (`DevServerManager.loadDotEnv`) og vises i kode-træet (`fileMap`). En "Miljøvariabler"-knap (kode-træ + ⌘K) opretter `.env.local` fra en skabelon hvis den mangler og åbner den; Gem (⌘S) genstarter dev-serveren så Vite henter værdierne. *Udestår:* push til Vercel-env (`vercel env`) ved deploy. **M · P2**
 
-18. **MCP-server-eksponering** — eksponér filsystem/terminal/preview som MCP-værktøjer, så eksterne agenter (Claude Code, Cline) kan styre Forge. *Sådan:* en lille MCP-server (stdio) oven på `ProjectWorkspace` + `DevServerManager`. **L · P2**
+18. **MCP-server-eksponering** — eksponér filsystem/terminal/preview som MCP-værktøjer, så eksterne agenter (Claude Code, Cline) kan styre Stormbreaker. *Sådan:* en lille MCP-server (stdio) oven på `ProjectWorkspace` + `DevServerManager`. **L · P2**
 
-19. **iOS companion** — byg på Mac/DGX, vis preview i WKWebView på iPad/iPhone over LAN/Tailscale. *Sådan:* en Forge-daemon (genbrug ForgeKit) med et lille HTTP/WS-API; en SwiftUI iOS-app der fjernstyrer + viser host'ens dev-server-URL. **XL · P2**
+19. **iOS companion** — byg på Mac/DGX, vis preview i WKWebView på iPad/iPhone over LAN/Tailscale. *Sådan:* en Stormbreaker-daemon (genbrug StormbreakerKit) med et lille HTTP/WS-API; en SwiftUI iOS-app der fjernstyrer + viser host'ens dev-server-URL. **XL · P2**
 
-20. **Delbare projekter / snapshots** — eksportér et projekt (kode + chat) til en fil andre kan importere. *Sådan:* pak `ProjectStore`-mappen + `chat.json` til en `.forge`-bundle; import genskaber projektet. **M · P2**
+20. **Delbare projekter / snapshots** — eksportér et projekt (kode + chat) til en fil andre kan importere. *Sådan:* pak `ProjectStore`-mappen + `chat.json` til en `.storm`-bundle; import genskaber projektet. **M · P2**
 
 21. **Global memory (bruger-steering)** — en vedvarende bruger-memory (præferencer/kontekst) injiceret i ALLE projekters system-prompt — som dit eget `~/.claude` memory-system. *Sådan:* `Preferences.memory`-tekst (sat i onboarding-trin 7); `MessageBuilder` tilføjer "User preferences: …" til system-beskeden; redigerbar i Settings. **M · P1**
 
@@ -222,7 +222,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 26. **Learning mode (begynder-guide)** — ✅ *bygget.* En til/fra-knap (onboarding-trin 0 + Settings) der guider en helt ny bruger gennem vibecoding. Når den er slået til: **forklarings-kort** dukker op ved milepæle (første build kører → `preview`/`dev server`/`hot reload`; auto-fix af fejl → `error`/`self-correction`; kode-visning → `source code`/`component`; deploy → `commit`/`push`/`repository`/`GitHub`/`Vercel`), vist kun én gang hver. En altid-tilgængelig **ordbog** (book-ikon) forklarer alle fagudtryk (dansk forklaring, engelsk fagord). AI'en får en **nybegynder-tone** (forklarer hvad den gør, definerer fagord i parentes første gang). *Sådan:* `Preferences.learningMode` + `learnedLessons` (vist-én-gang); `Lessons`-katalog (dansk m/ engelske termer); `LessonCard`/`GlossaryView`; `AppModel.presentLessonIfNew(_:)` kaldt fra `submit`/`.clean`/`.repairing`/`enterCodeMode`/`deploy`; tutor-direktiv tilføjet i `composedSystemPrompt` når learningMode. **M · P1**
 
-27. **Startskærm (launch screen) + klon fra Git** — ✅ *bygget.* Forge åbner nu på en rigtig startskærm (à la Cursor/Xcode/VS Code) i stedet for et bart promptfelt: en **sidebar** (Nyt projekt, Klon fra Git, Start tutorial, Prøv et eksempel, Seneste projekter, modelvælger) + et **prompt-først** hovedfelt med en personlig hilsen "Hvad vil du bygge, P?". Brugeren spørges **én gang i en popup** hvad de vil kaldes (`preferredName`), redigerbart i Settings. Sidebaren falder væk når en build starter (ContentView skifter til chat+preview). **Klon fra Git** er ny funktionalitet: `git clone` til et nyt projekt, og hvis det er et Node/Vite-projekt køres `npm install` + dev-server startes. *Sådan:* `StartScreen.swift` (afløser EmptyStateView) + `NamePromptView`/`CloneDialogView`; `Preferences.{preferredName,askedPreferredName}`; `AppModel.{startGreeting,setPreferredName,startTutorial,tryExample,cloneFromGit}`. **L · P1**
+27. **Startskærm (launch screen) + klon fra Git** — ✅ *bygget.* Stormbreaker åbner nu på en rigtig startskærm (à la Cursor/Xcode/VS Code) i stedet for et bart promptfelt: en **sidebar** (Nyt projekt, Klon fra Git, Start tutorial, Prøv et eksempel, Seneste projekter, modelvælger) + et **prompt-først** hovedfelt med en personlig hilsen "Hvad vil du bygge, P?". Brugeren spørges **én gang i en popup** hvad de vil kaldes (`preferredName`), redigerbart i Settings. Sidebaren falder væk når en build starter (ContentView skifter til chat+preview). **Klon fra Git** er ny funktionalitet: `git clone` til et nyt projekt, og hvis det er et Node/Vite-projekt køres `npm install` + dev-server startes. *Sådan:* `StartScreen.swift` (afløser EmptyStateView) + `NamePromptView`/`CloneDialogView`; `Preferences.{preferredName,askedPreferredName}`; `AppModel.{startGreeting,setPreferredName,startTutorial,tryExample,cloneFromGit}`. **L · P1**
 
 ---
 
@@ -252,7 +252,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 11. **Projekt-dashboard m/ thumbnails** — ◑ *delvist bygget.* Efter et build snapshottes preview'et offscreen (via `DesignCapture`) til `.forge/thumb.png`, og "SENESTE"-listen på startskærmen viser miniaturen pr. projekt (folder-ikon indtil første build). *Udestår:* et fuldt dashboard-grid med sidst-redigeret + deploy-status. **L · P2**
 
-12. **Formaliseret design-system + dark mode** — ✅ *bygget (dark mode-delen).* Forge er redesignet i “Midnat” (mørk pro) som standard med en lys variant bag en toggle i Settings. *Sådan:* `Theme.dyn(light:dark:)` via `NSColor(name:dynamicProvider:)` resolver pr. effektiv appearance; `Preferences.appearance` styrer `AppModel.colorScheme` → `.preferredColorScheme` på hvert vindue/sheet; `CodePane`/editor bruger dynamiske `NSColor`. Skifter øjeblikkeligt uden genstart. Verificeret i begge temaer på tværs af startskærm, chat, galleri, dialoger. *(Token-skala/elevation-formalisering udestår stadig.)* **M · P1**
+12. **Formaliseret design-system + dark mode** — ✅ *bygget (dark mode-delen).* Stormbreaker er redesignet i “Midnat” (mørk pro) som standard med en lys variant bag en toggle i Settings. *Sådan:* `Theme.dyn(light:dark:)` via `NSColor(name:dynamicProvider:)` resolver pr. effektiv appearance; `Preferences.appearance` styrer `AppModel.colorScheme` → `.preferredColorScheme` på hvert vindue/sheet; `CodePane`/editor bruger dynamiske `NSColor`. Skifter øjeblikkeligt uden genstart. Verificeret i begge temaer på tværs af startskærm, chat, galleri, dialoger. *(Token-skala/elevation-formalisering udestår stadig.)* **M · P1**
 
 13. **Venlig fejl-præsentation** — ikke rå Vite-overlay, men et pænt fejl-kort med "Fix det"-knap der fodrer self-correction. *Sådan:* JS-broen fanger overlay-fejl; vis et native kort i `PreviewPane` m/ knap → trigger repair-tur. **M · P1**
 
@@ -266,7 +266,7 @@ projekt-regler ind i hver tur uden ekstra arbejde.
 
 18. **Resizable + persistente paneler** — husk split-størrelse + sammenklappelig chat pr. projekt. *Sådan:* gem `HSplitView`-positioner i UserDefaults pr. projekt; en collapse-knap. **S · P2**
 
-19. **App-ikon + brand-identitet** — rigtigt Forge-app-ikon, menubar-tilstedeværelse, poleret vindues-chrome (unified toolbar). *Sådan:* design et sort/hvidt ambolt/"forge"-ikon (asset catalog); `.windowToolbarStyle(.unified)`. **S · P1**
+19. **App-ikon + brand-identitet** — rigtigt Stormbreaker-app-ikon, menubar-tilstedeværelse, poleret vindues-chrome (unified toolbar). *Sådan:* design et sort/hvidt ambolt/"storm"-ikon (asset catalog); `.windowToolbarStyle(.unified)`. **S · P1**
 
 20. **Tastatur-genveje overalt + cheat sheet** — ⌘N nyt projekt, ⌘↵ send, ⌘B byg, ⌘1/2 preview/code, ⌘K palette. *Sådan:* `.keyboardShortcut` på handlinger + en `?`-overlay med oversigt. **S · P2**
 
@@ -291,7 +291,7 @@ model/nøgler/memory/regler/konti læses af alt det øvrige.
 - **Hvorfor:** A2+A5+A1 forbedrer direkte first-pass success og pris; A3 er grundlæggende UX. Estimat ~1,5 uge.
 
 ### Fase 2 — Produkt-definerende features (P0/P1)
-*Mål: de ting der gør Forge til et rigtigt værktøj, ikke en demo.*
+*Mål: de ting der gør Stormbreaker til et rigtigt værktøj, ikke en demo.*
 - B1 Checkpoints/fortryd · B2 Git-diff pr. tur · B12 Auto-fix · B5 shadcn · B6 Template-galleri · B13 Eksport
 - **Afhænger af:** B2 bygger på B1; B12 bygger på A5. Estimat ~2-3 uger.
 

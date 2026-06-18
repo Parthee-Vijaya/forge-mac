@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forge — Avanceret: CLI'en til terminalen</title>
-<meta name="description" content="Forge CLI: en lige så stærk Forge i terminalen. Fuldskærms-TUI med live fil-streaming, farvede diffs, reviewer-agent, GitHub og swarm/kø. Installér med én curl-kommando.">
-<meta property="og:title" content="Forge CLI — Forge i terminalen">
+<title>Stormbreaker — Avanceret: CLI'en til terminalen</title>
+<meta name="description" content="Stormbreaker CLI: en lige så stærk Stormbreaker i terminalen. Fuldskærms-TUI med live fil-streaming, farvede diffs, reviewer-agent, GitHub og swarm/kø. Installér med én curl-kommando.">
+<meta property="og:title" content="Stormbreaker CLI — Stormbreaker i terminalen">
 <meta property="og:description" content="Samme motor som appen, i terminalen. Installér med én curl-kommando.">
 <meta property="og:image" content="screenshots/10-cli.png">
 <meta property="og:type" content="website">
@@ -26,14 +26,14 @@
 
 <nav>
   <div class="wrap row">
-    <a class="logo" href="index.html" style="color:var(--ink)"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> Forge</a>
+    <a class="logo" href="index.html" style="color:var(--ink)"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> Stormbreaker</a>
     <span class="spacer"></span>
     <span class="links">
       <a href="index.html#gratis">Gratis</a>
       <a href="index.html#saadan">Sådan virker det</a>
       <a href="index.html#features">Funktioner</a>
       <a href="avanceret.html" style="color:var(--ink)">Avanceret</a>
-      <a href="https://github.com/Parthee-Vijaya/forge-mac">GitHub</a>
+      <a href="https://github.com/Parthee-Vijaya/stormbreaker-mac">GitHub</a>
     </span>
     <a class="btn primary" href="#install">Installér CLI</a>
   </div>
@@ -42,14 +42,14 @@
 <header class="hero">
   <div class="wrap">
     <span class="pill"><span class="dot"></span> Avanceret · til power-brugere</span>
-    <h1>Forge i <span class="grad">terminalen</span>.</h1>
-    <p class="sub">For dig der hellere bliver i terminalen — eller arbejder over SSH. <code>forge chat</code> er en <b>fuldskærms-TUI med præcis samme motor som appen</b>: live fil-streaming med syntaksfarver, farvede diffs, model-skift midt i en session, gendan via checkpoints, en reviewer-agent, indbygget GitHub og en swarm-kø. Nul nye afhængigheder — bare en lille Swift-binær. Installér med <b>én kommando</b>.</p>
+    <h1>Stormbreaker i <span class="grad">terminalen</span>.</h1>
+    <p class="sub">For dig der hellere bliver i terminalen — eller arbejder over SSH. <code>storm chat</code> er en <b>fuldskærms-TUI med præcis samme motor som appen</b>: live fil-streaming med syntaksfarver, farvede diffs, model-skift midt i en session, gendan via checkpoints, en reviewer-agent, indbygget GitHub og en swarm-kø. Nul nye afhængigheder — bare en lille Swift-binær. Installér med <b>én kommando</b>.</p>
     <div class="cta">
       <a class="btn primary" href="#install">↓ Installér CLI'en</a>
       <a class="btn ghost" href="#kommandoer">Se kommandoer</a>
       <span class="meta">Apple Silicon · macOS · ingen Gatekeeper-bøvl</span>
     </div>
-    <div class="heroshot"><img src="screenshots/10-cli.png" alt="forge chat — fuldskærms-TUI med Kontekst-sidebar" loading="eager"></div>
+    <div class="heroshot"><img src="screenshots/10-cli.png" alt="storm chat — fuldskærms-TUI med Kontekst-sidebar" loading="eager"></div>
   </div>
 </header>
 
@@ -57,18 +57,18 @@
   <div class="wrap">
     <div class="eyebrow">Installér</div>
     <h2>Én kommando i terminalen</h2>
-    <p class="lead">Kopiér linjen ind i Terminal. Den henter den prebuildede, selvstændige <code>forge</code>-binær fra seneste release og lægger den på din PATH. Ingen Xcode eller Swift-toolchain nødvendig — og fordi <code>curl</code> ikke quarantine'er hentede filer, er der <b style="color:var(--ink)">ingen Gatekeeper-advarsel</b> som ved appen.</p>
+    <p class="lead">Kopiér linjen ind i Terminal. Den henter den prebuildede, selvstændige <code>storm</code>-binær fra seneste release og lægger den på din PATH. Ingen Xcode eller Swift-toolchain nødvendig — og fordi <code>curl</code> ikke quarantine'er hentede filer, er der <b style="color:var(--ink)">ingen Gatekeeper-advarsel</b> som ved appen.</p>
     <div class="clibox">
-      <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>zsh — installér forge</span></div>
-<pre><span class="c"># Installér Forge CLI (Apple Silicon · macOS)</span>
-curl -fsSL <b>https://parthee-vijaya.github.io/forge-mac/install.sh</b> | bash
+      <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>zsh — installér storm</span></div>
+<pre><span class="c"># Installér Stormbreaker CLI (Apple Silicon · macOS)</span>
+curl -fsSL <b>https://parthee-vijaya.github.io/stormbreaker-mac/install.sh</b> | bash
 
 <span class="c"># Kom i gang</span>
-<span class="p">forge</span> new min-app      <span class="c"># nyt projekt (React/Svelte/Vue/Next.js)</span>
-<span class="p">forge</span> chat             <span class="c"># fuldskærms-TUI · skriv / for kommandoer</span></pre>
+<span class="p">storm</span> new min-app      <span class="c"># nyt projekt (React/Svelte/Vue/Next.js)</span>
+<span class="p">storm</span> chat             <span class="c"># fuldskærms-TUI · skriv / for kommandoer</span></pre>
     </div>
-    <p class="bignote">Installeren lægger <code>forge</code> i <code>~/.local/bin</code> (eller en anden skrivbar PATH-mappe) og fortæller dig hvis mappen mangler i din PATH. Vil du hellere bygge fra kilde, så kør <code>git clone</code> + <code>bash scripts/install-cli.sh</code> (kræver Xcode/Swift).</p>
-    <div class="callout"><b>Bemærk:</b> CLI'en kører på Apple Silicon. For at <em>bygge</em> apps skal du have en model-backend (gratis lokal model via Ollama/LM Studio — første <code>forge chat</code> guider dig) samt Node til dev-serveren.</div>
+    <p class="bignote">Installeren lægger <code>storm</code> i <code>~/.local/bin</code> (eller en anden skrivbar PATH-mappe) og fortæller dig hvis mappen mangler i din PATH. Vil du hellere bygge fra kilde, så kør <code>git clone</code> + <code>bash scripts/install-cli.sh</code> (kræver Xcode/Swift).</p>
+    <div class="callout"><b>Bemærk:</b> CLI'en kører på Apple Silicon. For at <em>bygge</em> apps skal du have en model-backend (gratis lokal model via Ollama/LM Studio — første <code>storm chat</code> guider dig) samt Node til dev-serveren.</div>
   </div>
 </section>
 
@@ -87,7 +87,7 @@ curl -fsSL <b>https://parthee-vijaya.github.io/forge-mac/install.sh</b> | bash
         <div class="frame"><img src="screenshots/12-cli-diff.png" alt="Farvet diff + reviewer-fund i terminalen" loading="lazy"></div>
       </div>
       <div class="step">
-        <div class="copy"><div class="k">GitHub &amp; swarm</div><h3>Git og en kø — uden at forlade terminalen</h3><p>Udgiv og synk med <code>/github</code>, <code>/push</code>, <code>/pull</code> og <code>/pr</code> — git-status (gren, ændringer, foran/bagud) står live i sidebaren. Og med <code>/kø</code> stiller du flere byggeopgaver i kø; Forge arbejder dem igennem én ad gangen og viser status undervejs.</p></div>
+        <div class="copy"><div class="k">GitHub &amp; swarm</div><h3>Git og en kø — uden at forlade terminalen</h3><p>Udgiv og synk med <code>/github</code>, <code>/push</code>, <code>/pull</code> og <code>/pr</code> — git-status (gren, ændringer, foran/bagud) står live i sidebaren. Og med <code>/kø</code> stiller du flere byggeopgaver i kø; Stormbreaker arbejder dem igennem én ad gangen og viser status undervejs.</p></div>
         <div class="frame"><img src="screenshots/11-cli-swarm.png" alt="Kontekst-sidebar med git-status og swarm-kø" loading="lazy"></div>
       </div>
     </div>
@@ -98,16 +98,16 @@ curl -fsSL <b>https://parthee-vijaya.github.io/forge-mac/install.sh</b> | bash
   <div class="wrap">
     <div class="eyebrow">Reference</div>
     <h2>Kommandoer &amp; genveje</h2>
-    <p class="lead">Subkommandoer starter Forge; inde i <code>forge chat</code> skriver du <code>/</code> for menuen. Her er det hele.</p>
+    <p class="lead">Subkommandoer starter Stormbreaker; inde i <code>storm chat</code> skriver du <code>/</code> for menuen. Her er det hele.</p>
     <div class="grid c3">
       <div class="card">
         <h3 class="grp">Kom i gang</h3>
         <div class="cmds">
-          <div class="cmd"><code>forge new &lt;navn&gt;</code><span>Nyt projekt (vælg framework med <code>--framework</code>).</span></div>
-          <div class="cmd"><code>forge chat</code><span>Åbn fuldskærms-TUI i projektet.</span></div>
-          <div class="cmd"><code>forge build "…"</code><span>Ét build uden TUI (godt til scripts).</span></div>
-          <div class="cmd"><code>forge chat --resume</code><span>Genoptag forrige session.</span></div>
-          <div class="cmd"><code>forge skills</code><span>Vis tilgængelige skills/presets.</span></div>
+          <div class="cmd"><code>storm new &lt;navn&gt;</code><span>Nyt projekt (vælg framework med <code>--framework</code>).</span></div>
+          <div class="cmd"><code>storm chat</code><span>Åbn fuldskærms-TUI i projektet.</span></div>
+          <div class="cmd"><code>storm build "…"</code><span>Ét build uden TUI (godt til scripts).</span></div>
+          <div class="cmd"><code>storm chat --resume</code><span>Genoptag forrige session.</span></div>
+          <div class="cmd"><code>storm skills</code><span>Vis tilgængelige skills/presets.</span></div>
         </div>
       </div>
       <div class="card">
@@ -161,9 +161,9 @@ curl -fsSL <b>https://parthee-vijaya.github.io/forge-mac/install.sh</b> | bash
 
 <footer>
   <div class="wrap">
-    <div class="fr"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> <b style="color:var(--ink);font-weight:600">Forge</b></div>
-    <a href="index.html">← Tilbage til forsiden</a> · Open source · <a href="https://github.com/Parthee-Vijaya/forge-mac">github.com/Parthee-Vijaya/forge-mac</a><br>
-    Bygget med SwiftUI + ForgeKit.
+    <div class="fr"><span class="mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5 9.8 12.2 3.5 10l6.3-1.7z"/></svg></span> <b style="color:var(--ink);font-weight:600">Stormbreaker</b></div>
+    <a href="index.html">← Tilbage til forsiden</a> · Open source · <a href="https://github.com/Parthee-Vijaya/stormbreaker-mac">github.com/Parthee-Vijaya/stormbreaker-mac</a><br>
+    Bygget med SwiftUI + StormbreakerKit.
   </div>
 </footer>
 

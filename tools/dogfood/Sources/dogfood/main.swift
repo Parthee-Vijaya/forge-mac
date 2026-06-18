@@ -1,10 +1,10 @@
 import Foundation
-import ForgeKit
+import StormbreakerKit
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Forge dogfood harness
+// Stormbreaker dogfood harness
 //
-// Drives the REAL ForgeKit AgentLoop (same provider, process layer, artifact
+// Drives the REAL StormbreakerKit AgentLoop (same provider, process layer, artifact
 // parser, executor, and self-correction loop the app uses) against a local
 // model — but headless and fully instrumented. Every state transition, every
 // error report the repair loop sees, per-phase timing, token usage, and the
@@ -13,7 +13,7 @@ import ForgeKit
 //   swift run dogfood "<prompt>" [modelID]
 //
 // Output (stdout) is meant to be teed to a log. The generated project, the full
-// reasoning, and the assistant transcript are saved under ~/forge-dogfood-runs/.
+// reasoning, and the assistant transcript are saved under ~/storm-dogfood-runs/.
 // ─────────────────────────────────────────────────────────────────────────────
 
 let args = CommandLine.arguments
@@ -40,11 +40,11 @@ func note(_ s: String) {
 // Stable, inspectable run directory.
 let runStamp = Int(startedAt.timeIntervalSince1970)
 let runDir = URL(fileURLWithPath: NSHomeDirectory())
-    .appendingPathComponent("forge-dogfood-runs/run-\(runStamp)")
+    .appendingPathComponent("storm-dogfood-runs/run-\(runStamp)")
 let projectDir = runDir.appendingPathComponent("project")
 try? FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
 
-note("Forge dogfood — model=\(modelID)  framework=\(framework.displayName)")
+note("Stormbreaker dogfood — model=\(modelID)  framework=\(framework.displayName)")
 note("run dir: \(runDir.path)")
 note("prompt: \(prompt)")
 note(String(repeating: "─", count: 78))
@@ -54,7 +54,7 @@ try await TemplateInstaller().install(framework.template, into: workspace)
 note("scaffolded \(framework.displayName)+Vite+Tailwind template (entry: \(entryFile))")
 
 let devServer = DevServerManager(workspace: workspace)
-let processLayer = ForgeProcessLayer(workspace: workspace, devServer: devServer)
+let processLayer = StormbreakerProcessLayer(workspace: workspace, devServer: devServer)
 let collector = ErrorCollector(devServer: devServer)
 let config = ModelConfig.lmStudio(model: modelID)
 
@@ -186,11 +186,11 @@ if let app = try? await workspace.readFile(entryFile) {
     }
 }
 
-// ── tsc-gate self-test (FORGE_GATE_SELFTEST=1) ───────────────────────────────
+// ── tsc-gate self-test (STORM_GATE_SELFTEST=1) ───────────────────────────────
 // Proves the production path ErrorCollector.collect() → DevServerManager.typeCheck()
 // → real tsc → ErrorClassifier actually catches a type error the dev-server
 // settle reports as "clean". Injects a real error, re-collects, then restores.
-if ProcessInfo.processInfo.environment["FORGE_GATE_SELFTEST"] == "1",
+if ProcessInfo.processInfo.environment["STORM_GATE_SELFTEST"] == "1",
    let original = try? await workspace.readFile(entryFile) {
     note(String(repeating: "─", count: 78))
     note("TYPE-GATE SELF-TEST (\(entryFile))")

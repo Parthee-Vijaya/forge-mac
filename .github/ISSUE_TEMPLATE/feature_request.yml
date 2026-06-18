@@ -1,12 +1,12 @@
 name: 💡 Idé / ønske
-description: Foreslå en forbedring til Forge
+description: Foreslå en forbedring til Stormbreaker
 labels: ["enhancement"]
 body:
   - type: textarea
     id: idea
     attributes:
-      label: Hvad kunne gøre Forge bedre?
-      placeholder: "Det ville hjælpe mig hvis Forge kunne …"
+      label: Hvad kunne gøre Stormbreaker bedre?
+      placeholder: "Det ville hjælpe mig hvis Stormbreaker kunne …"
     validations:
       required: true
   - type: textarea

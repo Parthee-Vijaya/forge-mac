@@ -1,8 +1,8 @@
-# xcodegen spec — source of truth for Forge.xcodeproj (which is gitignored).
+# xcodegen spec — source of truth for Stormbreaker.xcodeproj (which is gitignored).
 # Regenerate with:  xcodegen generate
 # Build with:       DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-#                     xcodebuild -project Forge.xcodeproj -scheme Forge build
-name: Forge
+#                     xcodebuild -project Stormbreaker.xcodeproj -scheme Stormbreaker build
+name: Stormbreaker
 options:
   bundleIdPrefix: pavi
   deploymentTarget:
@@ -11,51 +11,51 @@ options:
   createIntermediateGroups: true
 
 packages:
-  ForgeKit:
-    path: ForgeKit
+  StormbreakerKit:
+    path: StormbreakerKit
 
 schemes:
-  Forge:
+  Stormbreaker:
     build:
       targets:
-        Forge: all
-        ForgeTests: [test]
+        Stormbreaker: all
+        StormbreakerTests: [test]
     run:
       config: Debug
     test:
       targets:
-        - ForgeTests
+        - StormbreakerTests
     archive:
       config: Release
-  ForgeCompanion:
+  StormbreakerCompanion:
     build:
       targets:
-        ForgeCompanion: all
+        StormbreakerCompanion: all
     run:
       config: Debug
     archive:
       config: Release
 
 targets:
-  Forge:
+  Stormbreaker:
     type: application
     platform: macOS
     deploymentTarget: "26.0"
     sources:
-      - path: Forge
+      - path: Stormbreaker
     dependencies:
-      - package: ForgeKit
-        product: ForgeKit
+      - package: StormbreakerKit
+        product: StormbreakerKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: pavi.Forge
-        PRODUCT_NAME: Forge
+        PRODUCT_NAME: Stormbreaker
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MARKETING_VERSION: "0.3.0"
         CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: Forge/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Forge/Forge.entitlements
+        INFOPLIST_FILE: Stormbreaker/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Stormbreaker/Stormbreaker.entitlements
         # Ad-hoc signing so it builds/runs locally without a developer team.
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
@@ -66,14 +66,14 @@ targets:
         SWIFT_STRICT_CONCURRENCY: complete
         DEAD_CODE_STRIPPING: YES
 
-  ForgeTests:
+  StormbreakerTests:
     type: bundle.unit-test
     platform: macOS
     deploymentTarget: "26.0"
     sources:
-      - path: ForgeTests
+      - path: StormbreakerTests
     dependencies:
-      - target: Forge
+      - target: Stormbreaker
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: pavi.ForgeTests
@@ -81,24 +81,24 @@ targets:
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         BUNDLE_LOADER: "$(TEST_HOST)"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Forge.app/Contents/MacOS/Forge"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Stormbreaker.app/Contents/MacOS/Stormbreaker"
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
 
   # B19 — iOS/iPadOS companion: thin client for the Mac's RemoteServer (:7842).
-  ForgeCompanion:
+  StormbreakerCompanion:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: ForgeCompanion
+      - path: StormbreakerCompanion
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: pavi.ForgeCompanion
-        PRODUCT_NAME: "Forge Companion"
+        PRODUCT_NAME: "Stormbreaker Companion"
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: ForgeCompanion/Info.plist
+        INFOPLIST_FILE: StormbreakerCompanion/Info.plist
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete

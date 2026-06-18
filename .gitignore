@@ -20,7 +20,7 @@ xcuserdata/
 *.xccheckout
 
 # xcodegen output — project.yml is the source of truth
-Forge.xcodeproj/
+Stormbreaker.xcodeproj/
 
 # Runtime / generated user projects
 .forge/
