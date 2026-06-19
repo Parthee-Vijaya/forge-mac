@@ -5,7 +5,7 @@
 > Du skriver en prompt → en AI-agent skriver et React+Vite+TS+Tailwind-projekt til disk
 > → Stormbreaker kører det → preview opdaterer via HMR.
 
-- **Sidst opdateret:** 2026-06-19
+- **Sidst opdateret:** 2026-06-20
 - **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. **nanocoder-køreplan leveret**: `storm` CLI, bruger-skills (CLI+GUI), og MCP tool-calling — agenten kan kalde eksterne MCP-værktøjer midt i et build (e2e-verificeret) + eksterne agenter kan drive Stormbreaker via `storm-mcp`. **opencode-køreplan leveret**: approval-gate, diagnostics, cost, AGENTS.md, @file, export, prettier, steer-API + **fuld-skærms TUI** (`storm chat`) med live fil-streaming, farvediffs, model-skift, sessioner, slash-menu/temaer og en Kontekst-sidebar. **agentic-SDLC leveret**: reviewer-agent, GitHub-integration (GIT-sidebar + `/github`/`/push`/`/pull`/`/pr`) og swarm/kø (`/kø` + KØ-sidebar). Alle 177 StormbreakerKit-tests grønne; Mac-app + CLI bygger.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `7f28f04` 2026-06-19 — Fix: kill the whole dev-server subtree on stop, not one level
 - `0a4faf2` 2026-06-19 — Fix: never send an empty assistant message to a provider
 - `4a911f6` 2026-06-19 — Fix: apply --base-url to cloud providers, not just ollama/lmStudio
 - `caa8ed5` 2026-06-19 — Fix: enable + handle bracketed paste in the TUI
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `6d1d357` 2026-06-18 — Live plan checklist (todowrite): show the agent's plan as a checklist during a build
 - `91a3ff9` 2026-06-18 — Web as an agent tool: the model can search the web + fetch URLs mid-build
 - `bbcca2e` 2026-06-18 — Per-command shell permissions: allow safe dev tooling, refuse catastrophic, ask the rest
-- `278b99c` 2026-06-18 — Read URLs the user pastes (GitHub repos / pages) instead of hallucinating
 <!-- COMMITLOG:END -->

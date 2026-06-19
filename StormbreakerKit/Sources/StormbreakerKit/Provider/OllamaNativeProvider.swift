@@ -41,6 +41,10 @@ public struct OllamaNativeProvider: ChatModel {
                     for try await line in SSELineReader(bytes) {
                         if Task.isCancelled { break }
                         watchdog.touch()
+                        // Ollama signals failures in-band as {"error":"…"} on a 200.
+                        if let errMsg = ProviderError.streamErrorMessage(in: line) {
+                            throw ProviderError.stream(message: errMsg)
+                        }
                         guard !line.isEmpty, let data = line.data(using: .utf8),
                               let chunk = try? decoder.decode(Chunk.self, from: data) else { continue }
                         if let thinking = chunk.message?.thinking, !thinking.isEmpty {

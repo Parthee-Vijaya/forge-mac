@@ -20,4 +20,29 @@ final class ProviderErrorTests: XCTestCase {
         let desc = ProviderError.http(status: 500, body: "internal error, not json").description
         XCTAssertTrue(desc.contains("internal error, not json"))
     }
+
+    // MARK: - In-band stream errors (#8)
+
+    /// In-band error frames (HTTP 200 + {"error":…}) must be detected so the turn
+    /// fails loudly instead of ending empty.
+    func testStreamErrorMessageDetectsObjectForm() {
+        XCTAssertEqual(
+            ProviderError.streamErrorMessage(in: #"{"error":{"message":"rate limited","code":429}}"#),
+            "rate limited")
+    }
+
+    func testStreamErrorMessageDetectsStringForm() {
+        // Ollama-style: {"error":"model not found"}
+        XCTAssertEqual(ProviderError.streamErrorMessage(in: #"{"error":"model not found"}"#), "model not found")
+    }
+
+    func testStreamErrorMessageNilForNormalChunk() {
+        XCTAssertNil(ProviderError.streamErrorMessage(in: #"{"choices":[{"delta":{"content":"hi"}}]}"#))
+        XCTAssertNil(ProviderError.streamErrorMessage(in: "not json"))
+        XCTAssertNil(ProviderError.streamErrorMessage(in: "[DONE]"))
+    }
+
+    func testStreamErrorDescriptionIsHumanReadable() {
+        XCTAssertEqual(ProviderError.stream(message: "boom").description, "The model returned an error: boom")
+    }
 }

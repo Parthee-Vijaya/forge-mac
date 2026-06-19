@@ -65,6 +65,11 @@ public struct OpenAICompatProvider: ChatModel {
                             emittedDone = true
                             break
                         }
+                        // An in-band error frame (HTTP 200 + {"error":…}) — surface it
+                        // instead of skipping it and ending the turn silently empty.
+                        if let errMsg = ProviderError.streamErrorMessage(in: payload) {
+                            throw ProviderError.stream(message: errMsg)
+                        }
                         guard !payload.isEmpty, let data = payload.data(using: .utf8),
                               let chunk = try? decoder.decode(Chunk.self, from: data) else { continue }
                         if let reasoning = chunk.choices?.first?.delta.reasoningText, !reasoning.isEmpty {

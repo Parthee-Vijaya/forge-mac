@@ -64,7 +64,7 @@ public struct AnthropicProvider: ChatModel {
                         case "message_stop":
                             continuation.yield(.done(reason: "stop", promptTokens: nil, completionTokens: nil))
                         case "error":
-                            throw ProviderError.http(status: 0, body: event.error?.message ?? "Anthropic stream error")
+                            throw ProviderError.stream(message: event.error?.message ?? "Anthropic stream error")
                         default:
                             break
                         }
