@@ -265,6 +265,8 @@ public final class StreamingArtifactParser {
                 events.append(.webRequest(kind: .search, query: payload))
             } else if type == "todo" {
                 events.append(.todoUpdate(TodoItem.parse(payload)))
+            } else if type == "open" {
+                events.append(.openRequest(url: payload))
             } else if let action = makeInlineAction(type: type, payload: payload) {
                 events.append(.inlineAction(action))
             }

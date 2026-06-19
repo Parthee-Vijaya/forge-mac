@@ -2142,6 +2142,9 @@ final class AppModel: PermissionGate {
                 endStreaming()
             case .todos(let items):
                 planTodos = items
+            case .openURL(let s):
+                if let url = URL(string: s.hasPrefix("localhost") ? "http://" + s : s),
+                   ["http", "https"].contains(url.scheme?.lowercased() ?? "") { NSWorkspace.shared.open(url) }
             case .usage(let pt, let ct):
                 turnTokens += pt + ct
                 projectTokens += pt + ct

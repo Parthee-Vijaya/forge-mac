@@ -141,6 +141,21 @@ final class TUIApp {
     private var currentQueueID: Int?           // the kø item currently building (nil = a plain turn)
     private var todos: [TodoItem] = []         // the agent's live plan checklist (PLAN sidebar section)
     private var sawExplicitTodos = false       // a <forgeAction type="todo"> wins over prose detection
+    private var previewURL: URL?               // last dev-server preview URL (for /open)
+
+    /// Known slash commands (with aliases) — so a pasted `/Users/...` path is NOT mistaken
+    /// for a command. Only these route to handleCommand; anything else `/…` is a prompt.
+    static let commandWords: Set<String> = [
+        "diff", "model", "undo", "restore", "checkpoints", "cp", "review", "fix", "theme",
+        "init", "github", "publish", "commit", "push", "pull", "pr", "git", "kø", "ko",
+        "queue", "swarm", "compact", "komprimer", "komprimér", "remember", "husk", "memory",
+        "hukommelse", "open", "åbn", "copy", "kopier", "yank", "help", "quit", "q",
+    ]
+    private func isSlashCommand(_ line: String) -> Bool {
+        guard line.hasPrefix("/") else { return false }
+        let word = line.dropFirst().prefix { $0 != " " }.lowercased()
+        return Self.commandWords.contains(String(word))
+    }
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
     private var running = true
@@ -270,10 +285,10 @@ final class TUIApp {
             needsRender = true
         case .enter:
             let line = input.trimmingCharacters(in: .whitespaces)
-            if line.hasPrefix("/") {                  // slash commands work even mid-turn (read-only)
+            if isSlashCommand(line) {                 // a REAL command (mid-turn ok) — not a /path
                 input = ""; cursor = 0; handleCommand(line); needsRender = true
             } else if !isBusy {
-                submit()
+                submit()                              // everything else (incl. a pasted /path) is a prompt
             }
         default: break
         }
@@ -319,10 +334,11 @@ final class TUIApp {
             if let sha = await engine.checkpoints.snapshot(label: text) { cont.yield(.turnSnapshot(sha)) }
             // Auto-compact a long history so a small local context window doesn't overflow.
             await self.compactHistoryIfNeeded()
-            // Fetch any URLs in the prompt so the model reads REAL content instead of
-            // guessing from the URL's words. The model sees the augmented prompt; the
-            // transcript keeps showing the user's original line.
-            let prompt = await self.augmentWithURLs(text)
+            // Fetch any URLs AND read any local files/folders the prompt references, so the
+            // model answers from REAL content instead of guessing. The model sees the
+            // augmented prompt; the transcript keeps showing the user's original line.
+            var prompt = await self.augmentWithURLs(text)
+            prompt = await self.augmentWithPaths(prompt)
             let gate = TUIPermissionGate(channel: cont)
             let loop = AgentLoop(makeDeps(engine, mode: .build, gate: gate))
             for await ev in loop.run(userPrompt: prompt, history: self.history, mode: .build) { cont.yield(.agent(ev)) }
@@ -357,6 +373,52 @@ final class TUIApp {
             prompt += "\n\n(Kunne IKKE hente: \(failed.joined(separator: ", ")). Sig ærligt at du ikke kunne læse dem — gæt ikke indholdet.)"
         }
         return prompt
+    }
+
+    /// Read any local files/folders the prompt references (absolute or ~ paths) and fold
+    /// their REAL contents into the prompt. Paths OUTSIDE the project are read read-only;
+    /// the model is told it can only WRITE inside the project. On failure it's told to say
+    /// so honestly — never "Læser…" then fabricate (the bug from the screenshot).
+    private func augmentWithPaths(_ text: String) async -> String {
+        let root = engine.workspace.root.standardizedFileURL.path
+        var blocks: [String] = []; var failed: [String] = []; var seen = Set<String>()
+        for raw in LocalContent.extractPaths(text) {
+            guard let resolved = LocalContent.resolveExisting(raw) else {
+                if raw.contains("/"), raw.count > 3 { failed.append(raw) }
+                continue
+            }
+            if resolved == root || resolved.hasPrefix(root + "/") { continue }   // inside project → already in context
+            guard seen.insert(resolved).inserted else { continue }
+            transcript.append(Line(role: .system, text: "📂 læser \(prettyPath(resolved))…")); needsRender = true
+            if let content = LocalContent.read(resolved) { blocks.append(content) }
+            else { failed.append(raw) }
+            if blocks.count >= 3 { break }
+        }
+        var prompt = text
+        if !blocks.isEmpty {
+            prompt += "\n\n--- LÆST FRA DISKEN (uden for det aktuelle projekt \(root); svar ud fra dette — find ikke på) ---\n"
+                + blocks.joined(separator: "\n\n")
+                + "\n--- slut ---\nDu kan kun SKRIVE filer inde i projektet (\(root)). Vil brugeren bygge/redigere i en anden mappe, så foreslå: storm chat --project <sti>."
+        }
+        if !failed.isEmpty {
+            prompt += "\n\n(Kunne IKKE læse: \(failed.joined(separator: ", ")). Sig ærligt at stien ikke kunne læses — gæt ikke indholdet.)"
+        }
+        return prompt
+    }
+
+    /// Open a URL in the default browser — the agent's `open` action + the `/open` command.
+    /// http(s)/localhost only; never arbitrary schemes.
+    private func openInBrowser(_ raw: String) {
+        var s = raw.trimmingCharacters(in: .whitespaces)
+        if s.isEmpty { s = previewURL?.absoluteString ?? "" }
+        if s.hasPrefix("localhost") || s.hasPrefix("127.0.0.1") { s = "http://" + s }
+        guard let url = URL(string: s), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            transcript.append(Line(role: .system, text: s.isEmpty ? "ingen preview at åbne endnu — byg noget først" : "kan ikke åbne: \(s)"))
+            needsRender = true; return
+        }
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/open"); p.arguments = [url.absoluteString]
+        try? p.run()
+        transcript.append(Line(role: .system, text: "🌐 åbnede \(url.absoluteString) i browseren")); needsRender = true
     }
 
     /// Auto-compaction: if the chat history has grown past the budget, summarize the
@@ -711,7 +773,8 @@ final class TUIApp {
             if !changedFiles.contains(path) { changedFiles.append(path) }
             transcript.append(Line(role: .system, text: "✎ \(path)"))
         case .previewReady(let url):
-            transcript.append(Line(role: .system, text: "→ preview: \(url.absoluteString)"))
+            previewURL = url
+            transcript.append(Line(role: .system, text: "→ preview: \(url.absoluteString)  (/open i browser)"))
             status = "kører · \(url.absoluteString)"
         case .metrics(let m):
             mCalls += 1
@@ -722,6 +785,8 @@ final class TUIApp {
             if let c = engine.config.cost(promptTokens: m.promptTokens, completionTokens: m.completionTokens) { mCostUSD += c }
         case .todos(let items):
             todos = items; sawExplicitTodos = true            // explicit tag wins over prose detection
+        case .openURL(let s):
+            openInBrowser(s)                                  // agent asked to open the preview/URL
         case .reasoning, .usage:
             break
         }
@@ -785,7 +850,7 @@ final class TUIApp {
         // Overlays, drawn last
         if let (req, _) = pendingPermission { drawPermissionModal(buf, request: req); cursorPt = nil }
         else if modelChoices != nil { drawModelModal(buf); cursorPt = nil }
-        else if input.hasPrefix("/") { drawSlashMenu(buf, anchor: layout.slashAnchor) }
+        else if input.hasPrefix("/"), !input.dropFirst().contains("/") { drawSlashMenu(buf, anchor: layout.slashAnchor) }   // not a /path
 
         TUIOutput.emit(TUIRenderer.renderDiff(old: prev, new: buf, cursor: cursorPt))
         prev = buf
@@ -1342,6 +1407,7 @@ final class TUIApp {
         case "compact", "komprimer", "komprimér": compactNow()
         case "remember", "husk": rememberCommand(arg)
         case "memory", "hukommelse": memoryCommand(arg)
+        case "open", "åbn": openInBrowser(arg); needsRender = true
         case "copy", "kopier", "yank": copyLast()
         case "quit", "q":  running = false
         case "help":       transcript.append(Line(role: .system, text: Self.slashCommands.map { "\($0.0) — \($0.1)" }.joined(separator: "\n")))
@@ -1486,6 +1552,7 @@ final class TUIApp {
         ("/compact", "komprimér samtalehistorik (spar kontekst)"),
         ("/remember", "husk en fakta (eller lær af sessionen)"),
         ("/memory", "vis/glem hvad jeg husker på tværs af sessioner"),
+        ("/open", "åbn preview i browseren"),
         ("/copy", "kopiér sidste svar til udklipsholderen"),
         ("/help", "vis kommandoer"),
         ("/quit", "afslut"),

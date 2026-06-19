@@ -308,6 +308,9 @@ public actor AgentLoop {
             case .todoUpdate(let items):
                 continuation.yield(.todos(items))   // live checklist; not a tool round, build continues
                 return nil
+            case .openRequest(let url):
+                continuation.yield(.openURL(url))   // open the preview/URL in the browser
+                return nil
             case .artifactClose where !reads.isEmpty || !mcpReqs.isEmpty || !webReqs.isEmpty:
                 return nil   // tool-request artifact: don't install/start — the tool round handles it
             case .artifactClose:

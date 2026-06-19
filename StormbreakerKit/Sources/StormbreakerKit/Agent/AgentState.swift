@@ -54,6 +54,7 @@ public enum AgentEvent: Sendable {
     case usage(promptTokens: Int, completionTokens: Int)   // per provider response
     case metrics(GenerationMetrics)   // per provider response: tokens + TTFT + tok/s
     case todos([TodoItem])            // the agent's live plan checklist (todowrite-style)
+    case openURL(String)              // the agent asked to open a URL (preview) in the browser
 }
 
 extension Duration {

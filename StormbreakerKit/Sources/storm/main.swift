@@ -302,6 +302,8 @@ func runTurn(_ engine: Engine, prompt: String, history: [ChatMessage], mode: Age
                 say("  " + dim("↳ kald \(n): \(m.totalTokens) tok (\(m.promptTokens)→\(m.completionTokens)) · "
                     + "TTFT \(fmtTTFT(m.timeToFirstTokenSeconds)) · \(fmtRate(m.tokensPerSecond)) · \(fmtSecs(m.totalSeconds))\(costStr)"))
             }
+        case .openURL(let u):
+            _ = try? { let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/open"); p.arguments = [u]; try p.run() }()
         case .reasoning, .fileWriting, .fileChunk, .usage, .todos: break  // checklist shown in the TUI, not the plain REPL
         }
     }

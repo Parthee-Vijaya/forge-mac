@@ -85,6 +85,22 @@ final class StreamingArtifactParserTests: XCTestCase {
         }
     }
 
+    func testOpenActionEmitsRequest() {
+        let input = """
+        <forgeArtifact id="x" title="X">
+        <forgeAction type="open">http://localhost:5173</forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 7] {
+            let events = parse(input, chunkSize: chunk)
+            let opens = events.compactMap { e -> String? in
+                if case .openRequest(let u) = e { return u }; return nil
+            }
+            XCTAssertEqual(opens, ["http://localhost:5173"], "chunk \(chunk)")
+            XCTAssertTrue(files(events).isEmpty, "open must not write a file (chunk \(chunk))")
+        }
+    }
+
     func testTodoActionEmitsUpdateWithoutBlockingFiles() {
         let input = """
         <forgeArtifact id="x" title="X">
