@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `65a4fb8` 2026-06-20 — Parity: custom slash commands (opencode)
 - `cb9c4a5` 2026-06-20 — Fix: tighten orphan-reclaim match (drop bare "node")
 - `41fc71e` 2026-06-20 — Fix: ProcessRunner doesn't leak pumps/pipes when launch fails
 - `d499e81` 2026-06-20 — Fix: search-query encoding, github host check, gemini-2.5 pricing
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `a5e3faf` 2026-06-19 — Security (C6): confirm before launching project-local MCP servers
 - `090a845` 2026-06-19 — Security: harden ShellRules against RCE + secret exfiltration
 - `056edcb` 2026-06-19 — Recursive folder listing so nested files (e.g. public/*.jpeg) show
-- `69453d4` 2026-06-19 — Read user-referenced local paths for real (+ browser open); stop faking it
 <!-- COMMITLOG:END -->

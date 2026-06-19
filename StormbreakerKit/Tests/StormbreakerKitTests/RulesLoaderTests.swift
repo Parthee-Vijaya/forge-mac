@@ -19,6 +19,24 @@ final class RulesLoaderTests: XCTestCase {
                           "AI_RULES.md comes last so it wins ties")
     }
 
+    func testReadsClaudeMdWithCorrectOrdering() throws {
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        try "From CLAUDE.".write(to: dir.appendingPathComponent("CLAUDE.md"), atomically: true, encoding: .utf8)
+        try "From AGENTS.".write(to: dir.appendingPathComponent("AGENTS.md"), atomically: true, encoding: .utf8)
+        try "From AIRULES.".write(to: dir.appendingPathComponent("AI_RULES.md"), atomically: true, encoding: .utf8)
+        let out = try XCTUnwrap(RulesLoader.read(projectRoot: dir))
+        XCTAssertTrue(out.contains("From CLAUDE."))
+        // CLAUDE.md first, AI_RULES.md last (native wins ties).
+        XCTAssertLessThan(out.range(of: "CLAUDE.md")!.lowerBound, out.range(of: "AGENTS.md")!.lowerBound)
+        XCTAssertLessThan(out.range(of: "AGENTS.md")!.lowerBound, out.range(of: "AI_RULES.md")!.lowerBound)
+    }
+
+    func testClaudeMdOnly() throws {
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        try "Be terse.".write(to: dir.appendingPathComponent("CLAUDE.md"), atomically: true, encoding: .utf8)
+        XCTAssertEqual(RulesLoader.read(projectRoot: dir)?.contains("Be terse."), true)
+    }
+
     func testAgentsOnly() throws {
         let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
         try "Only agents.".write(to: dir.appendingPathComponent("AGENTS.md"), atomically: true, encoding: .utf8)
