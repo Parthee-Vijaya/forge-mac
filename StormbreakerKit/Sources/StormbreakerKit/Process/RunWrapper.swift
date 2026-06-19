@@ -11,12 +11,21 @@ enum RunWrapper {
     static let script = """
     #!/bin/sh
     set -u
+    # Job control: the backgrounded dev command becomes its OWN process-group
+    # leader (pgid == its pid), distinct from Stormbreaker's group. That lets us
+    # signal the whole subtree by process group without ever hitting Stormbreaker.
+    set -m
 
     "$@" &
     CHILD=$!
 
+    # Kill the ENTIRE dev subtree, not just the direct child: npm -> sh -> vite
+    # (node) -> esbuild. Killing only one level left vite/esbuild orphaned, holding
+    # the port. Signal the process group first (covers all descendants), then the
+    # leader directly, then sweep any stragglers — each step best-effort.
     cleanup() {
-      kill "$CHILD" 2>/dev/null
+      kill -TERM -"$CHILD" 2>/dev/null
+      kill -TERM "$CHILD" 2>/dev/null
       pkill -P "$CHILD" 2>/dev/null
     }
     trap 'cleanup' TERM INT
@@ -29,6 +38,7 @@ enum RunWrapper {
         done
         cleanup
         sleep 2
+        kill -9 -"$CHILD" 2>/dev/null
         kill -9 "$CHILD" 2>/dev/null
       ) &
       WATCHDOG=$!

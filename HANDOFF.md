@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `0a4faf2` 2026-06-19 — Fix: never send an empty assistant message to a provider
 - `4a911f6` 2026-06-19 — Fix: apply --base-url to cloud providers, not just ollama/lmStudio
 - `caa8ed5` 2026-06-19 — Fix: enable + handle bracketed paste in the TUI
 - `20a3507` 2026-06-19 — Security: untrusted-content boundary on file/MCP/error turns
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `91a3ff9` 2026-06-18 — Web as an agent tool: the model can search the web + fetch URLs mid-build
 - `bbcca2e` 2026-06-18 — Per-command shell permissions: allow safe dev tooling, refuse catastrophic, ask the rest
 - `278b99c` 2026-06-18 — Read URLs the user pastes (GitHub repos / pages) instead of hallucinating
-- `1ab5eae` 2026-06-18 — Audit fixes: persist /model + show picker when no model configured
 <!-- COMMITLOG:END -->
