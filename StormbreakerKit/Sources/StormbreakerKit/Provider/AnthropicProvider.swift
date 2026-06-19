@@ -31,7 +31,7 @@ public struct AnthropicProvider: ChatModel {
                     let systemText = messages.filter { $0.role == .system }
                         .map(\.content).joined(separator: "\n\n")
                     let conversation = messages.filter { $0.role != .system }
-                        .map { Request.Message(role: $0.role.rawValue, content: $0.content) }
+                        .map { Request.Message(role: $0.role.rawValue, content: $0.apiContent) }
 
                     var request = URLRequest(url: baseURL)
                     request.httpMethod = "POST"

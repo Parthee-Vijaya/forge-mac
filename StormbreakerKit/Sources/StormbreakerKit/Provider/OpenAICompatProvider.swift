@@ -35,7 +35,7 @@ public struct OpenAICompatProvider: ChatModel {
                     let body = Request(
                         model: modelID,
                         messages: messages.map {
-                            .init(role: $0.role.rawValue, content: $0.content, images: $0.imageDataURLs)
+                            .init(role: $0.role.rawValue, content: $0.apiContent, images: $0.imageDataURLs)
                         },
                         stream: true,
                         temperature: options.temperature,

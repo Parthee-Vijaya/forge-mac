@@ -25,7 +25,7 @@ public struct OllamaNativeProvider: ChatModel {
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     let body = Request(
                         model: modelID,
-                        messages: messages.map { .init(role: $0.role.rawValue, content: $0.content) },
+                        messages: messages.map { .init(role: $0.role.rawValue, content: $0.apiContent) },
                         stream: true,
                         options: .init(num_ctx: options.numCtx, temperature: options.temperature)
                     )

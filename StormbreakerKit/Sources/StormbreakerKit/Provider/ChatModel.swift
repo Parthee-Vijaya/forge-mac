@@ -15,6 +15,15 @@ public struct ChatMessage: Sendable, Equatable {
         self.content = content
         self.imageDataURLs = imageDataURLs
     }
+
+    /// Content safe to send to a provider. An empty / whitespace-only message is
+    /// rejected by Anthropic (HTTP 400) and pollutes replayed history — and
+    /// reasoning models routinely leave the visible text empty (they emit only
+    /// `<think>` or an action artifact). Substitute a minimal placeholder so the
+    /// user/assistant alternation stays valid across every provider.
+    public var apiContent: String {
+        content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "(no content)" : content
+    }
 }
 
 /// Generation knobs. `numCtx` is honored only by `OllamaNativeProvider` (the
