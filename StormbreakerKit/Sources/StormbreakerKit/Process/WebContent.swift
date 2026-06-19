@@ -20,9 +20,21 @@ public enum WebContent {
         return out
     }
 
+    /// Percent-encode a search query for a `?q=` value. Unlike `.urlQueryAllowed`
+    /// this also escapes `& = + # ?` so a query like "tea & coffee" isn't split into
+    /// extra query parameters — which truncated the search at the `&`.
+    static func encodeQuery(_ s: String) -> String? {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&=+#?")
+        return s.addingPercentEncoding(withAllowedCharacters: allowed)
+    }
+
     /// owner/repo from a github.com URL, or nil (ignores gist/raw/non-repo paths).
     public static func githubRepo(_ urlString: String) -> (owner: String, repo: String)? {
-        guard let url = URL(string: urlString), (url.host ?? "").hasSuffix("github.com") else { return nil }
+        // Exact host match (or a real github.com subdomain) — `hasSuffix("github.com")`
+        // alone would also accept a look-alike like `evilgithub.com`.
+        guard let url = URL(string: urlString), let host = url.host?.lowercased(),
+              host == "github.com" || host.hasSuffix(".github.com") else { return nil }
         let parts = url.path.split(separator: "/").map(String.init)
         guard parts.count >= 2, !parts[0].isEmpty else { return nil }
         var repo = parts[1]
@@ -42,8 +54,7 @@ public enum WebContent {
     /// official JSON instant-answer API. nil only when both come up empty.
     public static func search(_ query: String, maxResults: Int = 5, maxChars: Int = 6000) async -> String? {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              let q = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
+        guard !trimmed.isEmpty, let q = encodeQuery(trimmed) else { return nil }
 
         if let data = await get("https://lite.duckduckgo.com/lite/?q=\(q)",
                                 userAgent: browserUA, referer: "https://lite.duckduckgo.com/"),

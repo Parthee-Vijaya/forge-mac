@@ -38,6 +38,21 @@ final class WebContentTests: XCTestCase {
         }
     }
 
+    // #19: a query with '&' must be fully encoded, not split into query params.
+    func testEncodeQueryEscapesAmpersand() {
+        let q = WebContent.encodeQuery("tea & coffee")
+        XCTAssertEqual(q, "tea%20%26%20coffee")
+        XCTAssertEqual(q?.contains("&"), false)
+    }
+
+    // #20: a look-alike host must not be treated as github.com.
+    func testGithubRepoRejectsLookAlikeHosts() {
+        XCTAssertNil(WebContent.githubRepo("https://evilgithub.com/a/b"))
+        XCTAssertNil(WebContent.githubRepo("https://github.com.evil.com/a/b"))
+        XCTAssertNotNil(WebContent.githubRepo("https://github.com/a/b"))
+        XCTAssertNotNil(WebContent.githubRepo("https://www.github.com/a/b"))
+    }
+
     func testSSRFIPv4RangeMath() {
         XCTAssertTrue(WebContent.isBlockedIPv4(WebContent.parseIPv4("169.254.169.254")!))
         XCTAssertTrue(WebContent.isBlockedIPv4(WebContent.parseIPv4("10.255.255.255")!))

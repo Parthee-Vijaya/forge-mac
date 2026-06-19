@@ -36,4 +36,12 @@ final class ModelConfigTests: XCTestCase {
         XCTAssertEqual(ModelConfig.openRouter(key: "k", model: "x/y:free").cost(promptTokens: 9, completionTokens: 9), 0)
         XCTAssertNil(ModelConfig.openRouter(key: "k", model: "obscure/unknown").cost(promptTokens: 9, completionTokens: 9))
     }
+
+    // #21: current Gemini 2.5 ids resolve to a price (previously fell through to "—").
+    func testGemini25Priced() {
+        let flash = ModelConfig.openRouter(key: "k", model: "google/gemini-2.5-flash")
+        XCTAssertEqual(flash.cost(promptTokens: 1_000_000, completionTokens: 1_000_000)!, 2.80, accuracy: 0.001)
+        let pro = ModelConfig.openRouter(key: "k", model: "google/gemini-2.5-pro")
+        XCTAssertEqual(pro.cost(promptTokens: 1_000_000, completionTokens: 1_000_000)!, 11.25, accuracy: 0.001)
+    }
 }
