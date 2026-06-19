@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `5078430` 2026-06-20 — Fix: flush never re-runs a command after a mid-batch throw
 - `a011a98` 2026-06-20 — Fix: cap pinned @file size so it can't overflow num_ctx
 - `ab29a57` 2026-06-20 — Fix: don't truncate a tag at a '>' inside a quoted attribute
 - `afa59f2` 2026-06-20 — Fix: stripCodeFence never empties a file (data-loss guard)
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `bebc14e` 2026-06-19 — docs(site): current features + commands + fresh storm-branded CLI screenshots
 - `b3a041b` 2026-06-18 — docs: add CLI architecture slide deck (.pptx) + generator
 - `81ce686` 2026-06-18 — docs: thorough CLI architecture doc with diagrams
-- `a20cb42` 2026-06-18 — Cross-session memory: storm now remembers the user + project between sessions
 <!-- COMMITLOG:END -->

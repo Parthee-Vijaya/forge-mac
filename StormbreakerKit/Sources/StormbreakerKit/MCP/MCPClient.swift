@@ -3,6 +3,22 @@ import Foundation
 public enum MCPError: Error, Sendable, Equatable {
     case closed
     case server(String)
+    case timeout
+}
+
+/// One-shot claim flag so the request and the timeout can race to resume a
+/// continuation exactly once. The winner resumes the continuation itself (keeping
+/// any non-Sendable value confined to its own closure). `@unchecked Sendable` —
+/// the lock serializes the single Bool.
+private final class ResumeFlag: @unchecked Sendable {
+    private var claimed = false
+    private let lock = NSLock()
+    func claim() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
+    }
 }
 
 /// A minimal Model Context Protocol client over stdio: spawns an MCP server process
@@ -90,13 +106,28 @@ public final class MCPClient: @unchecked Sendable {
         let requestData = try JSONSerialization.data(withJSONObject: [
             "jsonrpc": "2.0", "id": id, "method": method, "params": params,
         ])
+        // Race the request against a timeout so a hung MCP server can't freeze the
+        // whole tool-round forever (readLineSync blocks with no deadline of its own).
+        // The winner resumes the continuation in its own closure.
+        let gate = ResumeFlag()
         return try await withCheckedThrowingContinuation { cont in
             queue.async { [self] in
-                do { cont.resume(returning: try sendAndAwait(requestData, id: id)) }
-                catch { cont.resume(throwing: error) }
+                do {
+                    let value = try sendAndAwait(requestData, id: id)
+                    if gate.claim() { cont.resume(returning: value) }
+                } catch {
+                    if gate.claim() { cont.resume(throwing: error) }
+                }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + Self.rpcTimeout) {
+                if gate.claim() { cont.resume(throwing: MCPError.timeout) }
             }
         }
     }
+
+    /// Per-request deadline. Generous — MCP tools can do real work (network, git) —
+    /// but bounded so a wedged server surfaces an error instead of hanging.
+    private static let rpcTimeout: TimeInterval = 30
 
     private func notify(_ method: String) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
