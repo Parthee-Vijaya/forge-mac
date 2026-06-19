@@ -77,6 +77,7 @@ final class TUIApp {
     private let framework: String
     private let verbose: Bool
     private let skills: [Skill]                 // available presets (Kontekst sidebar)
+    private let customCommands: [StormCommand]   // user /<name> commands (.forge/commands/)
     private var size: Size
     private var prev: ScreenBuffer?
 
@@ -153,8 +154,8 @@ final class TUIApp {
     ]
     private func isSlashCommand(_ line: String) -> Bool {
         guard line.hasPrefix("/") else { return false }
-        let word = line.dropFirst().prefix { $0 != " " }.lowercased()
-        return Self.commandWords.contains(String(word))
+        let word = String(line.dropFirst().prefix { $0 != " " }.lowercased())
+        return Self.commandWords.contains(word) || customCommands.contains { $0.id == word }
     }
     private var pendingPermission: (PermissionRequest, CheckedContinuation<PermissionDecision, Never>)?
     private var turnTask: Task<Void, Never>?
@@ -178,6 +179,7 @@ final class TUIApp {
         self.theme = theme
         self.autoReview = autoReview
         self.skills = SkillStore.load(projectRoot: engine.workspace.root)
+        self.customCommands = CommandStore.load(projectRoot: engine.workspace.root)
         if firstRun {
             onboarding = true
             onboardStep = .model                 // pick a model first, then theme
@@ -287,7 +289,7 @@ final class TUIApp {
         case .pageDown: scroll = max(0, scroll - max(1, size.rows - 4)); needsRender = true
         case .tab:
             if input.hasPrefix("/") {                 // complete to the first matching command
-                if let m = Self.slashCommands.first(where: { $0.0.hasPrefix(input.lowercased()) }) { input = m.0 + " "; cursor = input.count }
+                if let m = allSlashCommands.first(where: { $0.0.hasPrefix(input.lowercased()) }) { input = m.0 + " "; cursor = input.count }
             } else {
                 sidePane = (sidePane == .context) ? .live : (sidePane == .live ? .diff : .context)
             }
@@ -329,8 +331,9 @@ final class TUIApp {
         startTurn(text)
     }
 
-    /// Run one build turn for `text` (used by submit + the reviewer's /fix).
-    private func startTurn(_ text: String) {
+    /// Run one turn for `text` (used by submit, the reviewer's /fix, and custom
+    /// slash commands — which may run in plan mode).
+    private func startTurn(_ text: String, mode: AgentLoop.Mode = .build) {
         guard !isBusy, let cont = channel else { return }
         scroll = 0
         transcript.append(Line(role: .user, text: text))
@@ -349,8 +352,8 @@ final class TUIApp {
             var prompt = await self.augmentWithURLs(text)
             prompt = await self.augmentWithPaths(prompt)
             let gate = TUIPermissionGate(channel: cont)
-            let loop = AgentLoop(makeDeps(engine, mode: .build, gate: gate))
-            for await ev in loop.run(userPrompt: prompt, history: self.history, mode: .build) { cont.yield(.agent(ev)) }
+            let loop = AgentLoop(makeDeps(engine, mode: mode, gate: gate))
+            for await ev in loop.run(userPrompt: prompt, history: self.history, mode: mode) { cont.yield(.agent(ev)) }
             cont.yield(.turnEnded)
         }
         needsRender = true
@@ -1419,9 +1422,69 @@ final class TUIApp {
         case "open", "åbn": openInBrowser(arg); needsRender = true
         case "copy", "kopier", "yank": copyLast()
         case "quit", "q":  running = false
-        case "help":       transcript.append(Line(role: .system, text: Self.slashCommands.map { "\($0.0) — \($0.1)" }.joined(separator: "\n")))
-        default:           transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
+        case "help":       transcript.append(Line(role: .system, text: helpText()))
+        default:
+            if let custom = customCommands.first(where: { $0.id == cmd }) {
+                runCustomCommand(custom, arg)
+            } else {
+                transcript.append(Line(role: .system, text: "ukendt kommando: /\(cmd) — prøv /help"))
+            }
         }
+    }
+
+    /// Expand a user command (`$ARGUMENTS`, `` !`shell` ``, `@file`) and run it as a
+    /// turn. The shell substitution is gated by ShellRules (only `.allow` commands
+    /// run — so a project-supplied command file can't smuggle in `rm -rf`); `@file`
+    /// reads are jailed to the project. Runs off the main actor, then submits.
+    private func runCustomCommand(_ command: StormCommand, _ arg: String) {
+        guard !isBusy else { return }
+        status = "Kører /\(command.id)…"; needsRender = true
+        let engine = self.engine
+        Task {
+            let expanded = await command.expand(
+                arguments: arg,
+                runShell: { cmd in
+                    guard ShellRules.classify(cmd) == .allow else { return nil }
+                    return await Self.captureShell(cmd, cwd: engine.workspace.root)
+                },
+                readFile: { path in try? await engine.workspace.readFile(path) })
+            await MainActor.run {
+                guard !expanded.isEmpty else {
+                    self.status = "/\(command.id) gav ingenting."; self.needsRender = true; return
+                }
+                self.startTurn(expanded, mode: command.mode)
+            }
+        }
+    }
+
+    /// Run a shell command in `cwd` and return its stdout (≤ 16KB), or nil on failure.
+    /// Used only for a command file's `` !`…` `` context-gathering, after ShellRules.
+    private static func captureShell(_ cmd: String, cwd: URL) async -> String? {
+        await withCheckedContinuation { (cont: CheckedContinuation<String?, Never>) in
+            DispatchQueue.global().async {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: "/bin/sh")
+                p.arguments = ["-lc", cmd]
+                p.currentDirectoryURL = cwd
+                let out = Pipe(); p.standardOutput = out; p.standardError = Pipe()
+                do { try p.run() } catch { cont.resume(returning: nil); return }
+                let data = (try? out.fileHandleForReading.readToEnd()) ?? Data()
+                p.waitUntilExit()
+                let text = String(decoding: data.prefix(16_000), as: UTF8.self)
+                cont.resume(returning: text.isEmpty ? nil : text)
+            }
+        }
+    }
+
+    /// /help text: built-in slash commands + any user commands.
+    private func helpText() -> String {
+        var lines = Self.slashCommands.map { "\($0.0) — \($0.1)" }
+        if !customCommands.isEmpty {
+            lines.append("")
+            lines.append("Dine kommandoer (.forge/commands/):")
+            lines += customCommands.map { "/\($0.id)" + ($0.description.isEmpty ? "" : " — \($0.description)") }
+        }
+        return lines.joined(separator: "\n")
     }
 
     /// /model — discover local models (LM Studio + Ollama) and open the picker. The
@@ -1742,8 +1805,13 @@ final class TUIApp {
     }
 
     /// Discovery popover above the input while typing a / command.
+    /// Built-in slash commands plus the user's custom ones (for the popup + tab-complete).
+    private var allSlashCommands: [(String, String)] {
+        Self.slashCommands + customCommands.map { ("/\($0.id)", $0.description.isEmpty ? "din kommando" : $0.description) }
+    }
+
     private func drawSlashMenu(_ buf: ScreenBuffer, anchor: Rect) {
-        let matches = Self.slashCommands.filter { $0.0.hasPrefix(input.lowercased()) }
+        let matches = allSlashCommands.filter { $0.0.hasPrefix(input.lowercased()) }
         guard !matches.isEmpty, anchor.h >= 3 else { return }
         let h = min(anchor.h, matches.count + 2), w = min(anchor.w, 46)
         let rect = Rect(x: anchor.x, y: anchor.maxY - h, w: w, h: h)
