@@ -83,14 +83,27 @@ final class ContextBuilderTests: XCTestCase {
         XCTAssertEqual(out?.contains("and 50 more files"), true)
     }
 
-    // Fase 3b: a pinned (@file) file is included fully even past the budget.
+    // Fase 3b: a pinned (@file) file is included fully even past the budget
+    // (a realistic source file, well under the pinned hard ceiling).
     func testPinnedFileIncludedDespiteTinyBudget() async {
-        let big = String(repeating: "x", count: 100_000)
+        let big = String(repeating: "x", count: 40_000)   // ~10k tokens, < maxPinnedTokens
         let files = ["src/App.tsx", "src/lib/special.ts"]
         let out = await ContextBuilder(tokenBudget: 100)
             .build(files: files, touched: [], pinned: ["src/lib/special.ts"]) { $0 == "src/lib/special.ts" ? big : "// other" }
         XCTAssertEqual(out?.contains("src/lib/special.ts:"), true)
         XCTAssertEqual(out?.contains(big), true, "pinned content included in full")
+    }
+
+    // #16: a pathologically large pin (minified bundle) is head-truncated so it
+    // can't blow past num_ctx — bounded, not unbounded.
+    func testHugePinnedFileIsTruncated() async {
+        let huge = String(repeating: "x", count: 200_000)   // ~50k tokens, >> maxPinnedTokens (16k)
+        let out = await ContextBuilder(tokenBudget: 100, maxPinnedTokens: 16_000)
+            .build(files: ["src/big.ts"], touched: [], pinned: ["src/big.ts"]) { _ in huge }
+        XCTAssertEqual(out?.contains("src/big.ts:"), true, "pinned file still included")
+        XCTAssertEqual(out?.contains(huge), false, "a huge pin must NOT be injected in full")
+        XCTAssertEqual(out?.contains("truncated for context budget"), true, "head-truncated with a note")
+        XCTAssertLessThan(out?.count ?? .max, 70_000, "bounded well under the raw 200k chars")
     }
 
     func testPinnedHelperMatchesPathOrFilename() {

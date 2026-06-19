@@ -13,10 +13,16 @@ public struct ContextBuilder: Sendable {
     public var tokenBudget: Int
     /// Max entries listed in the file map before collapsing to "… and N more".
     public var maxListedFiles: Int
+    /// Hard ceiling for a single pinned (@file) file. Pinned files bypass the normal
+    /// priority budget (the user asked for them), but a pathologically large pin (a
+    /// minified bundle, a lockfile) is head-truncated to this so it can't blow past
+    /// num_ctx and make the model silently truncate everything.
+    public var maxPinnedTokens: Int
 
-    public init(tokenBudget: Int = 8000, maxListedFiles: Int = 100) {
+    public init(tokenBudget: Int = 8000, maxListedFiles: Int = 100, maxPinnedTokens: Int = 16000) {
         self.tokenBudget = tokenBudget
         self.maxListedFiles = maxListedFiles
+        self.maxPinnedTokens = maxPinnedTokens
     }
 
     public func build(
@@ -40,8 +46,10 @@ public struct ContextBuilder: Sendable {
             let cost = Self.estimateTokens(content)
             let body: String
             if pinnedSet.contains(path) {
-                body = content              // always include a pinned file fully
-                budget -= cost
+                // Include a pinned file fully (bypassing the priority budget), but
+                // cap a pathologically large one so it can't overflow num_ctx.
+                body = cost <= maxPinnedTokens ? content : Self.truncate(content, toTokens: maxPinnedTokens)
+                budget -= Self.estimateTokens(body)
                 pinnedRemaining.remove(path)
             } else if cost <= budget {
                 body = content

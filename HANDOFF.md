@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `ab29a57` 2026-06-20 — Fix: don't truncate a tag at a '>' inside a quoted attribute
 - `afa59f2` 2026-06-20 — Fix: stripCodeFence never empties a file (data-loss guard)
 - `7df7b9b` 2026-06-20 — Fix: surface in-band provider errors instead of an empty turn
 - `7f28f04` 2026-06-19 — Fix: kill the whole dev-server subtree on stop, not one level
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `81ce686` 2026-06-18 — docs: thorough CLI architecture doc with diagrams
 - `a20cb42` 2026-06-18 — Cross-session memory: storm now remembers the user + project between sessions
 - `bb4be3d` 2026-06-18 — Conversation compaction: summarize old turns so local context windows don't overflow
-- `6d1d357` 2026-06-18 — Live plan checklist (todowrite): show the agent's plan as a checklist during a build
 <!-- COMMITLOG:END -->
