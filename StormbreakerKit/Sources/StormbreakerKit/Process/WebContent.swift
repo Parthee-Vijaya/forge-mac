@@ -85,16 +85,107 @@ public enum WebContent {
 
     private static func get(_ urlString: String, accept: String? = nil,
                             userAgent: String = "Stormbreaker", referer: String? = nil) async -> Data? {
-        guard let url = URL(string: urlString) else { return nil }
+        // SSRF guard: refuse internal/loopback/link-local/private/CGNAT targets so a
+        // crafted URL — or a prompt-injected web-fetch — can't reach the cloud
+        // metadata endpoint, localhost services, or the LAN/Tailscale range.
+        guard let url = URL(string: urlString), !isBlockedURL(urlString) else { return nil }
         var req = URLRequest(url: url, timeoutInterval: 15)
         req.setValue(userAgent, forHTTPHeaderField: "User-Agent")   // GitHub API requires a UA; sites prefer a browser UA
         if let accept { req.setValue(accept, forHTTPHeaderField: "Accept") }
         if let referer { req.setValue(referer, forHTTPHeaderField: "Referer") }   // DDG lite needs one
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            // The delegate re-checks every redirect hop, so a public URL can't 302
+            // into an internal address.
+            let (data, resp) = try await URLSession.shared.data(for: req, delegate: SSRFRedirectGuard())
             guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
             return data
         } catch { return nil }
+    }
+
+    // MARK: - SSRF protection
+
+    /// True if `urlString` is not http(s) with a public host. Internal names
+    /// (`localhost`, `*.local`, `*.internal`), IP literals in private/loopback/
+    /// link-local/CGNAT ranges, and hostnames that RESOLVE to such an address (DNS
+    /// rebinding) are all blocked.
+    static func isBlockedURL(_ urlString: String) -> Bool {
+        guard let url = URL(string: urlString),
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
+              let rawHost = url.host, !rawHost.isEmpty else { return true }
+        let host = rawHost.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if host == "localhost" || host.hasSuffix(".localhost") || host.hasSuffix(".local")
+            || host.hasSuffix(".internal") || host == "ip6-localhost" || host == "ip6-loopback" { return true }
+        if let v4 = parseIPv4(host) { return isBlockedIPv4(v4) }
+        if let v6 = parseIPv6(host) { return isBlockedIPv6(v6) }
+        // Hostname: block if ANY resolved address is internal.
+        for ip in resolveHost(host) {
+            if let v4 = parseIPv4(ip), isBlockedIPv4(v4) { return true }
+            if let v6 = parseIPv6(ip), isBlockedIPv6(v6) { return true }
+        }
+        return false
+    }
+
+    static func parseIPv4(_ s: String) -> UInt32? {
+        var addr = in_addr()
+        guard s.withCString({ inet_pton(AF_INET, $0, &addr) }) == 1 else { return nil }
+        return UInt32(bigEndian: addr.s_addr)   // host byte order
+    }
+
+    static func parseIPv6(_ s: String) -> [UInt8]? {
+        var addr = in6_addr()
+        guard s.withCString({ inet_pton(AF_INET6, $0, &addr) }) == 1 else { return nil }
+        return withUnsafeBytes(of: &addr) { Array($0) }   // 16 bytes, network order
+    }
+
+    static func isBlockedIPv4(_ a: UInt32) -> Bool {
+        func inRange(_ base: UInt32, _ prefix: Int) -> Bool {
+            let mask: UInt32 = prefix == 0 ? 0 : ~UInt32(0) << (32 - prefix)
+            return (a & mask) == (base & mask)
+        }
+        return inRange(0x0000_0000, 8)    // 0.0.0.0/8     this-network / unspecified
+            || inRange(0x0A00_0000, 8)    // 10/8          private
+            || inRange(0x6440_0000, 10)   // 100.64/10     CGNAT (Tailscale)
+            || inRange(0x7F00_0000, 8)    // 127/8         loopback
+            || inRange(0xA9FE_0000, 16)   // 169.254/16    link-local (incl. metadata)
+            || inRange(0xAC10_0000, 12)   // 172.16/12     private
+            || inRange(0xC0A8_0000, 16)   // 192.168/16    private
+            || inRange(0xC612_0000, 15)   // 198.18/15     benchmarking
+            || inRange(0xE000_0000, 4)    // 224/4         multicast
+            || inRange(0xF000_0000, 4)    // 240/4         reserved
+    }
+
+    static func isBlockedIPv6(_ b: [UInt8]) -> Bool {
+        guard b.count == 16 else { return true }
+        if b.allSatisfy({ $0 == 0 }) { return true }                       // ::      unspecified
+        if b[0..<15].allSatisfy({ $0 == 0 }) && b[15] == 1 { return true } // ::1     loopback
+        if (b[0] & 0xFE) == 0xFC { return true }                          // fc00::/7 unique-local
+        if b[0] == 0xFE && (b[1] & 0xC0) == 0x80 { return true }          // fe80::/10 link-local
+        if b[0] == 0xFF { return true }                                   // ff00::/8 multicast
+        if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xFF && b[11] == 0xFF {  // ::ffff:0:0/96 v4-mapped
+            let v4 = (UInt32(b[12]) << 24) | (UInt32(b[13]) << 16) | (UInt32(b[14]) << 8) | UInt32(b[15])
+            return isBlockedIPv4(v4)
+        }
+        return false
+    }
+
+    private static func resolveHost(_ host: String) -> [String] {
+        var hints = addrinfo(ai_flags: 0, ai_family: AF_UNSPEC, ai_socktype: SOCK_STREAM,
+                             ai_protocol: 0, ai_addrlen: 0, ai_canonname: nil, ai_addr: nil, ai_next: nil)
+        var res: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(host, nil, &hints, &res) == 0, let first = res else { return [] }
+        defer { freeaddrinfo(first) }
+        var out: [String] = []
+        var p: UnsafeMutablePointer<addrinfo>? = first
+        while let cur = p {
+            var buf = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(cur.pointee.ai_addr, cur.pointee.ai_addrlen,
+                           &buf, socklen_t(buf.count), nil, 0, NI_NUMERICHOST) == 0 {
+                let bytes = buf.prefix(while: { $0 != 0 }).map { UInt8(bitPattern: $0) }
+                out.append(String(decoding: bytes, as: UTF8.self))
+            }
+            p = cur.pointee.ai_next
+        }
+        return out
     }
 
     private static func fetchGitHub(_ owner: String, _ repo: String, maxChars: Int) async -> String? {
@@ -214,5 +305,20 @@ public enum WebContent {
         s = s.replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
         s = s.replacingOccurrences(of: "\\n[ \\t]*(\\n[ \\t]*)+", with: "\n\n", options: .regularExpression)
         return s.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// Re-applies the SSRF host check to every redirect target, so a public URL can't
+/// 302 into an internal address. Stateless → safe to share.
+private final class SSRFRedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        if let u = request.url?.absoluteString, WebContent.isBlockedURL(u) {
+            completionHandler(nil)        // refuse the redirect
+        } else {
+            completionHandler(request)
+        }
     }
 }

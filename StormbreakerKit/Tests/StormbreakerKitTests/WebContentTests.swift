@@ -18,6 +18,34 @@ final class WebContentTests: XCTestCase {
         XCTAssertTrue(WebContent.extractURLs("byg en tæller-app uden links").isEmpty)
     }
 
+    // MARK: - SSRF guard (H2)
+
+    func testSSRFBlocksInternalTargets() {
+        for u in ["http://169.254.169.254/latest/meta-data/",   // cloud metadata
+                  "http://localhost:3000", "http://127.0.0.1/x", "http://127.1/x",
+                  "https://[::1]/", "http://10.0.0.5", "http://192.168.1.1",
+                  "http://172.16.4.4", "http://100.100.100.100",   // Tailscale CGNAT
+                  "http://0.0.0.0", "http://server.local", "http://db.internal",
+                  "ftp://example.com/x", "file:///etc/passwd"] {   // non-http(s) too
+            XCTAssertTrue(WebContent.isBlockedURL(u), "should block: \(u)")
+        }
+    }
+
+    func testSSRFAllowsPublicTargets() {
+        for u in ["https://github.com/x/y", "https://api.duckduckgo.com/?q=swift",
+                  "http://93.184.216.34/", "https://example.com"] {   // example.com public IP literal
+            XCTAssertFalse(WebContent.isBlockedURL(u), "should allow: \(u)")
+        }
+    }
+
+    func testSSRFIPv4RangeMath() {
+        XCTAssertTrue(WebContent.isBlockedIPv4(WebContent.parseIPv4("169.254.169.254")!))
+        XCTAssertTrue(WebContent.isBlockedIPv4(WebContent.parseIPv4("10.255.255.255")!))
+        XCTAssertFalse(WebContent.isBlockedIPv4(WebContent.parseIPv4("8.8.8.8")!))
+        XCTAssertFalse(WebContent.isBlockedIPv4(WebContent.parseIPv4("172.32.0.1")!))   // just outside 172.16/12
+        XCTAssertTrue(WebContent.isBlockedIPv4(WebContent.parseIPv4("172.31.255.255")!))
+    }
+
     func testGithubRepoParsing() {
         XCTAssertEqual(WebContent.githubRepo("https://github.com/johnbean393/KeyType")?.owner, "johnbean393")
         XCTAssertEqual(WebContent.githubRepo("https://github.com/johnbean393/KeyType")?.repo, "KeyType")

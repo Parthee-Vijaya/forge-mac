@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `a5e3faf` 2026-06-19 — Security (C6): confirm before launching project-local MCP servers
 - `090a845` 2026-06-19 — Security: harden ShellRules against RCE + secret exfiltration
 - `056edcb` 2026-06-19 — Recursive folder listing so nested files (e.g. public/*.jpeg) show
 - `69453d4` 2026-06-19 — Read user-referenced local paths for real (+ browser open); stop faking it
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `a30859b` 2026-06-18 — TUI polish: fun status quotes, "lokal" cost, git nested-repo fix, /copy
 - `7ce7daa` 2026-06-18 — CLI onboarding: pick a model (local + cloud) on first run + friendlier errors
 - `461a440` 2026-06-18 — Fix TUI crash on terminal resize (SIGWINCH handler isolation)
-- `f70aa56` 2026-06-18 — Rename Forge → Stormbreaker across the codebase (command: storm)
 <!-- COMMITLOG:END -->
