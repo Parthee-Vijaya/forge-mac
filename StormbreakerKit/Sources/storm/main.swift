@@ -136,7 +136,11 @@ struct Engine: Sendable {
 }
 
 /// Open `dir` as a project; scaffold the framework template only if it isn't one yet.
-func prepareEngine(dir: URL, framework: Framework, config: ModelConfig) async throws -> Engine {
+///
+/// `mcpAutoApprove` (true under `--yes`/`--plain`/CI) skips the MCP launch prompt;
+/// interactive runs must confirm before any external MCP program is started.
+func prepareEngine(dir: URL, framework: Framework, config: ModelConfig,
+                   mcpAutoApprove: Bool = false) async throws -> Engine {
     let workspace = ProjectWorkspace(root: dir)
     let pkg = dir.appendingPathComponent("package.json")
     if !FileManager.default.fileExists(atPath: pkg.path) {
@@ -147,11 +151,32 @@ func prepareEngine(dir: URL, framework: Framework, config: ModelConfig) async th
     }
     let devServer = DevServerManager(workspace: workspace)
     let mcp = MCPManager()
-    await mcp.start(projectRoot: dir)
-    if !mcp.isEmpty { info("MCP: \(mcp.availableTools.count) eksternt værktøj(er) tilgængelige") }
+    // C6 guard: `.forge/.mcp.json` launches external programs. Never start them
+    // silently just because a repo was opened — confirm first (default no).
+    let mcpConfigs = MCPManager.loadConfig(projectRoot: dir)
+    if !mcpConfigs.isEmpty {
+        if mcpAutoApprove || confirmMCPStart(mcpConfigs) {
+            await mcp.start(projectRoot: dir)
+            if !mcp.isEmpty { info("MCP: \(mcp.availableTools.count) eksternt værktøj(er) tilgængelige") }
+        } else {
+            info("MCP: \(mcpConfigs.count) konfigureret server(e) sprunget over (ikke godkendt)")
+        }
+    }
     return Engine(workspace: workspace, devServer: devServer,
                   collector: ErrorCollector(devServer: devServer), config: config, mcp: mcp,
                   checkpoints: CheckpointManager(root: dir))
+}
+
+/// Show exactly which external programs a project's `.forge/.mcp.json` would run and
+/// require an explicit yes (default no). Returns true only on an affirmative answer.
+func confirmMCPStart(_ configs: [MCPManager.ServerConfig]) -> Bool {
+    say("\n" + cyan("⚠ Dette projekt vil starte \(configs.count) ekstern(e) MCP-server(e):"))
+    for c in configs {
+        say("    " + bold(c.name) + dim(" → ") + ([c.command] + c.args).joined(separator: " "))
+    }
+    FileHandle.standardOutput.write(Data(bold("  Kør disse eksterne programmer? [j]a / [N]ej: ").utf8))
+    let answer = readLine(strippingNewline: true)?.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
+    return answer.first == "j" || answer.first == "y"
 }
 
 func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)? = nil,
@@ -420,7 +445,8 @@ func cmdBuild(_ args: Args, _ cfg: StormbreakerConfig) async {
     let dir = resolveProjectDir(args, defaultName: defaultName)
     info("model: \(config.displayName) (\(config.source.rawValue)) · framework: \(framework.displayName)")
     do {
-        let engine = try await prepareEngine(dir: dir, framework: framework, config: config)
+        let engine = try await prepareEngine(dir: dir, framework: framework, config: config,
+                                             mcpAutoApprove: plain || args.flag("yes"))
         let session = MetricsAccumulator()
         let verbose = args.flag("verbose") || cfg.verbose == true
         let gate: (any PermissionGate)? = (!plain && !args.flag("yes")) ? StdinPermissionGate() : nil
@@ -441,7 +467,8 @@ func cmdChat(_ args: Args, _ cfg: StormbreakerConfig) async {
     let config = makeModelConfig(args, cfg)
     info("model: \(config.displayName) (\(config.source.rawValue)) · framework: \(framework.displayName)")
     var engine: Engine
-    do { engine = try await prepareEngine(dir: dir, framework: framework, config: config) }
+    do { engine = try await prepareEngine(dir: dir, framework: framework, config: config,
+                                          mcpAutoApprove: plain || args.flag("yes")) }
     catch { fail("\(error)") }
 
     let verbose = args.flag("verbose") || cfg.verbose == true
@@ -541,6 +568,9 @@ func cmdMCP(_ args: Args, _ cfg: StormbreakerConfig) async {
         return
     }
     info("starter \(configs.count) MCP-server(e)…")
+    for c in configs {   // transparency: show exactly what is being launched
+        say("    " + bold(c.name) + dim(" → ") + ([c.command] + c.args).joined(separator: " "))
+    }
     let manager = MCPManager()
     await manager.start(projectRoot: dir)
     let tools = manager.availableTools
