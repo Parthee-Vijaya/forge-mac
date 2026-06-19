@@ -17,7 +17,13 @@ private actor MockProcessLayer: ProcessLayer {
     }
     func readFile(_ relativePath: String) async throws -> String { fileContents[relativePath] ?? "" }
     func addDependencies(_ packages: [String]) async throws { installs.append(packages) }
-    func runShell(_ command: String) async throws -> Int32 { shells.append(command); return 0 }
+    var failOnCommand: String?
+    func setFailOn(_ c: String) { failOnCommand = c }
+    func runShell(_ command: String) async throws -> Int32 {
+        shells.append(command)
+        if command == failOnCommand { throw NSError(domain: "test", code: 1) }
+        return 0
+    }
     func startDevServerIfNeeded() async throws -> URL { startCount += 1; running = true; return url }
     var serverReadyURL: URL? { get async { running ? url : nil } }
 
@@ -47,6 +53,23 @@ final class ActionExecutorTests: XCTestCase {
         XCTAssertEqual(shells, ["echo hi"])
         let startCount = await mock.startCount
         XCTAssertEqual(startCount, 1)
+    }
+
+    func testFlushDoesNotRerunCommandsAfterMidBatchThrow() async throws {
+        let mock = MockProcessLayer()
+        await mock.setFailOn("npm run build")   // the 2nd command throws
+        let executor = ActionExecutor(process: mock)
+        try await executor.handle(.artifactOpen(id: "x", title: "X"))
+        try await executor.handle(.inlineAction(.shell(command: "echo one")))
+        try await executor.handle(.inlineAction(.shell(command: "npm run build")))
+        do {
+            try await executor.handle(.artifactClose)   // flush throws on the 2nd command
+            XCTFail("expected the failing command to throw")
+        } catch { /* expected */ }
+        // A later flush must not re-run the already-executed commands.
+        try await executor.flush()
+        let shells = await mock.shells
+        XCTAssertEqual(shells, ["echo one", "npm run build"], "each command runs at most once")
     }
 
     func testSecondTurnDoesNotRestartRunningServer() async throws {

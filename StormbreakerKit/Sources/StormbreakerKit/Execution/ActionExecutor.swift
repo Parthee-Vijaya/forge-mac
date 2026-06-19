@@ -64,15 +64,21 @@ public actor ActionExecutor {
     /// Run queued commands and start the dev server if needed. Called at
     /// artifact close.
     public func flush() async throws {
-        if !pendingDeps.isEmpty {
-            if await approved(.addDependencies(pendingDeps)) {
-                try await process.addDependencies(pendingDeps)
+        // Drain the queues AS we run them: if a command throws mid-flush, an
+        // already-run command must not re-run on a later flush (a second artifact in
+        // the same response, or a repair round). Snapshot+clear deps before the
+        // throwing call; pop each shell command before executing it.
+        let deps = pendingDeps
+        pendingDeps.removeAll()
+        if !deps.isEmpty {
+            if await approved(.addDependencies(deps)) {
+                try await process.addDependencies(deps)
             } else {
-                deniedActions.append(PermissionRequest.addDependencies(pendingDeps).label)
+                deniedActions.append(PermissionRequest.addDependencies(deps).label)
             }
-            pendingDeps.removeAll()
         }
-        for command in pendingShell {
+        while !pendingShell.isEmpty {
+            let command = pendingShell.removeFirst()
             // Per-command triage: safe dev tooling runs without a prompt, catastrophic
             // patterns are refused outright, the rest fall through to the gate.
             switch ShellRules.classify(command) {
@@ -88,7 +94,6 @@ public actor ActionExecutor {
                 }
             }
         }
-        pendingShell.removeAll()
 
         let running = await process.serverReadyURL != nil
         if !running {
