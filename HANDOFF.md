@@ -5,7 +5,7 @@
 > Du skriver en prompt → en AI-agent skriver et React+Vite+TS+Tailwind-projekt til disk
 > → Stormbreaker kører det → preview opdaterer via HMR.
 
-- **Sidst opdateret:** 2026-06-18
+- **Sidst opdateret:** 2026-06-19
 - **Status:** Walking skeleton + **Lovable-stil UI** KOMPLET og verificeret i GUI. Empty-state hero → split-layout når der bygges; synlig tekst (tvunget lyst tema), fil-chips pr. besked, preview-toolbar (device-toggles/URL/refresh/åbn-i-browser), HMR-edits. **Multi-model**: auto-discovery af Ollama + LM Studio (verificeret live). **Kode-visning + fil-træ** (redigerbar editor → HMR) og **multi-projekt + historik** (skift/opret/slet, persistent pr. projekt) — begge verificeret live. **nanocoder-køreplan leveret**: `storm` CLI, bruger-skills (CLI+GUI), og MCP tool-calling — agenten kan kalde eksterne MCP-værktøjer midt i et build (e2e-verificeret) + eksterne agenter kan drive Stormbreaker via `storm-mcp`. **opencode-køreplan leveret**: approval-gate, diagnostics, cost, AGENTS.md, @file, export, prettier, steer-API + **fuld-skærms TUI** (`storm chat`) med live fil-streaming, farvediffs, model-skift, sessioner, slash-menu/temaer og en Kontekst-sidebar. **agentic-SDLC leveret**: reviewer-agent, GitHub-integration (GIT-sidebar + `/github`/`/push`/`/pull`/`/pr`) og swarm/kø (`/kø` + KØ-sidebar). Alle 177 StormbreakerKit-tests grønne; Mac-app + CLI bygger.
 - **Branch:** main · committed: skeleton + Lovable-UI + LM Studio-discovery (intet remote endnu)
 
@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `b3a041b` 2026-06-18 — docs: add CLI architecture slide deck (.pptx) + generator
 - `81ce686` 2026-06-18 — docs: thorough CLI architecture doc with diagrams
 - `a20cb42` 2026-06-18 — Cross-session memory: storm now remembers the user + project between sessions
 - `bb4be3d` 2026-06-18 — Conversation compaction: summarize old turns so local context windows don't overflow
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `5536484` 2026-06-18 — AgentLoop: keep token accounting when a build fails at artifact-close
 - `41384d3` 2026-06-18 — TUI: token-forbrug altid ved siden af modelnavnet i headeren
 - `36b34f0` 2026-06-18 — docs(handoff): document the agentic-SDLC køreplan (reviewer · GitHub · swarm)
-- `1dc4b23` 2026-06-18 — Swarm/kø S1+S2 (agentic-SDLC borrow): task queue runner + KØ sidebar
 <!-- COMMITLOG:END -->

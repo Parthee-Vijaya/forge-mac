@@ -43,7 +43,7 @@
   <div class="wrap">
     <span class="pill"><span class="dot"></span> Avanceret · til power-brugere</span>
     <h1>Stormbreaker i <span class="grad">terminalen</span>.</h1>
-    <p class="sub">For dig der hellere bliver i terminalen — eller arbejder over SSH. <code>storm chat</code> er en <b>fuldskærms-TUI med præcis samme motor som appen</b>: live fil-streaming med syntaksfarver, farvede diffs, model-skift midt i en session, gendan via checkpoints, en reviewer-agent, indbygget GitHub og en swarm-kø. Nul nye afhængigheder — bare en lille Swift-binær. Installér med <b>én kommando</b>.</p>
+    <p class="sub">For dig der hellere bliver i terminalen — eller arbejder over SSH. <code>storm chat</code> er en <b>fuldskærms-TUI med præcis samme motor som appen</b>: live fil-streaming med syntaksfarver, farvede diffs, en live plan-tjekliste, model-skift midt i en session, gendan via checkpoints, en reviewer-agent, hukommelse der husker dig mellem sessioner, web-opslag, indbygget GitHub og en swarm-kø. Nul nye afhængigheder — bare en lille Swift-binær. Installér med <b>én kommando</b>.</p>
     <div class="cta">
       <a class="btn primary" href="#install">↓ Installér CLI'en</a>
       <a class="btn ghost" href="#kommandoer">Se kommandoer</a>
@@ -79,7 +79,7 @@ curl -fsSL <b>https://parthee-vijaya.github.io/stormbreaker-mac/install.sh</b> |
     <p class="lead">Skriv hvad du vil bygge og tryk Enter. Agenten streamer sine ændringer live, mens en Kontekst-sidebar til højre hele tiden viser hvor du er.</p>
     <div class="tour">
       <div class="step">
-        <div class="copy"><div class="k">Live build &amp; sidebar</div><h3>Byg, og se konteksten</h3><p>Filer skrives live med syntaksfarver. Sidebaren viser forbrug (tokens, hastighed, pris), ændrede filer, reviewer-status, dit git-repo og en swarm-kø — alt sammen mens du bygger. Skift panel med <code>⇥</code>, afbryd med <code>^C</code>.</p></div>
+        <div class="copy"><div class="k">Live build &amp; sidebar</div><h3>Byg, og se konteksten</h3><p>Filer skrives live med syntaksfarver, og agentens plan står som en <b style="color:var(--ink)">PLAN-tjekliste</b> øverst i sidebaren (✓ færdig · ○ mangler). Sidebaren viser også forbrug (tokens, hastighed, pris), ændrede filer, reviewer-status, dit git-repo og en swarm-kø — alt sammen mens du bygger. Skift panel med <code>⇥</code>, afbryd med <code>^C</code>.</p></div>
         <div class="frame"><img src="screenshots/10-cli.png" alt="Hovedskærm med Kontekst-sidebar" loading="lazy"></div>
       </div>
       <div class="step">
@@ -89,6 +89,10 @@ curl -fsSL <b>https://parthee-vijaya.github.io/stormbreaker-mac/install.sh</b> |
       <div class="step">
         <div class="copy"><div class="k">GitHub &amp; swarm</div><h3>Git og en kø — uden at forlade terminalen</h3><p>Udgiv og synk med <code>/github</code>, <code>/push</code>, <code>/pull</code> og <code>/pr</code> — git-status (gren, ændringer, foran/bagud) står live i sidebaren. Og med <code>/kø</code> stiller du flere byggeopgaver i kø; Stormbreaker arbejder dem igennem én ad gangen og viser status undervejs.</p></div>
         <div class="frame"><img src="screenshots/11-cli-swarm.png" alt="Kontekst-sidebar med git-status og swarm-kø" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="k">Hukommelse</div><h3>Den husker dig — på tværs af sessioner</h3><p><code>/remember &lt;fakta&gt;</code> gemmer en fakta om projektet; <code>/remember</code> alene lader modellen udtrække de holdbare ting fra sessionen. <code>/memory</code> viser hvad den ved — præferencer, beslutninger, konventioner — og det føjes til prompten hver gang, så du ikke gentager dig selv. Alt ligger som almindelig JSON, lokalt. Og <code>/compact</code> komprimerer lange samtaler så små modeller ikke løber tør for kontekst.</p></div>
+        <div class="frame"><img src="screenshots/13-cli-memory.png" alt="/memory — hukommelse på tværs af sessioner" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -143,6 +147,15 @@ curl -fsSL <b>https://parthee-vijaya.github.io/stormbreaker-mac/install.sh</b> |
           <div class="cmd"><code>/undo</code><span>Fortryd sidste tur.</span></div>
           <div class="cmd"><code>/restore &lt;n&gt;</code><span>Gendan til tur n.</span></div>
           <div class="cmd"><code>/checkpoints</code><span>Liste over ture.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="grp">Hukommelse &amp; kontekst</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/remember &lt;fakta&gt;</code><span>Husk en fakta om projektet.</span></div>
+          <div class="cmd"><code>/remember</code><span>Lær holdbare fakta af sessionen.</span></div>
+          <div class="cmd"><code>/memory</code><span>Vis hukommelse · <code>forget &lt;n&gt;</code> glemmer.</span></div>
+          <div class="cmd"><code>/compact</code><span>Komprimér samtalehistorik.</span></div>
         </div>
       </div>
       <div class="card">
