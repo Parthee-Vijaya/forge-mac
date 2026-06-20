@@ -162,13 +162,21 @@ curl -fsSL <b>https://parthee-vijaya.github.io/stormbreaker-mac/install.sh</b> |
         <h3 class="grp">Udseende &amp; opsætning</h3>
         <div class="cmds">
           <div class="cmd"><code>/theme</code><span>Skift farvetema.</span></div>
-          <div class="cmd"><code>/init</code><span>Skriv AGENTS.md (læses hver tur).</span></div>
+          <div class="cmd"><code>/init</code><span>Skriv AGENTS.md (CLAUDE.md/AGENTS.md læses hver tur).</span></div>
           <div class="cmd"><code>/help</code><span>Vis alle kommandoer.</span></div>
           <div class="cmd"><code>/quit</code><span>Afslut (<code>^C</code> virker også).</span></div>
         </div>
       </div>
+      <div class="card">
+        <h3 class="grp">Egne kommandoer &amp; søgning</h3>
+        <div class="cmds">
+          <div class="cmd"><code>/dit-navn</code><span>Egne kommandoer fra <code>.forge/commands/*.md</code> (<code>$ARGUMENTS</code>, <code>!`shell`</code>, <code>@fil</code>).</span></div>
+          <div class="cmd"><code>grep</code><span>Agenten søger selv i kode-indhold (ripgrep).</span></div>
+          <div class="cmd"><code>glob</code><span>Agenten finder selv filer på navne-mønster.</span></div>
+        </div>
+      </div>
     </div>
-    <p class="bignote">Tip: <code>⇥</code> skifter sidepanel (Kontekst / live kode / diff), <code>↑ ↓</code> scroller, og <code>Esc</code>/<code>^C</code> afbryder en kørende tur.</p>
+    <p class="bignote">Tip: <code>⇥</code> skifter sidepanel (Kontekst / live kode / diff), <code>↑ ↓</code> scroller, og <code>Esc</code>/<code>^C</code> afbryder en kørende tur. Egne kommandoer dukker også op i <code>/</code>-menuen.</p>
   </div>
 </section>
 

@@ -139,9 +139,8 @@
     <div class="heroshot"><img src="screenshots/10-cli.png" alt="storm chat — fuldskærms-TUI med Kontekst-sidebar" loading="lazy"></div>
     <div class="clibox">
       <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span>zsh — storm</span></div>
-<pre><span class="c"># Byg og installér CLI'en — gratis og lokalt</span>
-git clone https://github.com/Parthee-Vijaya/stormbreaker-mac
-<span class="p">cd</span> stormbreaker-mac && bash scripts/install-cli.sh
+<pre><span class="c"># Installér CLI'en med én kommando — gratis og lokalt</span>
+curl -fsSL https://parthee-vijaya.github.io/stormbreaker-mac/install.sh | bash
 
 <span class="c"># Kom i gang</span>
 <span class="p">storm</span>                  <span class="c"># åbn (= stormbreaker) · skriv / for kommandoer</span>
@@ -159,6 +158,10 @@ git clone https://github.com/Parthee-Vijaya/stormbreaker-mac
       <div class="step">
         <div class="copy"><div class="k">Sidebar · GitHub · swarm</div><h3>Kontekst, git og en kø — i sidebaren</h3><p>Sidebaren viser forbrug (tokens, hastighed, pris) og dit <b style="color:var(--ink)">git-repo</b> live: gren, ændringer og hvor langt du er foran/bagud. Udgiv og synk uden at forlade terminalen med <code>/github</code>, <code>/push</code>, <code>/pull</code> og <code>/pr</code>. Og med <code>/kø</code> stiller du flere opgaver i kø — Stormbreaker bygger dem igennem én ad gangen og viser status undervejs.</p></div>
         <div class="frame"><img src="screenshots/11-cli-swarm.png" alt="Kontekst-sidebar med git-status og swarm-kø" loading="lazy"></div>
+      </div>
+      <div class="step">
+        <div class="copy"><div class="k">Egne kommandoer &amp; kode-søgning</div><h3>Dine egne <code>/</code>-kommandoer — og en agent der søger selv</h3><p>Gem genbrugelige prompts som markdown i <code>.forge/commands/</code> — de dukker op i <code>/</code>-menuen og kan udvides med <code>$ARGUMENTS</code>, <code>!`shell`</code> og <code>@fil</code>. Og på større projekter <b style="color:var(--ink)">søger agenten selv</b> i koden (<code>grep</code> i indhold, <code>glob</code> på filnavne) i stedet for at gætte. Inspireret af opencode — samme idé, Stormbreaker-motoren.</p></div>
+        <div class="frame"><img src="screenshots/14-cli-commands.png" alt="storm — / -menuen med egne kommandoer" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -190,7 +193,10 @@ git clone https://github.com/Parthee-Vijaya/stormbreaker-mac
       <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Live plan-tjekliste</b> — agentens plan vises som afkrydsning (PLAN-panel) mens koden streames.</p></div>
       <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Hukommelse på tværs af sessioner</b> — husker dine præferencer &amp; projektets valg med <code>/remember</code> og <code>/memory</code>.</p></div>
       <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Samtale-compaction</b> — lange sessioner komprimeres automatisk, så små lokale modeller ikke løber tør for kontekst (<code>/compact</code>).</p></div>
-      <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>AGENTS.md &amp; @fil-referencer</b> for præcis kontekst.</p></div>
+      <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>CLAUDE.md / AGENTS.md &amp; @fil-referencer</b> — projekt-regler fra Claude Code &amp; opencode læses uændret.</p></div>
+      <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Kode-søgning</b> — agenten kan selv <code>grep</code> i indhold &amp; <code>glob</code> filnavne for at finde kode i større projekter i stedet for at gætte.</p></div>
+      <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Egne slash-kommandoer</b> — gem genbrugelige prompts som markdown (<code>$ARGUMENTS</code>, <code>!`shell`</code>, <code>@fil</code>) og kald dem med <code>/dit-navn</code>.</p></div>
+      <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Hærdet sikkerhed</b> — write-jail mod symlink-escape, SSRF-værn på web-hentning, og bekræftelse før et projekts MCP-servere starter.</p></div>
       <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Lyst / mørkt</b> tema; native notifikationer.</p></div>
       <div class="f"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><p><b>Nøgler i Keychain</b>, aldrig i klartekst.</p></div>
     </div>

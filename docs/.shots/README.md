@@ -1,7 +1,8 @@
 # CLI-screenshots (generator)
 
 Genererer terminal-screenshots af `storm`-TUI'en til websitet
-(`../screenshots/10-cli.png`, `11-cli-swarm.png`, `12-cli-diff.png`, `13-cli-memory.png`).
+(`../screenshots/10-cli.png`, `11-cli-swarm.png`, `12-cli-diff.png`, `13-cli-memory.png`,
+`14-cli-commands.png`).
 
 Pipeline (ingen installation ud over Chrome):
 1. Kør `storm chat` i en tmux-session og driv den til den ønskede tilstand.
