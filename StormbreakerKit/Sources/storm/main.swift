@@ -178,9 +178,9 @@ func prepareEngine(dir: URL, framework: Framework, config: ModelConfig,
 func confirmMCPStart(_ configs: [MCPManager.ServerConfig]) -> Bool {
     say("\n" + cyan("⚠ Dette projekt vil starte \(configs.count) ekstern(e) MCP-server(e):"))
     for c in configs {
-        say("    " + bold(c.name) + dim(" → ") + ([c.command] + c.args).joined(separator: " "))
+        say("    " + bold(c.name) + dim(c.isRemote ? " ⇄ " : " → ") + c.display)
     }
-    FileHandle.standardOutput.write(Data(bold("  Kør disse eksterne programmer? [j]a / [N]ej: ").utf8))
+    FileHandle.standardOutput.write(Data(bold("  Kør/forbind disse eksterne servere? [j]a / [N]ej: ").utf8))
     let answer = readLine(strippingNewline: true)?.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
     return answer.first == "j" || answer.first == "y"
 }
@@ -579,7 +579,7 @@ func cmdMCP(_ args: Args, _ cfg: StormbreakerConfig) async {
     }
     info("starter \(configs.count) MCP-server(e)…")
     for c in configs {   // transparency: show exactly what is being launched
-        say("    " + bold(c.name) + dim(" → ") + ([c.command] + c.args).joined(separator: " "))
+        say("    " + bold(c.name) + dim(c.isRemote ? " ⇄ " : " → ") + c.display)
     }
     let manager = MCPManager()
     await manager.start(projectRoot: dir)

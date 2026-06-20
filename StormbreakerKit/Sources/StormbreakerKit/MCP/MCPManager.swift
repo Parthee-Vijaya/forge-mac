@@ -7,13 +7,19 @@ import Foundation
 public final class MCPManager: @unchecked Sendable {
     public struct ServerConfig: Sendable, Equatable {
         public let name: String
-        public let command: String
+        public let command: String              // stdio (empty for a remote server)
         public let args: [String]
         public let env: [String: String]
+        public let url: String?                 // remote (http/sse) — nil for stdio
+        public let headers: [String: String]    // remote auth headers
+        public let enabled: Bool
+        public var isRemote: Bool { url != nil }
+        /// A one-line description of what this server runs/connects to (for the C6 prompt).
+        public var display: String { url ?? ([command] + args).joined(separator: " ") }
     }
 
     private let lock = NSLock()
-    private var clients: [String: MCPClient] = [:]
+    private var clients: [String: any MCPTransport] = [:]
     private var tools: [MCPClient.Tool] = []
 
     public init() {}
@@ -27,13 +33,23 @@ public final class MCPManager: @unchecked Sendable {
               let servers = obj["mcpServers"] as? [String: [String: Any]] else { return [] }
         let environment = ProcessInfo.processInfo.environment
         return servers.compactMap { name, cfg in
-            guard let command = cfg["command"] as? String, !command.isEmpty else { return nil }
+            let enabled = (cfg["enabled"] as? Bool) ?? true
+            guard enabled else { return nil }
             var env: [String: String] = [:]
             for (k, v) in (cfg["env"] as? [String: String]) ?? [:] {
                 env[k] = expandEnv(v, environment)
             }
-            return ServerConfig(name: name, command: command,
-                                args: (cfg["args"] as? [String]) ?? [], env: env)
+            // Remote server: a `url` (optionally `headers`), nanocoder/opencode shape.
+            if let url = (cfg["url"] as? String) ?? (cfg["uri"] as? String), !url.isEmpty {
+                var headers: [String: String] = [:]
+                for (k, v) in (cfg["headers"] as? [String: String]) ?? [:] { headers[k] = expandEnv(v, environment) }
+                return ServerConfig(name: name, command: "", args: [], env: env,
+                                    url: expandEnv(url, environment), headers: headers, enabled: true)
+            }
+            // Local (stdio) server: a `command` (+ args).
+            guard let command = cfg["command"] as? String, !command.isEmpty else { return nil }
+            return ServerConfig(name: name, command: command, args: (cfg["args"] as? [String]) ?? [],
+                                env: env, url: nil, headers: [:], enabled: true)
         }
     }
 
@@ -48,11 +64,17 @@ public final class MCPManager: @unchecked Sendable {
     /// Start every configured server and collect its tools (best-effort, concurrent).
     public func start(projectRoot: URL) async {
         let configs = Self.loadConfig(projectRoot: projectRoot)
-        await withTaskGroup(of: (MCPClient, [MCPClient.Tool])?.self) { group in
+        await withTaskGroup(of: (any MCPTransport, [MCPClient.Tool])?.self) { group in
             for cfg in configs {
                 group.addTask {
-                    let client = MCPClient(server: cfg.name, command: cfg.command,
+                    let client: any MCPTransport
+                    if let url = cfg.url {
+                        guard let http = MCPHTTPClient(server: cfg.name, url: url, headers: cfg.headers) else { return nil }
+                        client = http
+                    } else {
+                        client = MCPClient(server: cfg.name, command: cfg.command,
                                            args: cfg.args, env: cfg.env, cwd: projectRoot)
+                    }
                     do {
                         try await client.start()
                         return (client, try await client.listTools())
@@ -109,7 +131,7 @@ public final class MCPManager: @unchecked Sendable {
     }
 
     public func shutdownAll() {
-        let cs: [MCPClient] = lock.withLock {
+        let cs: [any MCPTransport] = lock.withLock {
             let c = Array(clients.values); clients.removeAll(); tools.removeAll(); return c
         }
         cs.forEach { $0.shutdown() }
