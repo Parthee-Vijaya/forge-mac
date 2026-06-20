@@ -263,6 +263,10 @@ public final class StreamingArtifactParser {
                 events.append(.webRequest(kind: .fetch, query: payload))
             } else if type == "web-search" {
                 events.append(.webRequest(kind: .search, query: payload))
+            } else if type == "grep" {
+                events.append(.searchRequest(kind: .grep, query: payload))
+            } else if type == "glob" {
+                events.append(.searchRequest(kind: .glob, query: payload))
             } else if type == "todo" {
                 events.append(.todoUpdate(TodoItem.parse(payload)))
             } else if type == "open" {

@@ -145,6 +145,23 @@ final class StreamingArtifactParserTests: XCTestCase {
         }
     }
 
+    func testGrepAndGlobParseToSearchRequests() {
+        let input = """
+        <forgeArtifact id="s" title="Search">
+        <forgeAction type="grep">useState</forgeAction>
+        <forgeAction type="glob">*.test.tsx</forgeAction>
+        </forgeArtifact>
+        """
+        for chunk in [Int.max, 1, 8] {
+            let reqs = parse(input, chunkSize: chunk).compactMap { e -> (SearchKind, String)? in
+                if case .searchRequest(let kind, let query) = e { return (kind, query) }; return nil
+            }
+            XCTAssertEqual(reqs.count, 2, "chunk \(chunk)")
+            XCTAssertEqual(reqs.first?.0, .grep); XCTAssertEqual(reqs.first?.1, "useState")
+            XCTAssertEqual(reqs.last?.0, .glob); XCTAssertEqual(reqs.last?.1, "*.test.tsx")
+        }
+    }
+
     func testFenceOnlyContentIsNotEmptied() {
         // A file whose content strips to nothing (a lone ``` fence) must NOT be
         // written empty — that would be silent data loss. The original is kept.

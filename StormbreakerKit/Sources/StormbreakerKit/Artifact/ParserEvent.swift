@@ -15,6 +15,7 @@ public enum ParserEvent: Sendable, Equatable {
     case readRequest(path: String)                  // A2b: model asks to see a file's contents
     case mcpRequest(server: String, tool: String, arguments: String)  // model asks to call an MCP tool
     case webRequest(kind: WebRequestKind, query: String)  // model asks to fetch a URL or search the web
+    case searchRequest(kind: SearchKind, query: String)   // model asks to grep contents / glob filenames
     case todoUpdate([TodoItem])                     // model emitted/updated its plan checklist
     case openRequest(url: String)                   // model asks to open a URL (preview) in the browser
     case artifactClose
@@ -22,3 +23,7 @@ public enum ParserEvent: Sendable, Equatable {
 
 /// What the model wants from the web tool: fetch a specific URL, or run a search.
 public enum WebRequestKind: Sendable, Equatable { case fetch, search }
+
+/// What the model wants from the code-search tool: grep file CONTENTS (ripgrep), or
+/// glob FILENAMES by pattern.
+public enum SearchKind: Sendable, Equatable { case grep, glob }

@@ -214,6 +214,9 @@ func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)
             let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
             return await mcp.call(server: server, tool: tool, arguments: args)
         },
+        searchCode: { [root = engine.workspace.root] kind, query in
+            await CodeSearch.run(kind, query: query, root: root)
+        },
         permissionGate: gate,
         settleDelay: .seconds(2),
         maxRepairAttempts: 3)
