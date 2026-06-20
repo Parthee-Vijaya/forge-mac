@@ -9,12 +9,25 @@ import Foundation
 public enum RulesLoader {
     public static func read(projectRoot: URL) -> String? {
         var parts: [String] = []
-        for name in ["CLAUDE.md", "AGENTS.md", "AI_RULES.md"] {
+        // Standard rule files + any extra files the project lists in
+        // `.forge/instructions.json` (opencode `instructions` parity).
+        for name in ["CLAUDE.md", "AGENTS.md", "AI_RULES.md"] + instructionFiles(projectRoot) {
             let url = projectRoot.appendingPathComponent(name)
             guard let raw = try? String(contentsOf: url, encoding: .utf8) else { continue }
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty { parts.append("Project rules (\(name)):\n\(trimmed)") }
         }
         return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
+    }
+
+    /// Extra rule-file paths from `<project>/.forge/instructions.json` — either a JSON
+    /// array `["docs/STYLE.md", …]` or `{ "instructions": [...] }`. Relative to the
+    /// project root; `..` is rejected so it can't escape the project.
+    static func instructionFiles(_ projectRoot: URL) -> [String] {
+        let url = projectRoot.appendingPathComponent(".forge/instructions.json")
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) else { return [] }
+        let list = (json as? [String]) ?? ((json as? [String: Any])?["instructions"] as? [String]) ?? []
+        return list.filter { !$0.isEmpty && !$0.contains("..") && !$0.hasPrefix("/") }
     }
 }

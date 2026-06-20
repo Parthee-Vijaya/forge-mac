@@ -1,3 +1,4 @@
+import Foundation
 import StormbreakerKit
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +85,56 @@ struct ANSITheme: Sendable, Equatable {
         keyword: .default, type: .default, number: .default, string: .default, comment: .default,
         diffAdd: .default, diffDel: .default, diffHunk: .default)
 
-    static let all: [ANSITheme] = [.tokyonight, .catppuccin, .nord, .gruvbox, .midnight, .light, .mono]
-    static func named(_ n: String) -> ANSITheme? { all.first { $0.name.lowercased() == n.lowercased() } }
+    static let builtins: [ANSITheme] = [.tokyonight, .catppuccin, .nord, .gruvbox, .midnight, .light, .mono]
+    /// Built-ins + any user themes from `~/.config/storm/themes/*.json`. Computed so a
+    /// newly-dropped theme appears without a rebuild (read only on theme operations,
+    /// never per frame).
+    static var all: [ANSITheme] { builtins + custom() }
+
+    static func named(_ n: String) -> ANSITheme? {
+        let key = n.lowercased()
+        if key == "system" { return .mono }   // opencode "system" = respect the terminal
+        return all.first { $0.name.lowercased() == key }
+    }
+
+    // MARK: - Custom themes (JSON)
+
+    /// `~/.config/storm/themes` (or `$XDG_CONFIG_HOME/storm/themes`).
+    static func themesDir() -> URL {
+        let env = ProcessInfo.processInfo.environment
+        let base = env["XDG_CONFIG_HOME"].map { URL(fileURLWithPath: $0) }
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".config")
+        return base.appendingPathComponent("storm/themes")
+    }
+
+    /// Load user themes. Each `*.json` overrides a midnight base, so a minimal file
+    /// (just `name` + a couple of colors) is valid. Colors are `#RRGGBB` (or `RRGGBB`).
+    static func custom() -> [ANSITheme] {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: themesDir(), includingPropertiesForKeys: nil) else { return [] }
+        return files.filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            .compactMap { parse($0) }
+    }
+
+    static func parse(_ url: URL) -> ANSITheme? {
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        var t = ANSITheme.midnight
+        t.name = (obj["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? url.deletingPathExtension().lastPathComponent
+        func col(_ key: String, _ fallback: TermColor) -> TermColor { hexColor(obj[key] as? String) ?? fallback }
+        t.bg = col("bg", t.bg);             t.text = col("text", t.text);          t.accent = col("accent", t.accent)
+        t.error = col("error", t.error);    t.ok = col("ok", t.ok);                t.warn = col("warn", t.warn)
+        t.muted = col("muted", t.muted);    t.keyword = col("keyword", t.keyword); t.type = col("type", t.type)
+        t.number = col("number", t.number); t.string = col("string", t.string);    t.comment = col("comment", t.comment)
+        t.diffAdd = col("diffAdd", t.diffAdd); t.diffDel = col("diffDel", t.diffDel); t.diffHunk = col("diffHunk", t.diffHunk)
+        return t
+    }
+
+    static func hexColor(_ s: String?) -> TermColor? {
+        guard var h = s?.trimmingCharacters(in: .whitespaces), !h.isEmpty else { return nil }
+        if h.hasPrefix("#") { h.removeFirst() }
+        guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+        return .hex(v)
+    }
 }

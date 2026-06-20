@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `418c38b` 2026-06-20 — Parity: user-configurable shell permissions overlay
 - `08135e1` 2026-06-20 — docs(site): new features on GitHub Pages + custom-commands screenshot
 - `f43b2fb` 2026-06-20 — docs: README covers the storm CLI, curl-install, and new agent tools
 - `04cfdca` 2026-06-20 — Parity: grep/glob code-search tools for the agent
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `4a911f6` 2026-06-19 — Fix: apply --base-url to cloud providers, not just ollama/lmStudio
 - `caa8ed5` 2026-06-19 — Fix: enable + handle bracketed paste in the TUI
 - `20a3507` 2026-06-19 — Security: untrusted-content boundary on file/MCP/error turns
-- `4172305` 2026-06-19 — Security (H3): resolve symlinks before the write-jail containment check
 <!-- COMMITLOG:END -->

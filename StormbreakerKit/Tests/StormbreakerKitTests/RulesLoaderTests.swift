@@ -49,4 +49,17 @@ final class RulesLoaderTests: XCTestCase {
         try "   \n".write(to: dir.appendingPathComponent("AGENTS.md"), atomically: true, encoding: .utf8)
         XCTAssertNil(RulesLoader.read(projectRoot: dir), "whitespace-only is treated as empty")
     }
+
+    func testInstructionsFilesAreIncluded() throws {
+        let dir = try tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent(".forge"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("docs"), withIntermediateDirectories: true)
+        try "Use 2-space indent.".write(to: dir.appendingPathComponent("docs/STYLE.md"), atomically: true, encoding: .utf8)
+        try #"["docs/STYLE.md","../escape.md","/etc/passwd"]"#.write(
+            to: dir.appendingPathComponent(".forge/instructions.json"), atomically: true, encoding: .utf8)
+        let out = try XCTUnwrap(RulesLoader.read(projectRoot: dir))
+        XCTAssertTrue(out.contains("Use 2-space indent."), "listed instruction file is included")
+        // path-escape entries are filtered out
+        XCTAssertEqual(RulesLoader.instructionFiles(dir), ["docs/STYLE.md"])
+    }
 }
