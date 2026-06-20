@@ -8,15 +8,18 @@ import Foundation
 public actor ActionExecutor {
     private let process: any ProcessLayer
     private let gate: (any PermissionGate)?
+    private let permissions: PermissionConfig
     private var pendingDeps: [String] = []
     private var pendingShell: [String] = []
     private var startRequested = false
     private var filesWritten: [String] = []
     private var deniedActions: [String] = []
 
-    public init(process: any ProcessLayer, gate: (any PermissionGate)? = nil) {
+    public init(process: any ProcessLayer, gate: (any PermissionGate)? = nil,
+                permissions: PermissionConfig = PermissionConfig()) {
         self.process = process
         self.gate = gate
+        self.permissions = permissions
     }
 
     /// Process one event in stream order.
@@ -80,8 +83,9 @@ public actor ActionExecutor {
         while !pendingShell.isEmpty {
             let command = pendingShell.removeFirst()
             // Per-command triage: safe dev tooling runs without a prompt, catastrophic
-            // patterns are refused outright, the rest fall through to the gate.
-            switch ShellRules.classify(command) {
+            // patterns are refused outright, the rest fall through to the gate. The
+            // user's PermissionConfig can tighten/loosen the non-catastrophic verdict.
+            switch permissions.override(ShellRules.classify(command), command: command) {
             case .allow:
                 _ = try await process.runShell(command)
             case .deny:

@@ -218,6 +218,7 @@ func makeDeps(_ engine: Engine, mode: AgentLoop.Mode, gate: (any PermissionGate)
             await CodeSearch.run(kind, query: query, root: root)
         },
         permissionGate: gate,
+        permissionConfig: PermissionConfig.load(projectRoot: engine.workspace.root),
         settleDelay: .seconds(2),
         maxRepairAttempts: 3)
 }

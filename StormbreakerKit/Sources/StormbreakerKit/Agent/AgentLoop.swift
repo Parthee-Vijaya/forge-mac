@@ -28,6 +28,8 @@ public actor AgentLoop {
         /// Optional approval gate for side-effectful actions (shell, new deps, MCP).
         /// nil = allow everything (CLI/tests/dogfood default → behaviour unchanged).
         public var permissionGate: (any PermissionGate)?
+        /// User overrides on the shell verdict (allow/ask/deny patterns). Empty = none.
+        public var permissionConfig: PermissionConfig
         public var settleDelay: Duration
         public var maxRepairAttempts: Int
 
@@ -51,6 +53,7 @@ public actor AgentLoop {
                 "Kodesøgning er ikke tilgængelig her."
             },
             permissionGate: (any PermissionGate)? = nil,
+            permissionConfig: PermissionConfig = PermissionConfig(),
             settleDelay: Duration = .seconds(2),
             maxRepairAttempts: Int = 3
         ) {
@@ -66,6 +69,7 @@ public actor AgentLoop {
             self.fetchWeb = fetchWeb
             self.searchCode = searchCode
             self.permissionGate = permissionGate
+            self.permissionConfig = permissionConfig
             self.settleDelay = settleDelay
             self.maxRepairAttempts = maxRepairAttempts
         }
@@ -295,7 +299,8 @@ public actor AgentLoop {
         _ continuation: AsyncStream<AgentEvent>.Continuation
     ) async throws -> (raw: String, reads: [String], mcp: [(server: String, tool: String, arguments: String)], web: [(kind: WebRequestKind, query: String)], search: [(kind: SearchKind, query: String)], denied: [String]) {
         let parser = StreamingArtifactParser()
-        let executor = ActionExecutor(process: deps.process, gate: deps.permissionGate)
+        let executor = ActionExecutor(process: deps.process, gate: deps.permissionGate,
+                                      permissions: deps.permissionConfig)
         let splitter = ReasoningSplitter()
         var raw = ""
         var reads: [String] = []

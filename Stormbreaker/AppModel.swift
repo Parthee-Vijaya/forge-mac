@@ -2115,6 +2115,7 @@ final class AppModel: PermissionGate {
                 await CodeSearch.run(kind, query: query, root: workspace.root)
             },
             permissionGate: self,   // Fase 1: approve shell/new-deps/MCP before they run
+            permissionConfig: PermissionConfig.load(projectRoot: workspace.root),
             settleDelay: .seconds(2),
             maxRepairAttempts: 3)
 
