@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `389ab3b` 2026-06-20 — Parity: remote MCP servers over HTTP/SSE + enabled flag
 - `407eedf` 2026-06-20 — Parity: /paste a clipboard image into the TUI (vision)
 - `c87ee10` 2026-06-20 — Parity: custom JSON themes + instructions[] extra rule files
 - `418c38b` 2026-06-20 — Parity: user-configurable shell permissions overlay
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `7df7b9b` 2026-06-20 — Fix: surface in-band provider errors instead of an empty turn
 - `7f28f04` 2026-06-19 — Fix: kill the whole dev-server subtree on stop, not one level
 - `0a4faf2` 2026-06-19 — Fix: never send an empty assistant message to a provider
-- `4a911f6` 2026-06-19 — Fix: apply --base-url to cloud providers, not just ollama/lmStudio
 <!-- COMMITLOG:END -->

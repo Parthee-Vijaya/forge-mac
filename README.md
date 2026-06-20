@@ -263,6 +263,21 @@ til din tekst, `` !`shell` `` indsætter en kommandos output (kun sikre kommando
 og `@sti/fil` indsætter en projektfils indhold. Inspireret af opencode — samme idé,
 Stormbreaker-motoren.
 
+## Tilpasning (config-filer)
+
+Alt er filbaseret — globalt i `~/.config/storm/` eller pr. projekt i `.forge/`:
+
+| Fil | Hvad |
+|-----|------|
+| `commands/*.md` | Egne slash-kommandoer (se ovenfor). |
+| `permissions.json` | Tilladelser oven på den indbyggede triage: `{"deny":["git push*"],"allow":["docker *"],"ask":["npm run deploy*"]}`. Katastrofale kommandoer (`rm -rf /`, `curl\|sh`) kan **aldrig** løsnes op. |
+| `themes/*.json` | Egne farvetemaer (`{"name":"Solaris","bg":"#002b36","accent":"#b58900",…}`); vises i `/theme`. `system` følger terminalens farver. |
+| `.mcp.json` | MCP-servere — lokale (`command`) **og** remote (`url` + `headers` over HTTP/SSE), med `enabled`. Bekræftes før de starter. |
+| `.forge/instructions.json` | Ekstra regel-filer ud over `CLAUDE.md`/`AGENTS.md`/`AI_RULES.md` (fx `["docs/STYLE.md"]`). |
+
+I TUI'en kan du desuden `/paste` et billede fra udklipsholderen (screenshot → UI med en
+vision-model), `/model` skifte model, og `/theme` skifte tema midt i en session.
+
 ## Byg fra kildekode
 
 ```sh
