@@ -28,7 +28,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 async def main():
     # storm-mcp on PATH (curl install) or an absolute path to the binary.
-    mcp = MultiServerMCPClient({
+    client = MultiServerMCPClient({
         "storm": {
             "command": "storm-mcp",
             "args": ["/abs/path/to/your/project"],   # the project root storm-mcp manages
@@ -36,14 +36,17 @@ async def main():
             "env": {"STORM_CLOUD_API_KEY": "…"},      # only if you use a cloud model
         }
     })
-    tools = await mcp.get_tools()
+    tools = await client.get_tools()
+    # deepagents ships its own read_file/write_file (a virtual filesystem), so drop
+    # storm's same-named tools to avoid a name collision (see Gotcha below).
+    tools = [t for t in tools if t.name not in {"read_file", "write_file"}]
 
     agent = create_deep_agent(
         tools=tools,
         system_prompt=(
             "You orchestrate specialists. To build or change a web app, call the "
             "`build` tool — it delegates to Stormbreaker's own coding agent. Use "
-            "read_file/get_errors to inspect the result."
+            "`get_errors` to inspect the result."
         ),
     )
 
@@ -56,9 +59,27 @@ asyncio.run(main())
 ```
 
 The deep agent now plans, calls `build` (Stormbreaker writes a real Vite/React project
-and fixes its own type errors), then can `read_file` / `get_errors` to verify — all
-while Stormbreaker stays a fast native binary. The model used by `build` comes from
+and fixes its own type errors), then can `get_errors` to verify — all while
+Stormbreaker stays a fast native binary. The model used by `build` comes from
 `~/.config/storm/config.json` (or the `model` / `provider` build args).
+
+### Gotcha: tool-name collisions
+
+deepagents has **built-in** `read_file` / `write_file` (its virtual filesystem), which
+clash with storm's same-named tools — `create_deep_agent` raises `TOOL_NAME_COLLISION`.
+Two fixes: **drop** storm's colliding tools (above — the hub uses its own fs + storm's
+unique `build` / `get_errors` / `run_command` / `list_files`), or **prefix** the MCP
+tools so they become `storm__build`, `storm__read_file`, … (JS adapter:
+`prefixToolNameWithServerName: true`; Python: the equivalent option for your adapter
+version).
+
+### Verified TS example
+
+A runnable TS demo (deepagents.js + `@langchain/mcp-adapters`) lives in the
+`research-agent` project: `scripts/storm-hub-demo.ts`. It loads all six storm tools
+(prefixed `storm__…`) and delegates a build. Note: the **hub** model must support
+tool-calling — some local LM Studio chat templates can't render tool-call messages
+(null content) and 400; a cloud model or a properly-templated local model works.
 
 > `build` is long-running (scaffold + `npm install` + model turns). Give the tool a
 > generous timeout in your client. The dev server is started for HMR/runtime checks

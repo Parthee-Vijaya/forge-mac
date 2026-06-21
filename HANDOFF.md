@@ -90,6 +90,7 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 ## Commit-log (auto-genereret)
 
 <!-- COMMITLOG:START -->
+- `6bd8420` 2026-06-21 — storm-mcp: `build` tool — drive Stormbreaker as a sub-agent (deepagents hub)
 - `7ef9d1d` 2026-06-20 — TUI: label usage tokens ind/ud instead of prompt→completion
 - `60eb6b2` 2026-06-20 — TUI polish: bottom-anchor the transcript + drop the persistent intro line
 - `f5d6c6c` 2026-06-20 — docs: customization config files + 4 new parity features
@@ -109,5 +110,4 @@ Borrow fra scalable.dk/agentic-sdlc — gør Stormbreaker til et lille team, ikk
 - `5078430` 2026-06-20 — Fix: flush never re-runs a command after a mid-batch throw
 - `a011a98` 2026-06-20 — Fix: cap pinned @file size so it can't overflow num_ctx
 - `ab29a57` 2026-06-20 — Fix: don't truncate a tag at a '>' inside a quoted attribute
-- `afa59f2` 2026-06-20 — Fix: stripCodeFence never empties a file (data-loss guard)
 <!-- COMMITLOG:END -->
